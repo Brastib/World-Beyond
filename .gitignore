@@ -1,0 +1,34 @@
+# Unity
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+sysinfo.txt
+crashlytics-buildid.txt
+*.apk
+*.aab
+*.unitypackage
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.sln
+!Tools/**/*.csproj
+*.suo
+*.user
+*.userprefs
+
+# dotnet-Testprojekt außerhalb von Unity
+Tools/**/bin/
+Tools/**/obj/
+TestResults/
