@@ -39,6 +39,16 @@ Jede Pflanze hat die Zustände aus `ASSETS_STYLE_ENVIRONMENT.md` §5 (jung … a
 
 Wer ein Asset anlegt, ändert, ersetzt oder entfernt, aktualisiert hier sofort die Zeile und die Zähler in §1. Etappen-Kürzel (A1 …, P1 …) stammen aus `ASSETS_STYLE_ENVIRONMENT.md` §7/§8.
 
+### 0.6 Archetypen, unbegrenzte Varianten (Nutzer, 2026-10-26 16:45 UTC)
+
+Der Nutzer will unendlich viele Arten von Möbeln, Häusern usw., und alles soll von den NPCs im Spiel gemacht werden. Für den Katalog heißt das: **Eine Zeile ist ein Archetyp (Bauplan-Familie), kein einzelnes Modell.** Die sichtbaren Varianten entstehen aus
+- endlich vielen, sorgfältig gebauten Bauteilen pro Archetyp (z. B. Tischplatte, Beine, Zarge, Schnitzerei; Wand, Fenster, Dach),
+- Parametern, die der herstellende NPC festlegt: Maße, Form, Material, Verzierung, Stil seiner Kultur und Epoche, Qualität aus seinem Können,
+- einem Seed.
+Damit gibt es unbegrenzt viele Kombinationen. Ehrliche Grenze: Jedes Bauteil muss trotzdem einzeln in R1/R2-Qualität gebaut werden. Die Vielfalt wächst mit der Zahl der Bauteile, die wir herstellen.
+
+Jedes von NPCs hergestellte Objekt trägt in der Simulation Hersteller, Qualität und Parameter. Der Katalog zählt nur Archetypen und Bauteil-Sätze. Wie NPCs entwerfen, bauen und handeln, gehört nicht in diesen Katalog, sondern zu den zuständigen Systemen (weitergegeben).
+
 ## 1. Zähler (Stand 2026-10-26)
 
 | Bereich | Einträge | geplant | Platzhalter | in Arbeit | implementiert | abgenommen |
