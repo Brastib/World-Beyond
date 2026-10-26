@@ -79,6 +79,8 @@ namespace WorldBeyond.Application.Integration
 
         public int GetSharedBorderLength(int civA, int civB) => _territory.SharedBorderLength(civA, civB);
 
+        public int GetTerritoryTiles(int civId) => _civs.TryGet(civId, out var c) ? c.TerritoryTiles : 0;
+
         // PLATZHALTER bis Civ/World umkämpfte Ressourcenkacheln zählen: Grenzlänge relativ zum kleineren Gebiet.
         public float GetResourceContestion(int civA, int civB)
         {
