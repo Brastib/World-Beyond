@@ -60,19 +60,25 @@ namespace WorldBeyond.Simulation.Diplomacy
                     float competition = Settings.ResourceCompetitionMax * contestion * (0.5f + 0.5f * need);
                     SetPersistentModifier(a, b, RelationReason.ResourceCompetition, competition);
 
-                    UpdateGrievance(a, b, border, seconds);
+                    UpdateGrievance(a, b, border, ContactProximity(a, b, border), seconds);
                 }
             }
         }
 
         // Groll wächst an einer Grenze ohne Bündnis, ruht im Krieg und in der Friedensfrist, baut sich ohne Grenze ab.
-        void UpdateGrievance(int a, int b, int border, float seconds)
+        // Ohne gemeinsame Grenze wächst Groll als Rivalität, solange die Gebiete nah beieinander liegen.
+        void UpdateGrievance(int a, int b, int border, float proximity, float seconds)
         {
             float current = GetPersistentValue(a, b, RelationReason.BorderGrievance);
             float next = current;
-            if (border <= 0) next = Math.Min(0f, current + Settings.GrievanceDecayPerSecond * seconds);
+            float edges = border > 0 ? border : Settings.RivalryEquivalentEdges * proximity;
+            if (edges <= 0f) next = Math.Min(0f, current + Settings.GrievanceDecayPerSecond * seconds);
             else if (!AreAllied(a, b) && FindWar(a, b) == null && FindTreaty(a, b, TreatyType.PeaceCooldown) == null)
-                next = Math.Max(Settings.GrievanceMax, current + Settings.GrievancePerEdgePerSecond * border * seconds);
+            {
+                // Nach einem Frieden wächst neuer Groll erst langsam wieder (Kriegsmüdigkeit beider Seiten).
+                float calm = 1f - Math.Max(WarWeariness(a, b), WarWeariness(b, a));
+                next = Math.Max(Settings.GrievanceMax, current + Settings.GrievancePerEdgePerSecond * edges * seconds * calm);
+            }
             if (next > -0.01f) next = 0f;
             if (next != current) SetPersistentModifier(a, b, RelationReason.BorderGrievance, next);
         }

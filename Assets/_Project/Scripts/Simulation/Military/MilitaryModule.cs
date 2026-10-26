@@ -39,7 +39,13 @@ namespace WorldBeyond.Simulation.Military
             ctx.Register<IArmyQuery>(armies);
             ctx.Register<AI.IArmyAI>(armyAI);
             ctx.Saveables.Add(armies);
+            ctx.Saveables.Add(armyAI);
             registerSystem(armyAI);
+
+            var capture = new SettlementCaptureSystem(ctx.Units, catalog, env, armyEnv);
+            ctx.Register(capture);
+            ctx.Saveables.Add(capture);
+            registerSystem(capture);
             return system;
         }
     }

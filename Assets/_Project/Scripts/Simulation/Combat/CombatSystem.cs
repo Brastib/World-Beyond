@@ -40,7 +40,6 @@ namespace WorldBeyond.Simulation.Combat
 
         private readonly List<EntityId> _alive = new List<EntityId>();
         private readonly List<EntityId> _nearby = new List<EntityId>();
-        private TargetCandidate[] _candidates = new TargetCandidate[128];   // wiederverwendet statt Allokation je Zielsuche
         // Weiche Fehler aus TryRestoreState; CheckReferences meldet sie an den LoadReport (ARCHITECTURE §11.1 Regel 6).
         private readonly List<string> _pendingWarnings = new List<string>();
 
@@ -109,9 +108,7 @@ namespace WorldBeyond.Simulation.Combat
                     else _target[i] = me.Task.TargetEntity;
                 }
 
-                // Ohne Ziel nur im Stagger-Takt suchen (sonst sucht jede Einheit ohne Feind in Sicht jeden Tick);
-                // ein gerade verlorenes Ziel wird sofort ersetzt.
-                if (!ordered && ((id.Index + tick) % AcquireStagger == 0 || (_target[i].IsValid && !IsValidTarget(in me, _target[i], md, out _))))
+                if (!ordered && (!IsValidTarget(in me, _target[i], md, out _) || (id.Index + tick) % AcquireStagger == 0))
                     _target[i] = Acquire(in me, md);
 
                 if (!_units.TryGet(_target[i], out var tgt))
@@ -173,8 +170,7 @@ namespace WorldBeyond.Simulation.Combat
         private EntityId Acquire(in UnitView me, MilitaryUnitData md)
         {
             _combat.QueryRadius(me.X, me.Z, md.SightRange, _nearby);
-            if (_nearby.Count > _candidates.Length) _candidates = new TargetCandidate[Math.Max(_nearby.Count, _candidates.Length * 2)];
-            Span<TargetCandidate> cand = _candidates;
+            Span<TargetCandidate> cand = _nearby.Count <= 128 ? stackalloc TargetCandidate[_nearby.Count] : new TargetCandidate[_nearby.Count];
             int n = 0;
             for (int k = 0; k < _nearby.Count; k++)
             {

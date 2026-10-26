@@ -44,7 +44,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         // Verluste kommen direkt vom UnitStore (UnitDiedEvent enthält CivId, KillerCivId und UnitType).
         void OnUnitDied(UnitDiedEvent e)
         {
-            if (e.CivId <= 0) return;
+            if (e.CivId <= 0 || e.KillerCivId <= 0) return;
             ReportUnitLost(e.CivId, e.KillerCivId, _world.GetUnitCombatStrength(e.UnitType.Value));
         }
 
@@ -107,6 +107,18 @@ namespace WorldBeyond.Simulation.Diplomacy
             if (value != 0f) AddModifier(from, to, reason, value, 0f);
         }
 
+        // Nähe zweier Civs 0 … 1: mit Grenze 0,5 + Grenzlänge/80; sonst bis 0,7 nach Abstand der Gebietsränder
+        // (Hauptstadtabstand minus geschätzte Gebietsradien), 0 ab ContactReachTiles.
+        public float ContactProximity(int a, int b, int border)
+        {
+            if (border > 0) return Clamp01(0.5f + border / 80f);
+            if (!_world.TryGetCapitalPosition(a, out int ax, out int ay) || !_world.TryGetCapitalPosition(b, out int bx, out int by)) return 0f;
+            float gap = Distance(ax, ay, bx, by) - TerritoryRadius(a) - TerritoryRadius(b);
+            return 0.7f * Clamp01(1f - Math.Max(0f, gap) / Settings.ContactReachTiles);
+        }
+
+        float TerritoryRadius(int civ) => (float)Math.Sqrt(Math.Max(0, _world.GetTerritoryTiles(civ)) / Math.PI);
+
         internal float GetPersistentValue(int from, int to, RelationReason reason)
         {
             foreach (var m in Modifiers)
@@ -114,11 +126,24 @@ namespace WorldBeyond.Simulation.Diplomacy
             return 0f;
         }
 
-        // Nach einem Frieden ist der angestaute Grenzgroll zwischen den Parteien abgebaut.
+        // Nach einem Frieden ist der angestaute Grenzgroll abgebaut, und der Vertrag gleicht die bestehende
+        // Grenz- und Ressourcenreibung aus. Ein neuer Kriegsgrund muss erst wieder entstehen (Ausgleich klingt
+        // über WarWearinessTicks linear ab, Groll wächst nach).
         void ClearGrievance(int a, int b)
         {
             SetPersistentModifier(a, b, RelationReason.BorderGrievance, 0f);
             SetPersistentModifier(b, a, RelationReason.BorderGrievance, 0f);
+            Reconcile(a, b);
+            Reconcile(b, a);
+        }
+
+        void Reconcile(int from, int to)
+        {
+            float standing = GetPersistentValue(from, to, RelationReason.BorderFriction)
+                           + GetPersistentValue(from, to, RelationReason.ResourceCompetition);
+            if (standing >= 0f) return;
+            float seconds = Math.Max(1f, Settings.WarWearinessTicks / (float)SimClock.TicksPerSecond);
+            AddModifier(from, to, RelationReason.PeaceSettlement, -standing, -standing / seconds);
         }
 
         // ================= Status =================
@@ -460,10 +485,43 @@ namespace WorldBeyond.Simulation.Diplomacy
             int otherWars = 0;
             foreach (var w in Wars) if (w != war && !w.Suspended && w.SideOf(receiver) != WarSide.None) otherWars++;
 
+            // Überlegenheit zählt nur, wenn der Empfänger nichts bekommt (weißer Frieden oder eigene Abgabe).
+            float dominance = cost >= 0f ? Dominance(war, receiver, exhaustionR) : 0f;
             float accept = Settings.PeaceBaseline - scoreR * Settings.PeaceScoreWeight + exhaustionR * Settings.PeaceExhaustionWeight
-                           - cost + otherWars * Settings.PeaceOtherWarBonus;
+                           - cost + otherWars * Settings.PeaceOtherWarBonus - dominance * Settings.DominancePeaceWeight;
+            if (accept <= 0f && dominance > 0.5f) { reason = "Der Empfänger ist klar überlegen und noch nicht kriegsmüde."; return accept; }
             if (accept <= 0f) reason = "Der Kriegsverlauf spricht aus Sicht des Empfängers gegen diesen Frieden.";
             return accept;
+        }
+
+        // 0..1: Kriegsmüdigkeit von civ gegenüber target aus beendeten Kriegen (WarHistory, also Teil des Spielstands).
+        public float WarWeariness(int civ, int target)
+        {
+            float sum = 0f;
+            foreach (var w in WarHistory)
+            {
+                if (w.EndTick < 0 || w.EndReason != WarEndReason.Peace) continue;
+                var a = w.SideOf(civ); var b = w.SideOf(target);
+                if (a == WarSide.None || b == WarSide.None || a == b) continue;
+                float f = 1f - (Now - w.EndTick) / (float)Math.Max(1L, Settings.WarWearinessTicks);
+                if (f > 0f) sum += Settings.WarWearinessPerWar * Math.Min(1f, f);
+            }
+            return Clamp01(sum);
+        }
+
+        // 0..1: militärische Überlegenheit der Seite des Empfängers, abgeschwächt durch dessen Erschöpfung.
+        float Dominance(War war, int receiver, float exhaustionR)
+        {
+            var side = war.SideOf(receiver);
+            var other = side == WarSide.Attacker ? WarSide.Defender : WarSide.Attacker;
+            float own = 0f, enemy = 0f;
+            foreach (var c in war.MembersOf(side)) own += Math.Max(0f, _world.GetMilitaryStrength(c));
+            foreach (var c in war.MembersOf(other)) enemy += Math.Max(0f, _world.GetMilitaryStrength(c));
+            if (own <= 0f) return 0f;
+            float ratio = enemy <= 0f ? Settings.FullStrengthRatio : own / enemy;
+            float superiority = Clamp01((ratio - 1f) / Math.Max(0.01f, Settings.FullStrengthRatio - 1f));
+            float fresh = Clamp01(1f - exhaustionR / Math.Max(1f, Settings.DominanceExhaustionLimit));
+            return superiority * fresh;
         }
 
         // Wert einer Bedingung in warScore-Punkten.
@@ -576,14 +634,17 @@ namespace WorldBeyond.Simulation.Diplomacy
         // ================= Meldungen aus anderen Systemen (über den Adapter im GameBootstrap) =================
 
         // Aus UnitDiedEvent (abonniert im Konstruktor) oder direkt gemeldet. strength = Kampfstärke des Einheitentyps.
+        // Nur Tode durch einen Kriegsgegner zählen. Ziviler Despawn (Siedler gründet, Karawane kommt an,
+        // KillerCivId 0) und Eigenverluste sind keine Kriegsverluste.
         public void ReportUnitLost(int civId, int killerCivId, float strength)
         {
+            if (civId <= 0 || killerCivId <= 0 || killerCivId == civId) return;
             foreach (var war in Wars)
             {
                 var side = war.SideOf(civId);
                 if (side == WarSide.None) continue;
-                if (killerCivId != 0 && war.SideOf(killerCivId) == side) continue;
-                if (killerCivId != 0 && war.SideOf(killerCivId) == WarSide.None) continue;
+                var killerSide = war.SideOf(killerCivId);
+                if (killerSide == WarSide.None || killerSide == side) continue;
                 var stats = war.StatsOf(side);
                 stats.UnitsLost++;
                 stats.StrengthLost += Math.Max(0f, strength);

@@ -47,9 +47,6 @@ namespace WorldBeyond.Simulation.Military
 
         internal IEnumerable<Army> All => _armies.Values;
 
-        // Von ArmyAISystem gesetzte Bewegungsziele (Einheit → Ziel); gespeichert, damit die KI nach dem Laden gleich entscheidet.
-        internal readonly Dictionary<EntityId, (float x, float z)> IssuedMoveTargets = new Dictionary<EntityId, (float x, float z)>();
-
         // ---------------- IArmyRegistry (Spieler/UI/Commands; setzt manuellen Vorrang) ----------------
 
         public int CreateArmy(int civId, IReadOnlyList<EntityId> units) => Create(civId, units, autonomous: false);
@@ -237,14 +234,7 @@ namespace WorldBeyond.Simulation.Military
                     LastDecisionTick = a.LastDecisionTick,
                 });
             }
-            var issued = new List<IssuedMoveRecord>(IssuedMoveTargets.Count);
-            foreach (var kv in IssuedMoveTargets)
-            {
-                if (!_units.Exists(kv.Key)) continue;
-                issued.Add(new IssuedMoveRecord { Index = kv.Key.Index, Generation = kv.Key.Generation, X = kv.Value.x, Z = kv.Value.z });
-            }
-            issued.Sort((a, b) => a.Index.CompareTo(b.Index));   // Index ist unter lebenden Einheiten eindeutig
-            return new ArmySaveState { LastIssuedId = _ids.LastIssued, Armies = list.ToArray(), Issued = issued.ToArray() };
+            return new ArmySaveState { LastIssuedId = _ids.LastIssued, Armies = list.ToArray() };
         }
 
         public bool TryRestoreState(object dto, out string error)
@@ -281,15 +271,6 @@ namespace WorldBeyond.Simulation.Military
                 }
                 _armies.Add(a.Id, a);
             }
-            // Ältere Spielstände ohne "Issued": alle vorhandenen Ziele gelten als fremd (früheres Verhalten).
-            IssuedMoveTargets.Clear();
-            if (s.Issued != null)
-                foreach (var r in s.Issued)
-                {
-                    if (r == null) continue;
-                    var id = new EntityId(r.Index, r.Generation);
-                    if (_units.Exists(id)) IssuedMoveTargets[id] = (r.X, r.Z);
-                }
             error = null;
             return true;
         }
@@ -329,14 +310,6 @@ namespace WorldBeyond.Simulation.Military
     {
         public int LastIssuedId;
         public ArmyRecord[] Armies;
-        public IssuedMoveRecord[] Issued;   // seit Phase 7; fehlt in älteren Spielständen (null)
-    }
-
-    [Serializable]
-    public sealed class IssuedMoveRecord
-    {
-        public int Index, Generation;
-        public float X, Z;
     }
 
     [Serializable]

@@ -17,7 +17,7 @@ namespace WorldBeyond.Simulation.Military
     /// Läuft ohne Spielerbefehle. Spielerbefehle über IArmyRegistry haben 60 s Vorrang.
     /// Order 100 (AI), jede Spielsekunde. Taktik pro Einheit bleibt im CombatSystem.
     /// </summary>
-    public sealed class ArmyAISystem : AI.IArmyAI
+    public sealed class ArmyAISystem : AI.IArmyAI, ISaveable
     {
         private const int DecisionIntervalTicks = 50;     // Entscheidung je Armee alle 5 s
         private const int RecruitIntervalTicks = 100;     // Rekrutierungsanfrage je Civ höchstens alle 10 s
@@ -40,9 +40,9 @@ namespace WorldBeyond.Simulation.Military
         private readonly SortedSet<int> _civs = new SortedSet<int>();
         private readonly Dictionary<int, long> _lastRecruit = new Dictionary<int, long>();
         private readonly List<Army> _scratchArmies = new List<Army>();
-        // Zuletzt von der Armee-KI gesetztes Bewegungsziel je Einheit. Liegt im ArmyRegistry und wird mit "armies" gespeichert,
-        // sonst gälte ein KI-Ziel nach dem Laden als fremd und die Simulation liefe anders weiter als ohne Laden.
-        private Dictionary<EntityId, (float x, float z)> _issued => _registry.IssuedMoveTargets;
+        // Zuletzt von der Armee-KI gesetztes Bewegungsziel je Einheit (gespeichert, sonst weicht ein geladener
+        // Lauf vom ununterbrochenen ab: K7). Ziele, die nicht hier stehen, gelten als fremd und werden nicht überschrieben.
+        private readonly Dictionary<EntityId, (float x, float z)> _issued = new Dictionary<EntityId, (float x, float z)>();
 
         private static bool SameSpot(float ax, float az, float bx, float bz) => MathF.Abs(ax - bx) <= 1f && MathF.Abs(az - bz) <= 1f;
 
@@ -301,5 +301,56 @@ namespace WorldBeyond.Simulation.Military
                 }
             }
         }
+        // ---------------- ISaveable (K7: Lauf nach Laden identisch zum ununterbrochenen) ----------------
+        // _freeByCiv, _civs, _alive, _scratchArmies werden jeden Lauf neu aufgebaut und brauchen keinen Zustand.
+
+        public const string Key = "armyai";
+        public string SaveKey => Key;
+        public int LoadOrder => 31;   // nach armies (30)
+        public int SectionVersion => 1;
+        public Type StateType => typeof(ArmyAISaveState);
+
+        public object CaptureState()
+        {
+            var recruit = new List<ArmyAIRecruitRecord>();
+            var civKeys = new List<int>(_lastRecruit.Keys);
+            civKeys.Sort();
+            foreach (int c in civKeys) recruit.Add(new ArmyAIRecruitRecord { CivId = c, LastTick = _lastRecruit[c] });
+            var issued = new List<ArmyAIIssuedRecord>();
+            foreach (var kv in _issued)
+                if (_units.Exists(kv.Key))
+                    issued.Add(new ArmyAIIssuedRecord { Index = kv.Key.Index, Generation = kv.Key.Generation, X = kv.Value.x, Z = kv.Value.z });
+            issued.Sort((a, b) => a.Index != b.Index ? a.Index.CompareTo(b.Index) : a.Generation.CompareTo(b.Generation));
+            return new ArmyAISaveState { Recruit = recruit.ToArray(), Issued = issued.ToArray() };
+        }
+
+        public bool TryRestoreState(object dto, out string error)
+        {
+            if (!(dto is ArmyAISaveState s) || s.Recruit == null || s.Issued == null) { error = "armyai: Zustand fehlt oder hat falschen Typ."; return false; }
+            _lastRecruit.Clear();
+            _issued.Clear();
+            foreach (var r in s.Recruit) if (r != null) _lastRecruit[r.CivId] = r.LastTick;
+            foreach (var r in s.Issued)
+            {
+                if (r == null) continue;
+                var id = new EntityId(r.Index, r.Generation);
+                if (_units.Exists(id)) _issued[id] = (r.X, r.Z);   // tote Einheit: Eintrag ohne Wirkung, verwerfen
+            }
+            error = null;
+            return true;
+        }
     }
+
+    [Serializable]
+    public sealed class ArmyAISaveState
+    {
+        public ArmyAIRecruitRecord[] Recruit;
+        public ArmyAIIssuedRecord[] Issued;
+    }
+
+    [Serializable]
+    public sealed class ArmyAIRecruitRecord { public int CivId; public long LastTick; }
+
+    [Serializable]
+    public sealed class ArmyAIIssuedRecord { public int Index, Generation; public float X, Z; }
 }

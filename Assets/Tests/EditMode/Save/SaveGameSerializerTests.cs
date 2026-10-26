@@ -37,54 +37,6 @@ namespace WorldBeyond.Tests.EditMode.Save
             Assert.AreEqual(SaveGameSerializer.ComputeChecksum(a), SaveGameSerializer.ComputeChecksum(b));
         }
 
-        // Die Prüfsumme wird seit Phase 7 (Performance) ohne Baumkopie geschrieben. Sie muss mit der ursprünglichen Bildung
-        // (sortierter Klon, ToString ohne Leerraum, SHA-256) übereinstimmen, sonst wären bestehende Spielstände "beschädigt".
-        [TestCase("{\"b\":{\"y\":1,\"x\":[1,{\"q\":2,\"p\":3}]},\"a\":1.5}")]
-        [TestCase("{\"s\":\"äöü \\\"x\\\" \\u0001 </tag> 漢字\",\"n\":null,\"t\":true,\"f\":-0.30000000000000004,\"e\":1e300,\"i\":-9223372036854775808,\"u\":18446744073709551615}")]
-        [TestCase("[[],{},[{}],\"2026-10-25T20:00:00Z\",0.1,1.0,100]")]
-        [TestCase("{\"B\":1,\"a\":2,\"_\":3,\"Ä\":4,\"aa\":5,\"\":6}")]
-        public void Checksum_MatchesOriginalCanonicalForm(string json)
-        {
-            var token = Parse(json);
-            Assert.AreEqual(ReferenceChecksum(token), SaveGameSerializer.ComputeChecksum(token));
-        }
-
-        [Test]
-        public void FileChecksum_MatchesOriginalCanonicalForm()
-        {
-            var root = (JObject)Parse(SampleJson());
-            var withoutChecksum = (JObject)root.DeepClone();
-            withoutChecksum.Remove("checksum");
-            Assert.AreEqual(ReferenceChecksum(withoutChecksum), SaveGameSerializer.ComputeFileChecksum(root));
-            Assert.AreEqual((string)root["checksum"], SaveGameSerializer.ComputeFileChecksum(root));
-        }
-
-        private static JToken Parse(string json)
-        {
-            using (var reader = new Newtonsoft.Json.JsonTextReader(new System.IO.StringReader(json)) { DateParseHandling = Newtonsoft.Json.DateParseHandling.None })
-                return JToken.ReadFrom(reader);
-        }
-
-        private static string ReferenceChecksum(JToken token)
-        {
-            JToken Canon(JToken t)
-            {
-                if (t is JObject o)
-                {
-                    var sorted = new JObject();
-                    foreach (var p in System.Linq.Enumerable.OrderBy(o.Properties(), p => p.Name, System.StringComparer.Ordinal)) sorted.Add(p.Name, Canon(p.Value));
-                    return sorted;
-                }
-                if (t is JArray a) return new JArray(System.Linq.Enumerable.Select(a, Canon));
-                return t.DeepClone();
-            }
-            using (var sha = System.Security.Cryptography.SHA256.Create())
-            {
-                var hash = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(Canon(token).ToString(Newtonsoft.Json.Formatting.None)));
-                return System.BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
-            }
-        }
-
         [Test]
         public void Checksum_ChangesWhenArrayOrderChanges()
         {

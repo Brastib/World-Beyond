@@ -43,19 +43,35 @@ namespace WorldBeyond.Simulation.Diplomacy
         public float PeaceScoreWeight = 0.6f;
         public float PeaceExhaustionWeight = 0.5f;
         public float PeaceOtherWarBonus = 10f;
+        // Ein klar überlegener, noch frischer Empfänger nimmt keinen weißen Frieden an (sonst Krieg/Frieden-Ping-Pong).
+        // Abzug = Gewicht × Überlegenheit (0 bei Gleichstand, 1 ab FullStrengthRatio) × (1 − Erschöpfung/Grenze).
+        public float DominancePeaceWeight = 30f;
+        public float DominanceExhaustionLimit = 60f;      // ab dieser Erschöpfung zählt Überlegenheit nicht mehr
 
         // KI
-        public float WarThreshold = 0.3f;
+        public float WarThreshold = 0.25f;
         public float StrengthWeight = 0.35f;              // Anteil der Stärke an der Kriegsbewertung, Rest = Motiv
         public float MinStrengthRatio = 0.8f;             // darunter nie Angriff (deutlich schwächer)
-        public float FullStrengthRatio = 2.0f;            // ab hier voller Stärkefaktor
+        public float FullStrengthRatio = 2.0f;
+        // Krieg nur mit echtem Grund: Stärke und Aggressivität allein reichen nicht.
+        public float MinWarReason = 0.1f;                 // Mindestanteil aus Feindseligkeit + Ressourcenbedarf
+        public float MotiveForFullStrength = 0.3f;        // ab diesem Motiv zählt der Stärkevorteil voll
+        // Kriegsmüdigkeit nach Frieden: jeder beendete Krieg gegen dieselbe Civ senkt den Kriegsnutzen und
+        // das Nachwachsen von Grenzgroll und klingt linear ab. 36000 Ticks = 60 Min. = 60 Jahre bei CivTime.TicksPerYear 600 (Stand integration/m1).
+        public long WarWearinessTicks = 36000;
+        public float WarWearinessPerWar = 0.8f;           // 1 = direkt nach dem Frieden gar kein Krieg möglich            // ab hier voller Stärkefaktor
         public float AllianceThreshold = 0.5f;
         public float RecruitThreshold = 0.4f;
-        public float MaxReachTiles = 60f;
+        public float MaxReachTiles = 60f;                 // Reichweite für Kriegsziele und Zielprioritäten
+        public float ContactReachTiles = 48f;             // Abstand der Gebietsränder, ab dem Nachbarn sich als Rivalen sehen
+        public float RivalryEquivalentEdges = 160f;       // Groll ohne Grenze wächst wie an einer Grenze dieser Länge × Nähe
         public int WarCooldownTicks = 3000;
         public int PeaceProposalCooldownTicks = 300;
         public int AllianceCooldownTicks = 1200;
         public int RecruitCooldownTicks = 600;
+        public float PeaceArmyStrengthPerPop = 0.05f;     // Grundarmee: Bevölkerung 1000, Haltung 0,5 → Stärke 50
+        public float AssumedUnitStrength = 5f;            // Schätzwert pro Einheit für die Anzahl einer Anfrage
+        public int MaxRecruitPerRequest = 5;
         public int MaxAlliancesPerCiv = 2;
         public float TargetDistanceScale = 64f;
         public int StrategicPointRadius = 4;

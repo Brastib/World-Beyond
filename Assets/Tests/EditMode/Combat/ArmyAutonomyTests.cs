@@ -195,5 +195,44 @@ namespace WorldBeyond.Tests.EditMode.Combat
             Assert.That(reg.TryRestoreState(bad, out var err), Is.False);
             Assert.That(err, Does.Contain("ungültig"));
         }
+        [Test]
+        public void SaveLoadMidWarContinuesIdentically()
+        {
+            // K7: Lauf nach Speichern/Laden mitten im Krieg muss dem ununterbrochenen Lauf exakt gleichen.
+            string Fingerprint(CombatWorld w)
+            {
+                var ids = new List<EntityId>();
+                w.Ctx.Units.CopyAliveIds(ids);
+                var sb = new System.Text.StringBuilder($"rnd {w.Ctx.Random.State}\n");
+                foreach (var id in ids) { var u = w.Ctx.Units.Get(id); sb.Append($"{id} {u.X:R},{u.Z:R} {u.Hp:R} {u.State}\n"); }
+                return sb.ToString();
+            }
+            CombatWorld Setup(out bool[] war)
+            {
+                var w = MakeWorld(out war);
+                w.Ctx.Get<ArmyEnvironment>().Recruit = (civ, role, n) => 0;
+                for (int i = 0; i < 5; i++) { w.Ctx.Units.Spawn(w.Rifleman, 1, 0f, i * 3f); w.Ctx.Units.Spawn(w.Rifleman, 2, 500f, i * 3f); }
+                return w;
+            }
+            const int before = 900, after = 1500;
+            var reference = Setup(out var warRef);
+            for (int t = 0; t < before + after; t++) { if (t == 300) warRef[0] = true; reference.Runner.StepOnce(); }
+
+            var a = Setup(out var warA);
+            for (int t = 0; t < before; t++) { if (t == 300) warA[0] = true; a.Runner.StepOnce(); }
+            var b = Setup(out var warB);
+            warB[0] = true;
+            Assert.That(((ISaveable)a.Ctx.Units).CaptureState() is var us && ((ISaveable)b.Ctx.Units).TryRestoreState(us, out _), Is.True);
+            foreach (var s in a.Ctx.Saveables.InLoadOrder())
+            {
+                if (s.SaveKey == "units") continue;
+                Assert.That(b.Ctx.Saveables.TryGet(s.SaveKey, out var target), Is.True, s.SaveKey);
+                Assert.That(target.TryRestoreState(s.CaptureState(), out var err), Is.True, err);
+            }
+            b.Ctx.Random.State = a.Ctx.Random.State;
+            b.Ctx.Clock.Restore(a.Ctx.Clock.Tick);
+            for (int t = 0; t < after; t++) b.Runner.StepOnce();
+            Assert.That(Fingerprint(b), Is.EqualTo(Fingerprint(reference)));
+        }
     }
 }

@@ -30,6 +30,8 @@ namespace WorldBeyond.Simulation.World
         Savanna = 6,
         Wetland = 7,
         Alpine = 8,
+        TropicalForest = 9,   // heiß und feucht, dichter Wald
+        Mediterranean = 10,   // warm, trockene Sommer, lichte Wälder
     }
 
     public enum ResourceType : byte

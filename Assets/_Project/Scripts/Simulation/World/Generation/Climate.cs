@@ -116,6 +116,10 @@ namespace WorldBeyond.Simulation.World.Generation
                 biome = BiomeType.Wetland;
             else if (temp > 0.62f && moist < 0.38f)
                 biome = BiomeType.Desert;
+            else if (temp > 0.64f && moist > 0.6f)
+                biome = BiomeType.TropicalForest;
+            else if (temp > 0.46f && temp <= 0.6f && moist >= 0.3f && moist < 0.52f)
+                biome = BiomeType.Mediterranean;
             else if (temp > 0.58f && moist < 0.55f)
                 biome = BiomeType.Savanna;
             else
@@ -159,6 +163,8 @@ namespace WorldBeyond.Simulation.World.Generation
                     BiomeType.Savanna => 0.14f,
                     BiomeType.Wetland => 0.28f,
                     BiomeType.Tundra => 0.06f,
+                    BiomeType.TropicalForest => 0.85f,
+                    BiomeType.Mediterranean => 0.22f,
                     _ => 0f,
                 };
                 density *= s.ForestDensity;

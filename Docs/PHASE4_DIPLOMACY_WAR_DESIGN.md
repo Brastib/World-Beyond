@@ -167,7 +167,7 @@ Events: WarDeclared, PeaceSigned, TruceSigned, AllianceFormed, TreatyBroken,
 | `.../DiplomacyCommands.cs` | DeclareWar (optional erzwungen), ProposePeace (optional erzwungen), SignTruce, FormAlliance, BreakTreaty, ModifyRelation |
 | `.../DiplomacySaveable.cs` | ISaveable "diplomacy" (SectionVersion 1, LoadOrder 800), Validierung, tiefe Kopien, Referenzprüfung mit Rückfall (`ISaveReferenceCheck`) |
 | `.../DiplomacyOverview.cs` | Lesemodell für die UI-Übersicht (Kriege, Bündnisse, Feindschaften) |
-| `Assets/Tests/EditMode/Diplomacy/DiplomacyTests.cs`, `DiplomacyTestDoubles.cs` | 38 EditMode-Tests, Testwelt für den Port |
+| `Assets/Tests/EditMode/Diplomacy/DiplomacyTests.cs`, `DiplomacyTestDoubles.cs` | 51 EditMode-Tests, Testwelt für den Port |
 
 ### 11.2 Anbindung an andere Phasen (über `IDiplomacyWorldPort`)
 
@@ -180,9 +180,26 @@ Der DiplomacyService abonniert UnitDiedEvent selbst (Stärke über `IDiplomacyWo
 Utility = Nähe × (0,35 × Stärkefaktor + 0,65 × Motiv) × (0,4, falls schon im Krieg). Der Stärkefaktor ist weich: 0 bei einem Verhältnis von 0,8 (darunter gibt es nie einen Angriff), 1 ab einem Verhältnis von 2. Das Motiv setzt sich zusammen aus 0,45 × Feindseligkeit, 0,30 × Bedarf und 0,25 × Aggressivität. Die Schwelle liegt bei 0,3.
 Neu ist der Grenzgroll (`RelationReason.BorderGrievance`). Er wächst an einer gemeinsamen Grenze ohne Bündnis um 0,0005 pro Kante und Sekunde bis −50. Im Krieg und in der Friedensfrist ruht er, ohne Grenze baut er sich ab, und mit einem Friedensschluss wird er gelöscht. So geraten auch gleich starke Nachbarn ohne Spielereingabe in Konflikt, und nach einem Frieden kehrt eine Ruhephase ein (Sandbox-Regel).
 
+### 11.2b Nachtrag nach Integrationsprobe (2026-10-26)
+
+- Wenn beide Civs keine Armee haben (Stärke 0 : 0, zum Beispiel beim Spielstart), gilt das als Gleichstand und nicht als unendliche Unterlegenheit.
+- Im Frieden fordert jede Civ eine Grundarmee an: Zielstärke = Bevölkerung × 0,05 × (0,5 + Aggressivität), höchstens 5 Einheiten je Anfrage, alle 60 s.
+- Nähe ohne gemeinsame Grenze wird jetzt über den Abstand der Gebietsränder berechnet, nicht mehr über den Abstand der Hauptstädte: Hauptstadtabstand minus √(Gebietsfläche/π) je Civ, Reichweite 48 Kacheln. Rivalen in Reichweite bauen Groll auf wie an einer Grenze (160 Kanten × Nähe). Neue Port-Methode: `GetTerritoryTiles`.
+- Die Utility ist jetzt (0,5 + 0,5 × Nähe) × (0,35 × Stärke + 0,65 × Motiv), die Schwelle liegt bei 0,25.
+- Probe mit der echten GameComposition (Branch integration/m1 plus diese Änderungen, 128², 2 Civs, ohne Eingabe): Seed 1 → Krieg nach 8,0 min, Seed 7 → 40,6 min, Seed 2026 → 97,5 min. Vorher gab es bei keinem Seed einen Krieg.
+
+### 11.2c Nachtrag nach Sandbox-Prüfung (2026-10-26)
+
+- Verluste zählen nur bei Tod durch einen Kriegsgegner (`KillerCivId > 0`, gegnerische Seite). Ziviler Despawn zählt nicht.
+- Wird eine Sammel-Rekrutierung abgelehnt, fragt die KI sofort 1 Einheit an.
+- Gegen Krieg/Frieden-Ping-Pong: Ein klar überlegener Empfänger nimmt weißen Frieden erst an, wenn er erschöpft ist. Abzug = `DominancePeaceWeight` (30) × Überlegenheit (0 bei Gleichstand, 1 ab `FullStrengthRatio`) × (1 − Erschöpfung/`DominanceExhaustionLimit` 60). Zugeständnisse (Tribut, Abtretung) nimmt er weiter an. Ohne Eroberung endet ein 10:1-Krieg deshalb mit einem Zugeständnis des Schwächeren statt nach 1–4 Minuten weiß.
+- Krieg nur mit Grund (Nutzerregel „Krieg ist kein Zwang“): Feindseligkeit + Ressourcenbedarf müssen zusammen mindestens `MinWarReason` (0,1) ergeben. Stärke und Aggressivität allein lösen keinen Krieg aus, und der Stärkevorteil zählt erst voll ab `MotiveForFullStrength`.
+- Nach einem Frieden muss ein neuer Anlass entstehen: Der Vertrag (`RelationReason.PeaceSettlement` = 14) gleicht die bestehende Grenz- und Ressourcenreibung aus. Der Ausgleich klingt über `WarWearinessTicks` (36000 = 60 Jahre bei 600 Ticks/Jahr) linear ab. Grenzgroll wächst nur gebremst nach. Zusätzlich senkt die Kriegsmüdigkeit (aus `WarHistory`, 0,8 je Krieg, linear abklingend) den Kriegsnutzen. Es entsteht kein neuer Spielstand: Modifikator und Kriegshistorie werden schon gespeichert.
+- Gemessen im Testszenario (10:1, Grenze 80, Aggressivität 0,5, Bedarf 0,5, 175 min): vorher Krieg alle 5 min nach jedem Frieden, jetzt 5 Kriege mit je etwa 22 min Abstand nach dem Frieden. Ohne neuen Groll gibt es nach dem Frieden 120 min lang keinen Krieg.
+
 ### 11.3 Tests
 
-Ausgeführt am 2026-10-26 mit `dotnet test Tools/SimTests` (.NET 8, C# 9, Warnungen als Fehler) gegen das echte Fundament aus PR #2: 78 von 78 bestanden (40 Fundament, 38 Phase 4). **Nicht im Unity Test Runner ausgeführt.**
+Ausgeführt am 2026-10-26 mit `dotnet test Tools/SimTests` (.NET 8, C# 9, Warnungen als Fehler) gegen das echte Fundament aus PR #2: 91 von 91 bestanden (40 Fundament, 51 Phase 4; nach Frieden kein Krieg ohne neuen Anlass; überlegener Empfänger lehnt weißen Frieden ab; abgelehnte Sammel-Rekrutierung fällt auf 1 Einheit zurück; ziviler Despawn mit KillerCivId 0 zählt nicht als Kriegsverlust). **Nicht im Unity Test Runner ausgeführt.**
 Abgedeckt: T-4-01 Kriegserklärung und Bündnisruf, T-4-02 Frieden abhängig vom Kriegsstand inkl. Abtretung und Tribut, T-4-03 Bündnisse, T-4-04 Zielauswahl, T-4-05 kein Krieg ohne Grund (30 Spielminuten) und Krieg mit Grund samt Begründung, Autonomie mit symmetrischen Nachbarn (4 Fälle aus dem Review), UnitDiedEvent über echten SimEventBus und UnitStore, T-4-06 Verluste/Erschöpfung/Friedensangebot des Verlierers, T-4-07 Sandbox-Autonomie (Krieg und Frieden ohne Spielereingabe, INTEGRATION.md §0 Regel 4), T-4-07 Speichern/Laden während des Kriegs mit identischer Fortsetzung (DTO-Rundlauf; der JSON-Teil gehört dem SaveLoadService, Phase 7), Validierung beschädigter Daten, Referenzprüfung; außerdem Waffenstillstand, Zusammenbruch einer Civ, strategische Punkte, Rekrutierung, Grenzreibung, Befehle, Übersicht, nie wiederverwendete IDs.
 
 ### 11.4 Noch fehlend (ehrlich)

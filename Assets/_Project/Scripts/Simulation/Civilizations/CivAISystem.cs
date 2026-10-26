@@ -249,6 +249,9 @@ namespace WorldBeyond.Simulation.Civilizations
 
         // ---------------- Expansion ----------------
 
+        /// <summary>Tochtersiedlungen erst aus gewachsenen Orten (sonst zerfällt eine Civ in Weiler zu 5 Personen).</summary>
+        public const int MinAdultsForSettlers = 20;
+
         private void DecideExpansion(Civilization civ)
         {
             var list = _s.SettlementListOf(civ.Id);
@@ -266,7 +269,7 @@ namespace WorldBeyond.Simulation.Civilizations
                 if (st.ExpansionTargetX >= 0 && !st.PlayerChoseTarget) continue;
                 double need = SettlementSimulationSystem.FoodNeedPerYear(st);
                 bool canPay = st.Stock[(int)ResourceType.Food] >= SettlerSystem.SettlerCost.Food + need * 0.5
-                    && st.Stock[(int)ResourceType.Wood] >= SettlerSystem.SettlerCost.Wood && st.Adults >= 12;
+                    && st.Stock[(int)ResourceType.Wood] >= SettlerSystem.SettlerCost.Wood && st.Adults >= MinAdultsForSettlers;
                 if (!canPay) continue;
                 double crowd = st.Population / Math.Max(1.0, st.HousingCapacity);
                 double score = (st.Population / 20.0) * (0.5 + crowd) * civ.Traits.Expansion;

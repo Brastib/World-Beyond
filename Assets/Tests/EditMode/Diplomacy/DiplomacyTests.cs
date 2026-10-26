@@ -274,6 +274,122 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.IsTrue(D.RecentDecisions.Any(x => x.Action == DiplomaticActionType.AcceptPeace));
         }
 
+        // Prüf-Befund (Sandbox, Seed 12345): Civ 2 war 10- bis 16-mal stärker und nahm trotzdem jeden weißen Frieden an.
+        [Test]
+        public void Peace_DominantFreshReceiver_RejectsWhitePeace_ButAcceptsConcession()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
+            D.DeclareWar(2, 1);
+            var white = D.ProposePeace(1, 2, PeaceTerm.White());
+            Assert.IsFalse(white.Accepted, "der klar Überlegene nimmt frisch im Krieg keinen weißen Frieden an");
+            Assert.IsNotNull(D.FindWar(1, 2));
+            var tribute = D.ProposePeace(1, 2, PeaceTerm.Tribute(1, 0.2f));
+            Assert.IsTrue(tribute.Accepted, "ein Zugeständnis beendet den Krieg");
+            Assert.IsNull(D.FindWar(1, 2));
+        }
+
+        [Test]
+        public void Peace_EqualStrength_WhitePeaceStillPossible()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 100);
+            D.DeclareWar(2, 1);
+            Assert.IsTrue(D.ProposePeace(1, 2, PeaceTerm.White()).Accepted);
+        }
+
+        // Stärke 10:1 ohne Eroberung: kein Ping-Pong mit weißem Frieden nach wenigen Minuten.
+        [Test]
+        public void Autonomy_TenToOne_WarLasts_AndEndsWithConcession()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
+            W.SetBorder(1, 2, 80);
+            D.DeclareWar(2, 1);
+            int seconds = 0;
+            while (D.FindWar(1, 2) != null && seconds < 180 * 60)
+            {
+                if (seconds % 30 == 0) D.ReportUnitLost(1, 2, 5f);
+                _rig.RunSeconds(1);
+                seconds++;
+            }
+            var peace = _rig.Bus.Of<PeaceSignedEvent>();
+            Assert.AreEqual(1, peace.Count, "Frieden entsteht ohne Eingriff");
+            Assert.AreNotEqual(PeaceTermType.WhitePeace, peace[0].Term, "der Unterlegene muss etwas abgeben");
+            Assert.GreaterOrEqual(seconds, 5 * 60, "Krieg dauert länger als das bisherige Ping-Pong (1–4 min)");
+            Assert.IsTrue(D.RecentDecisions.Any(x => x.Action == DiplomaticActionType.RejectPeace && x.CivId == 2));
+        }
+
+        // Nutzervorgabe: Krieg nur, wenn die KI ihn wirklich für nötig hält. Stärke allein ist kein Grund.
+        [Test]
+        public void War_StrengthAlone_WithoutMotive_IsNoReason()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
+            W.SetBorder(1, 2, 80);
+            W.Civs[2].Aggression = 0f; W.Civs[2].ResourceNeed = 0f;
+            var o = _rig.Ai.ScoreWar(2, 1);
+            Assert.AreEqual(0f, o.Utility, 1e-6f);
+        }
+
+        // Prüf-Befund (Sandbox, 240 min): nach jedem Frieden genau nach 5 Minuten neuer Krieg, 10 Kriege in 175 min.
+        [Test]
+        public void War_AfterPeace_WearinessLowersUtility_AndDecays()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 300);
+            W.SetBorder(1, 2, 80);
+            W.Civs[2].Aggression = 1f; W.Civs[2].ResourceNeed = 1f; W.Contestion[(2, 1)] = 1f;
+            float before = _rig.Ai.ScoreWar(2, 1).Utility;
+            Assert.Greater(before, 0f);
+            D.DeclareWar(2, 1);
+            Assert.IsTrue(D.ProposePeace(1, 2, PeaceTerm.Tribute(1, 0.2f)).Accepted);
+            float full = D.Settings.WarWearinessPerWar;
+            Assert.AreEqual(full, D.WarWeariness(2, 1), 1e-4f);
+            Assert.AreEqual(full, D.WarWeariness(1, 2), 1e-4f);
+            Assert.Less(_rig.Ai.ScoreWar(2, 1).Utility, before * 0.5f, "direkt nach dem Frieden kaum Kriegsnutzen");
+            _rig.Tick += D.Settings.WarWearinessTicks / 2;
+            Assert.AreEqual(full / 2f, D.WarWeariness(2, 1), 1e-3f);
+            _rig.Tick += D.Settings.WarWearinessTicks;
+            Assert.AreEqual(0f, D.WarWeariness(2, 1), 1e-6f);
+        }
+
+        // Integration/QA: nach einem Frieden kein neuer Krieg ohne neuen Anlass.
+        [Test]
+        public void AfterPeace_NoNewReason_NoNewWar()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
+            W.SetBorder(1, 2, 80);
+            W.Civs[2].Aggression = 1f;                       // aggressiv, aber ohne Bedarf
+            D.Settings.GrievancePerEdgePerSecond = 0f;        // kein neuer Groll
+            D.DeclareWar(2, 1);
+            Assert.IsTrue(D.ProposePeace(1, 2, PeaceTerm.Tribute(1, 0.2f)).Accepted);
+            _rig.RunSeconds(120 * 60);
+            Assert.AreEqual(0, D.ActiveWars.Count, "ohne neuen Anlass kein neuer Krieg (Stärke 10:1 und Aggressivität allein reichen nicht)");
+        }
+
+        // QA-Befund (Sandbox, 175 min): 10 Kriege, jeder genau 5 Minuten (PeaceCooldown) nach dem letzten Frieden.
+        [Test]
+        public void Autonomy_AfterPeace_NoWarPingPong()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
+            W.SetBorder(1, 2, 80);
+            W.Civs[1].Aggression = 0.5f; W.Civs[2].Aggression = 0.5f;
+            W.Civs[1].ResourceNeed = 0.5f; W.Civs[2].ResourceNeed = 0.5f;
+            int wars = 0;
+            bool wasAtWar = false;
+            for (int seconds = 0; seconds < 175 * 60; seconds++)
+            {
+                bool atWar = D.FindWar(1, 2) != null;
+                if (atWar && !wasAtWar) wars++;
+                wasAtWar = atWar;
+                if (atWar && seconds % 30 == 0) D.ReportUnitLost(1, 2, 5f);
+                _rig.RunSeconds(1);
+            }
+            Assert.GreaterOrEqual(wars, 1, "Krieg entsteht weiterhin von selbst");
+            var ended = D.EndedWars;
+            for (int i = 1; i < ended.Count; i++)
+                Assert.GreaterOrEqual(ended[i].StartTick - ended[i - 1].EndTick, 20 * 60 * 10L,
+                    "zwischen Frieden und neuem Krieg liegen mindestens 20 Minuten (vorher 5)");
+            Assert.IsTrue(D.RecentDecisions.Where(x => x.Action == DiplomaticActionType.DeclareWar).Skip(1)
+                .All(x => x.Factors.First(f => f.Name == "Kriegsmüdigkeit").Value > 0f), "Folgekriege tragen Kriegsmüdigkeit");
+        }
+
         // Review-Befund: auch gleich starke Nachbarn geraten ohne Eingriff in Krieg (Grenzgroll wächst über die Zeit).
         [TestCase(100f, 100f, 0f, 0f, 0.5f)]
         [TestCase(110f, 100f, 0.5f, 0.5f, 0.5f)]
@@ -292,6 +408,52 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.AreEqual(1, D.ActiveWars.Count, "Krieg innerhalb von 60 Spielminuten ohne Spielereingabe");
             var decision = D.RecentDecisions.First(x => x.Action == DiplomaticActionType.DeclareWar);
             Assert.GreaterOrEqual(decision.Utility, D.Settings.WarThreshold);
+        }
+
+        // Integrationsbefund: Spielstart ohne Armeen darf Krieg nicht dauerhaft verhindern.
+        [Test]
+        public void Autonomy_NoArmiesAtStart_RecruitInPeace_AndWarStillPossible()
+        {
+            W.AddCiv(1, 0, 0, strength: 0f); W.AddCiv(2, 20, 0, strength: 0f);
+            W.SetBorder(1, 2, 80);
+            _rig.RunSeconds(5);
+            Assert.IsTrue(W.RecruitRequests.Any(r => r.civ == 1) && W.RecruitRequests.Any(r => r.civ == 2), "Grundarmee wird im Frieden angefordert");
+
+            int seconds = 0;
+            while (D.ActiveWars.Count == 0 && seconds < 60 * 60) { _rig.RunSeconds(1); seconds++; }
+            Assert.AreEqual(1, D.ActiveWars.Count, "Auch ohne Armeen (0:0) entsteht aus Grenzdruck ein Krieg");
+        }
+
+        // Integrationsbefund (Seed 7): große Gebiete, Hauptstädte 76 Kacheln auseinander, keine gemeinsame Grenze.
+        [Test]
+        public void Autonomy_NearbyRivals_WithoutBorder_EventuallyGoToWar()
+        {
+            W.AddCiv(1, 0, 0, strength: 80f); W.AddCiv(2, 76, 0, strength: 63f);
+            W.Civs[1].TerritoryTiles = 2300; W.Civs[2].TerritoryTiles = 2300;   // Radius ≈ 27 → Randabstand ≈ 22
+            W.Civs[1].Aggression = 0.55f; W.Civs[2].Aggression = 0.55f;
+            int seconds = 0;
+            while (D.ActiveWars.Count == 0 && seconds < 60 * 60) { _rig.RunSeconds(1); seconds++; }
+            Assert.AreEqual(1, D.ActiveWars.Count, "Rivalität naher Gebiete führt ohne Eingriff zum Krieg");
+        }
+
+        [Test]
+        public void FarApart_SmallTerritories_NoWar()
+        {
+            W.AddCiv(1, 0, 0, strength: 300f); W.AddCiv(2, 76, 0, strength: 50f);
+            W.Civs[1].TerritoryTiles = 80; W.Civs[2].TerritoryTiles = 80;      // Randabstand ≈ 66 > Reichweite
+            W.Civs[1].Aggression = 1f;
+            _rig.RunSeconds(60 * 60);
+            Assert.AreEqual(0, D.ActiveWars.Count);
+        }
+
+        [Test]
+        public void NoArmy_DoesNotAttack_ArmedNeighbour()
+        {
+            W.AddCiv(1, 0, 0, strength: 0f); W.AddCiv(2, 20, 0, strength: 100f);
+            W.SetBorder(1, 2, 80);
+            W.Civs[1].Aggression = 1f;
+            _rig.RunSeconds(60 * 60);
+            Assert.IsFalse(D.ActiveWars.Any(w => w.AttackerLeader == 1));
         }
 
         [Test]
@@ -331,6 +493,34 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             var war = d.FindWar(1, 2);
             Assert.AreEqual(1, war.DefenderStats.UnitsLost);
             Assert.AreEqual(7f, war.DefenderStats.StrengthLost, 0.001f);
+            Assert.AreEqual(0, war.AttackerStats.UnitsLost);
+        }
+
+        // Prüf-Befund: ziviler Despawn (Siedler gründet, Karawane kommt an, KillerCivId 0) ist kein Kriegsverlust.
+        [Test]
+        public void UnitDiedEvent_CivilianDespawn_IsNotWarLoss()
+        {
+            var bus = new WorldBeyond.Core.SimEventBus();
+            var types = new WorldBeyond.Simulation.Units.UnitTypeRegistry(new WorldBeyond.Core.ContentRegistry());
+            var type = types.Register(new WorldBeyond.Simulation.Units.UnitTypeData { Key = "unit.test_settler", DisplayName = "Test" });
+            var units = new WorldBeyond.Simulation.Units.UnitStore(types, bus);
+            var world = new FakeDiplomacyWorld { UnitStrength = 7f };
+            world.AddCiv(1, 0, 0); world.AddCiv(2, 40, 0);
+            var d = new DiplomacyService(world, bus, () => 0);
+            d.DeclareWar(1, 2);
+            bus.Flush();
+
+            for (int i = 0; i < 5; i++)
+            {
+                var settler = units.Spawn(type, 2, 5f, 5f);
+                Assert.IsTrue(units.Despawn(settler, default, 0));
+            }
+            bus.Flush();
+            d.ReportUnitLost(2, 2, 7f); // Eigenverlust zählt ebenfalls nicht
+
+            var war = d.FindWar(1, 2);
+            Assert.AreEqual(0, war.DefenderStats.UnitsLost);
+            Assert.AreEqual(0f, war.DefenderStats.StrengthLost, 0.001f);
             Assert.AreEqual(0, war.AttackerStats.UnitsLost);
         }
 
@@ -524,12 +714,28 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.IsTrue(W.RecruitRequests.Any(r => r.civ == 1));
         }
 
+        // Prüf-Befund (PR #10): 5 Einheiten auf einmal scheiterten an Ressourcen, die Civ bekam nie Nachschub.
+        [Test]
+        public void Ai_Recruitment_FallsBackToSingleUnit_WhenBatchRejected()
+        {
+            W.AddCiv(1, 0, 0, strength: 50); W.AddCiv(2, 20, 0, strength: 300);
+            W.MaxRecruitBatch = 1;
+            D.DeclareWar(2, 1);
+            _rig.RunSeconds(5);
+            var mine = W.RecruitRequests.Where(r => r.civ == 1).ToList();
+            Assert.IsTrue(mine.Any(r => r.count > 1), "zuerst wird die volle Menge angefragt");
+            Assert.IsTrue(mine.Any(r => r.count == 1), "nach Ablehnung wird eine einzelne Einheit angefragt");
+            Assert.IsTrue(D.RecentDecisions.Any(d => d.CivId == 1 && d.Action == DiplomaticActionType.Recruit
+                && d.Factors.Any(f => f.Name == "Angenommen" && f.Value == 1f)));
+        }
+
         [Test]
         public void BorderFriction_LowersOpinion_AndCausesTension()
         {
             W.AddCiv(1, 0, 0); W.AddCiv(2, 20, 0);
             W.SetBorder(1, 2, 100);
             W.Contestion[(1, 2)] = 1f; W.Contestion[(2, 1)] = 1f;
+            W.Civs[1].Aggression = 0f; W.Civs[2].Aggression = 0f;   // nur Spannung beobachten, kein Krieg
             _rig.RunSeconds(6);
             Assert.Less(D.GetOpinion(1, 2), -30f);
             Assert.AreEqual(DiplomaticStatus.Tension, D.GetStatus(1, 2));

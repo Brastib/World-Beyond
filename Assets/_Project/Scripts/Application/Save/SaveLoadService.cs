@@ -178,23 +178,10 @@ namespace WorldBeyond.Application.Save
 
         // ---------------- Laden ----------------
 
-        /// <summary>Dauer der Ladeschritte des letzten Load-Aufrufs in ms (Leistungsanzeige, Messläufe).</summary>
-        public IReadOnlyList<(string Stage, double Ms)> LastLoadTimings => _loadTimings;
-        private readonly List<(string Stage, double Ms)> _loadTimings = new List<(string, double)>();
-
-        private void Mark(System.Diagnostics.Stopwatch sw, string stage)
-        {
-            _loadTimings.Add((stage, sw.Elapsed.TotalMilliseconds));
-            sw.Restart();
-        }
-
         public LoadResult Load(string slotName)
         {
             var report = new LoadReport();
-            _loadTimings.Clear();
-            var sw = System.Diagnostics.Stopwatch.StartNew();
             if (!_store.TryRead(slotName, out var json, out var error, out var detail)) return new LoadResult(error, detail, report);
-            Mark(sw, "read");
 
             // Schritt 1–2: Datei, Metadaten, Formatversion, Prüfsumme.
             if (!_serializer.TryParseFrame(json, out var root, out error, out detail)) return new LoadResult(error, detail, report);
@@ -204,7 +191,6 @@ namespace WorldBeyond.Application.Save
             if (!_migrator.TryMigrateFrame(root, out var migratedRoot, out error, out detail)) return new LoadResult(error, detail, report);
             if (!_serializer.TryMap(migratedRoot, out var data, out error, out detail)) return new LoadResult(error, detail, report);
             if (data.Start == null) return new LoadResult(SaveLoadError.Corrupted, "Startparameter ('start') fehlen.", report);
-            Mark(sw, "parse");
 
             // Leere Simulation mit denselben Startparametern. Der laufende Zustand bleibt bis Schritt 6 unberührt.
             GameComposition fresh;
@@ -223,7 +209,6 @@ namespace WorldBeyond.Application.Save
                 return new LoadResult(SaveLoadError.Corrupted, "Simulation mit den gespeicherten Startparametern nicht erzeugbar: " + ex.Message, report);
             }
             var saveables = fresh.Context.Saveables.InLoadOrder();
-            Mark(sw, "create");
 
             // Schritt 3b: Sektionen migrieren.
             var currentVersions = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -254,8 +239,6 @@ namespace WorldBeyond.Application.Save
                 }
                 if (dtos[i] == null) return new LoadResult(SaveLoadError.Corrupted, $"Sektion '{s.SaveKey}' ist leer.", report);
             }
-
-            Mark(sw, "dto");
 
             // Schritt 4: Inhaltsschlüssel prüfen, bevor irgendetwas eingespielt wird.
             var keys = new List<(Core.ContentKind kind, string key)>();
@@ -299,7 +282,6 @@ namespace WorldBeyond.Application.Save
                     restoreError = $"{ex.GetType().Name}: {ex.Message}";
                 }
                 if (!ok) return new LoadResult(SaveLoadError.Corrupted, $"'{saveables[i].SaveKey}': {restoreError}", report);
-                Mark(sw, "restore:" + saveables[i].SaveKey);
             }
 
             foreach (var s in saveables)
@@ -314,7 +296,6 @@ namespace WorldBeyond.Application.Save
                     report.Fail($"'{s.SaveKey}': Referenzprüfung warf {ex.GetType().Name}: {ex.Message}");
                 }
             }
-            Mark(sw, "references");
             if (report.HasErrors) return new LoadResult(SaveLoadError.InvalidReferences, string.Join(" | ", report.Errors), report);
 
             // Einstellungen übernehmen; unbekannter Geschwindigkeitswert → pausiert (Regel 6).
