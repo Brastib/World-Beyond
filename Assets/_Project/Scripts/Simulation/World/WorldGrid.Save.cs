@@ -21,6 +21,14 @@ namespace WorldBeyond.Simulation.World
         public int SectionVersion => 1;
         public Type StateType => typeof(WorldGridState);
 
+        // Diagnose: ob das letzte erfolgreiche oder versuchte Laden die Welt neu generieren musste.
+        public bool LastRestoreRegenerated { get; private set; }
+
+        static bool SameSettings(WorldGenSettings a, WorldGenSettings b) =>
+            a != null && b != null && a.Seed == b.Seed && a.Width == b.Width && a.Height == b.Height
+            && a.SeaLevel == b.SeaLevel && a.MaxHeight == b.MaxHeight && a.LandRatio == b.LandRatio
+            && a.RiverCount == b.RiverCount && a.ForestDensity == b.ForestDensity && a.ResourceRichness == b.ResourceRichness;
+
         public object CaptureState()
         {
             var s = GenSettings;
@@ -88,7 +96,20 @@ namespace WorldBeyond.Simulation.World
                 return false;
 
             // In eine neue Instanz laden; erst bei Erfolg übernehmen (bisheriger Zustand bleibt bei Fehlern erhalten).
-            WorldGrid fresh = new WorldGenerator().Generate(settings);
+            // Ist die aktuelle Welt unverändert aus denselben Einstellungen erzeugt (typisch: frische Komposition mit
+            // Seed und Größe des Spielstands), wird kopiert statt neu generiert.
+            WorldGrid fresh;
+            if (_changedCount == 0 && SameSettings(GenSettings, settings))
+            {
+                fresh = new WorldGrid(settings);
+                Array.Copy(_tiles, fresh._tiles, _tiles.Length);
+                LastRestoreRegenerated = false;
+            }
+            else
+            {
+                fresh = new WorldGenerator().Generate(settings);
+                LastRestoreRegenerated = true;
+            }
             int n = fresh._tiles.Length;
             if (st.FullGrid)
             {
