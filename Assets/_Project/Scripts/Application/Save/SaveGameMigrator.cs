@@ -48,7 +48,15 @@ namespace WorldBeyond.Application.Save
             if (version > SaveGameData.CurrentFormatVersion)
                 return Fail(SaveLoadError.TooNew, "formatVersion " + version + " ist neuer als " + SaveGameData.CurrentFormatVersion + ".", out error, out detail);
 
-            JToken current = root.DeepClone();
+            // Aktuelle Version: nichts zu tun, keine Kopie (große Spielstände). Sonst kopiert TryRunChain vor jedem Schritt.
+            if (version == SaveGameData.CurrentFormatVersion)
+            {
+                migrated = root;
+                error = SaveLoadError.None;
+                detail = null;
+                return true;
+            }
+            JToken current = root;
             if (!TryRunChain(FrameKey, (int)version,SaveGameData.CurrentFormatVersion, ref current, out error, out detail)) return false;
             if (!(current is JObject obj)) return Fail(SaveLoadError.Corrupted, "Rahmen-Migration lieferte kein Objekt.", out error, out detail);
 
@@ -68,8 +76,9 @@ namespace WorldBeyond.Application.Save
             if (source.FormatVersion != SaveGameData.CurrentFormatVersion)
                 return Fail(SaveLoadError.Unsupported, "Rahmen ist nicht migriert (formatVersion " + source.FormatVersion + ").", out error, out detail);
 
-            var copy = source.DeepCopy();
-            if (copy.Sections == null) return Fail(SaveLoadError.Corrupted, "Sektionen fehlen.", out error, out detail);
+            if (source.Sections == null) return Fail(SaveLoadError.Corrupted, "Sektionen fehlen.", out error, out detail);
+            // Flache Kopie genügt: TryRunChain übergibt jedem Schritt einen Klon, die Daten der Quelle bleiben unverändert.
+            var copy = source.ShallowCopyWithSections();
 
             foreach (var pair in copy.Sections)
             {
