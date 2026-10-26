@@ -69,6 +69,33 @@ namespace WorldBeyond.Tests.World
         }
 
         [Test]
+        public void Restore_IntoUnchangedSameSeedWorld_CopiesInsteadOfRegenerating()
+        {
+            var g = Gen();
+            g.SetHeight(20, 20, 77f);
+            g.SetOwner(21, 20, 4);
+            var st = (WorldGridState)g.CaptureState();
+
+            var same = Gen();
+            Assert.IsTrue(same.TryRestoreState(st, out string error), error);
+            Assert.IsFalse(same.LastRestoreRegenerated);
+            AssertSameTiles(g, same);
+            Assert.AreEqual(g.ChangedTileCount, same.ChangedTileCount);
+
+            // Bereits veränderte Welt mit gleichem Seed: muss neu generieren, sonst blieben fremde Änderungen stehen.
+            var changed = Gen();
+            changed.SetHeight(30, 30, 90f);
+            Assert.IsTrue(changed.TryRestoreState(st, out error), error);
+            Assert.IsTrue(changed.LastRestoreRegenerated);
+            AssertSameTiles(g, changed);
+
+            var other = Gen(seed: 6);
+            Assert.IsTrue(other.TryRestoreState(st, out error), error);
+            Assert.IsTrue(other.LastRestoreRegenerated);
+            AssertSameTiles(g, other);
+        }
+
+        [Test]
         public void ManyChanges_UseCompressedFullGrid()
         {
             var g = Gen(size: 48);

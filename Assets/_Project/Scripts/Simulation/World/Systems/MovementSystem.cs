@@ -55,6 +55,14 @@ namespace WorldBeyond.Simulation.World
 
         public int PathBudgetPerTick { get; set; } = DefaultPathBudget;
 
+        // Bei Warteschlange (z. B. viele Einheiten bekommen gleichzeitig Ziele) wächst das Budget mit der Zahl
+        // wartender Anfragen bis MaxPathBudget. Bewusst nicht zeitbasiert: das wäre nicht deterministisch
+        // (Save/Load, Wiederholbarkeit). Die Warteschlangenlänge ist Teil des gespeicherten Zustands.
+        public const int MaxPathBudget = 20000;
+        public const int BudgetPerPendingRequest = 400;
+
+        public int CurrentPathBudget => Math.Min(MaxPathBudget, PathBudgetPerTick + _pathfinder.PendingCount * BudgetPerPendingRequest);
+
         public MovementSystem(IWorldGrid world, GridPathfinder pathfinder, SpatialHash spatial)
         {
             _world = world ?? throw new ArgumentNullException(nameof(world));
@@ -74,7 +82,7 @@ namespace WorldBeyond.Simulation.World
             float dt = ctx.Clock.DeltaSeconds;
             long tick = ctx.Clock.Tick;
 
-            _pathfinder.ProcessRequests(PathBudgetPerTick);
+            _pathfinder.ProcessRequests(Math.Max(PathBudgetPerTick, CurrentPathBudget));
 
             // Tote Einheiten aus dem Raumindex entfernen.
             foreach (EntityId id in _tracked)
