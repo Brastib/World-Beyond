@@ -11,6 +11,7 @@ namespace WorldBeyond.Simulation.World
         void Move(EntityId id, float x, float z);
         void Remove(EntityId id);
         bool Contains(EntityId id);
+        bool TryGetPosition(EntityId id, out float x, out float z);
 
         // Füllen die Ergebnisliste (vorher geleert), keine Allokation pro Aufruf.
         void QueryRadius(float x, float z, float radius, List<EntityId> results);

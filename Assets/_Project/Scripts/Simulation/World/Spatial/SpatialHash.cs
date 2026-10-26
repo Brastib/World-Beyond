@@ -82,6 +82,18 @@ namespace WorldBeyond.Simulation.World
             Count--;
         }
 
+        public bool TryGetPosition(EntityId id, out float x, out float z)
+        {
+            if (!Contains(id))
+            {
+                x = z = 0f;
+                return false;
+            }
+            x = _x[id.Index];
+            z = _z[id.Index];
+            return true;
+        }
+
         public void QueryRadius(float x, float z, float radius, List<EntityId> results)
         {
             results.Clear();
