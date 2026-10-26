@@ -16,43 +16,64 @@ namespace WorldBeyond.Tests.Integration
     // M1-Abnahme (INTEGRATION §4) mit der echten GameComposition und allen Phasen, ohne jeden Spielerbefehl (Sandbox).
     public class M1SandboxTests
     {
-        private const int MaxTicks = 144000;  // 4 Spielstunden bei 10 Hz; gemessen: Krieg nach 6–126 min (Seeds 1/3/7/42/2026)
+        private const int MaxTicks = 324000;  // 9 Spielstunden (= 540 Civ-Jahre bei Civ e8f38dc); gemessen: erster Krieg nach 56 min (Seed 7), 144 min (1), 498 min (2026)
 
         private static GameStartSettings Settings(ulong seed) =>
             new GameStartSettings { Seed = seed, WorldWidth = 128, WorldHeight = 128, CivilizationCount = 2 };
 
         [Test]
-        public void SaveLoad_InPeace_ContinuesExactlyLikeUninterruptedRun() => SaveLoadRoundtrip(1, 6000, 3000, expectWar: false);
+        public void SaveLoad_InPeace_ContinuesExactlyLikeUninterruptedRun() => SaveLoadRoundtrip(1, 20000, 3000, expectWar: false);
 
+        // Nutzerregel 2026-10-26: Krieg ist kein Zwang, nur wenn die KI ihn für nötig hält. Deshalb muss nicht jede Welt Krieg haben,
+        // aber Wachstum ohne Fehler gilt für jede Welt.
         [TestCase(1UL), TestCase(7UL), TestCase(2026UL)]
-        public void WithoutPlayerInput_CivsGrow_DeclareWar_AndFight(ulong seed)
+        public void WithoutPlayerInput_CivsGrow_WithoutFaults(ulong seed)
         {
             var comp = GameComposition.Create(Settings(seed));
             var ctx = comp.Context;
             var civs = ctx.Get<ICivilizationQuery>();
             Assert.AreEqual(2, civs.AllCivIds.Count, "Start-Civs");
             int startPop = Population(civs);
-
-            long war = -1, combat = -1, warEnded = -1;
-            ctx.Events.Subscribe<WarDeclaredEvent>(_ => { if (war < 0) war = ctx.Clock.Tick; });
-            ctx.Events.Subscribe<WarEndedEvent>(_ => { if (warEnded < 0) warEnded = ctx.Clock.Tick; });
-            ctx.Events.Subscribe<UnitDiedEvent>(e => { if (combat < 0 && e.KillerCivId > 0 && e.KillerCivId != e.CivId) combat = ctx.Clock.Tick; });
-
-            for (int i = 0; i < MaxTicks && (combat < 0 || warEnded < 0); i++)
+            for (int i = 0; i < 144000; i++)  // 4 Spielstunden = 240 Civ-Jahre; Frühzeit kann anfangs schrumpfen (Seed 7: 20 → 16 nach 1 h)
             {
                 Assert.AreEqual(0, ctx.Commands.PendingCount, "Sandbox: kein Befehl darf anfallen");
                 comp.Runner.StepOnce();
             }
-
-            Assert.GreaterOrEqual(war, 0, "kein Krieg in 4 Spielstunden");
-            Assert.GreaterOrEqual(combat, war, "kein Kampftoter nach der Kriegserklärung");
-            Assert.GreaterOrEqual(warEnded, war, "kein Krieg endet in 4 Spielstunden (festhängender Krieg)");
             Assert.Greater(Population(civs), startPop, "Bevölkerung ist nicht gewachsen");
             Assert.AreEqual(0, comp.Runner.FaultCount, "Systemfehler im Lauf");
         }
 
+        // Ohne Befehl können Kriege entstehen, werden gekämpft und enden; Siedlungen wechseln durch Besetzung den Besitzer.
+        // Geprüft über mehrere Welten zusammen (gemessen bei Civ e8f38dc / Military 83faa42: Seed 7 Krieg ab 56 min,
+        // Besetzung bei 327 min; Seed 1 drei Kriege, zwei Besetzungen; Seed 2026 ein Krieg ohne Besetzung).
         [Test]
-        public void SaveLoad_MidWar_ContinuesExactlyLikeUninterruptedRun() => SaveLoadRoundtrip(1, 12700, 3000, expectWar: true);   // Seed 1: Krieg bei Tick 12651, erster Kampftoter bei 13796
+        public void WithoutPlayerInput_WarsEmerge_AreFought_End_AndConquer()
+        {
+            bool war = false, combat = false, ended = false, captured = false;
+            foreach (ulong seed in new[] { 7UL, 1UL, 2026UL })
+            {
+                var comp = GameComposition.Create(Settings(seed));
+                var ctx = comp.Context;
+                ctx.Events.Subscribe<WarDeclaredEvent>(_ => war = true);
+                ctx.Events.Subscribe<WarEndedEvent>(_ => ended = true);
+                ctx.Events.Subscribe<SettlementCapturedEvent>(_ => captured = true);
+                ctx.Events.Subscribe<UnitDiedEvent>(e => { if (e.KillerCivId > 0 && e.KillerCivId != e.CivId) combat = true; });
+                for (int i = 0; i < MaxTicks && !(war && combat && ended && captured); i++)
+                {
+                    Assert.AreEqual(0, ctx.Commands.PendingCount, "Sandbox: kein Befehl darf anfallen");
+                    comp.Runner.StepOnce();
+                }
+                Assert.AreEqual(0, comp.Runner.FaultCount, $"Systemfehler im Lauf (Seed {seed})");
+                if (war && combat && ended && captured) break;
+            }
+            Assert.IsTrue(war, "kein Krieg in 3 Welten × 9 Spielstunden");
+            Assert.IsTrue(combat, "kein Kampftoter");
+            Assert.IsTrue(ended, "kein Krieg endet (festhängender Krieg)");
+            Assert.IsTrue(captured, "keine Siedlung durch Besetzung übernommen");
+        }
+
+        [Test]
+        public void SaveLoad_MidWar_ContinuesExactlyLikeUninterruptedRun() => SaveLoadRoundtrip(7, 33900, 2000, expectWar: true);   // Seed 7: Krieg ab Tick 33701, erster Kampftoter 34185
 
         private static void SaveLoadRoundtrip(ulong seed, int before, int after, bool expectWar)
         {

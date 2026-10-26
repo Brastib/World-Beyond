@@ -251,7 +251,7 @@ namespace WorldBeyond.Application.Integration
     public static class MilitaryWiring
     {
         public static void Connect(CombatEnvironment combat, ArmyEnvironment army, IWarQuery wars, IWorldQuery world,
-            ISpatialIndex spatial, ICivilizationQuery civs, ISettlementQuery settlements, IRecruitment recruitment)
+            ISpatialIndex spatial, ICivilizationQuery civs, ISettlementRegistry settlements, IRecruitment recruitment)
         {
             combat.AreHostile = wars.AreAtWar;
             combat.HeightAt = world.SampleHeight;
@@ -273,6 +273,22 @@ namespace WorldBeyond.Application.Integration
                 ? (true, WorldCoords.TileCenterX(s.X), WorldCoords.TileCenterZ(s.Y))
                 : (false, 0f, 0f);
             army.HomeOf = civId => civs.TryGet(civId, out var c) ? army.SettlementPosition(c.CapitalSettlementId) : (false, 0f, 0f);
+            // Besetzung (Military SettlementCaptureSystem) → einziger Übernahmeweg der Civ; SettlementCapturedEvent geht an War.
+            army.CaptureSettlement = (settlementId, newCivId) =>
+            {
+                if (!settlements.TryGet(settlementId, out var s) || s.CivId == newCivId || !civs.Exists(newCivId)) return false;
+                settlements.TransferSettlement(settlementId, newCivId);
+                return settlements.TryGet(settlementId, out var after) && after.CivId == newCivId;
+            };
+            army.Settlements = () =>
+            {
+                var ids = settlements.AllSettlementIds;
+                var list = new List<ArmyObjective>(ids.Count);
+                for (int i = 0; i < ids.Count; i++)
+                    if (settlements.TryGet(ids[i], out var s))
+                        list.Add(new ArmyObjective(WorldCoords.TileCenterX(s.X), WorldCoords.TileCenterZ(s.Y), s.Population, s.CivId, s.Id));
+                return list;
+            };
             army.Recruit = (civId, role, count) =>
                 role == MilitaryRole.Rifleman ? MilitaryRecruitment.Request(civs, settlements, recruitment, civId, count, out _) : 0;
         }
