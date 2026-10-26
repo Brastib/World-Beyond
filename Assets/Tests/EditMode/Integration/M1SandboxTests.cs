@@ -73,7 +73,17 @@ namespace WorldBeyond.Tests.Integration
         }
 
         [Test]
-        public void SaveLoad_MidWar_ContinuesExactlyLikeUninterruptedRun() => SaveLoadRoundtrip(7, 33900, 2000, expectWar: true);   // Seed 7: Krieg ab Tick 33701, erster Kampftoter 34185
+        public void SaveLoad_MidWar_ContinuesExactlyLikeUninterruptedRun()
+        {
+            // Speicherpunkt aus dem Lauf selbst bestimmen (300 Ticks nach der ersten Kriegserklärung), damit Balancing-Änderungen den Test nicht verschieben.
+            const ulong seed = 7;
+            var probe = GameComposition.Create(Settings(seed));
+            long warTick = -1;
+            probe.Context.Events.Subscribe<WarDeclaredEvent>(_ => { if (warTick < 0) warTick = probe.Context.Clock.Tick; });
+            for (int i = 0; i < MaxTicks && warTick < 0; i++) probe.Runner.StepOnce();
+            Assert.GreaterOrEqual(warTick, 0, "Seed 7 ohne Krieg in 9 Spielstunden – Testwelt wechseln");
+            SaveLoadRoundtrip(seed, (int)warTick + 300, 2000, expectWar: true);
+        }
 
         private static void SaveLoadRoundtrip(ulong seed, int before, int after, bool expectWar)
         {
