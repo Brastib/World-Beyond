@@ -71,6 +71,14 @@ Unity Particle System, gepoolt (ARCHITECTURE §7). Rauch grau-braun und halbtran
 
 ## B. Benutzeroberfläche
 
+## 0. Grundsatz: Sandbox, Beobachten zuerst (Nutzerregel vom 2026-10-26, INTEGRATION.md §0 Regel 4)
+
+Die Welt entwickelt sich ohne Eingreifen des Spielers. Die Oberfläche dient deshalb in erster Linie dem **Beobachten**:
+- Im Vordergrund stehen Ereignis-Feed, Infopanels (Zivilisation, Stadt, Einheit, Krieg) und Spielgeschwindigkeit/Pause.
+- God-Tools und Befehle (z. B. Krieg erklären, Einheiten steuern) sind **optionale Eingriffe**. Sie sitzen in einer eigenen, einklappbaren Werkzeugleiste und sind nie Voraussetzung dafür, dass die Simulation weiterläuft.
+- Keine UI darf auf eine Spielereingabe warten, die die Simulation blockiert (keine modalen Pflichtdialoge während das Spiel läuft). Bestätigungsdialoge für destruktive Eingriffe pausieren nur, wenn der Spieler das in den Einstellungen will.
+- Der Ereignis-Feed zeigt, was die Zivilisationen von sich aus tun (Gründungen, Bündnisse, Kriegserklärungen, Schlachten), mit Klick auf ein Ereignis springt die Kamera dorthin.
+
 ## 1. Designrichtung
 
 „Kartentisch eines Generalstabs“: dunkle, warme Flächen (Holz-/Lederanmutung nur angedeutet, passend zur Forge-of-Empires-Referenz), die die bunte Welt nicht überdecken; Information wie auf einer Lagekarte. Keine Glas-/Neon-Effekte, keine Verläufe als Dekoration, keine runden „App“-Karten. Kanten leicht gefast (Radius 2 px), dünne Linien statt Schatten.
