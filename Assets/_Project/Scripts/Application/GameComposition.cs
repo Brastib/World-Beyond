@@ -92,7 +92,9 @@ namespace WorldBeyond.Application
             ctx.Register<IPathfinder>(pathfinder);
             ctx.Register<ISpatialIndex>(spatial);
             ctx.Saveables.Add(world);
-            runner.Register(new MovementSystem(world, pathfinder, spatial));
+            var movement = new MovementSystem(world, pathfinder, spatial);
+            ctx.Saveables.Add(movement);
+            runner.Register(movement);
             runner.Register(new WorldEventsSystem(world));
 
             // Civ (Phase 3): Zivilisationen, Siedlungen, Territorium, Wirtschaft, Forschung, Rekrutierung, Civ-KI.

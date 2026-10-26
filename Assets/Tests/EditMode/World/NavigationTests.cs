@@ -420,13 +420,16 @@ namespace WorldBeyond.Tests.World
                 var id = ctx.Units.Spawn(i % 10 == 0 ? tank : rifleman, 1, pa.X + (i % 5), pa.Z + (i % 7) * 0.5f);
                 ctx.Units.SetMoveTarget(id, pb.X, pb.Z);
             }
-            for (int i = 0; i < 20; i++) comp.Runner.StepOnce();   // Pfade anfordern, JIT aufwärmen
+            // Pfade anfordern und abarbeiten lassen (eigener Test für Pfadkosten: Pathfinder-Tests), JIT aufwärmen.
+            var pf = (GridPathfinder)ctx.Get<IPathfinder>();
+            for (int i = 0; i < 20 || (pf.PendingCount > 0 && i < 1000); i++) comp.Runner.StepOnce();
+            long exp0 = pf.TotalExpansions;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             const int ticks = 100;
             for (int i = 0; i < ticks; i++) comp.Runner.StepOnce();
             sw.Stop();
             double perTick = sw.Elapsed.TotalMilliseconds / ticks;
-            TestContext.WriteLine($"500 Einheiten: {perTick:F2} ms pro Tick (inkl. Pfadbudget)");
+            TestContext.WriteLine($"500 Einheiten: {perTick:F2} ms pro Tick (inkl. Pfadbudget), Expansionen {pf.TotalExpansions - exp0}, offen {pf.PendingCount}");
             Assert.Less(perTick, 8.0);
         }
     }

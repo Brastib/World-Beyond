@@ -50,7 +50,7 @@ namespace WorldBeyond.Tests.World
         static Run Simulate(ulong seed, int ticks)
         {
             UnitTypeId foot = default, tank = default;
-            var comp = GameComposition.Create(new GameStartSettings { Seed = seed, WorldWidth = 128, WorldHeight = 128 }, ctx =>
+            var comp = GameComposition.Create(new GameStartSettings { Seed = seed, WorldWidth = 128, WorldHeight = 128, CivilizationCount = 0 }, ctx =>
             {
                 foot = ctx.UnitTypes.Register(new UnitTypeData { Key = "unit.test_walker", Movement = MovementClass.Foot, MaxSpeed = 1.5f, TurnRateDeg = 360f, Acceleration = 8f });
                 tank = ctx.UnitTypes.Register(new UnitTypeData { Key = "unit.test_tracked", Movement = MovementClass.Tracked, MaxSpeed = 6f, TurnRateDeg = 45f, Acceleration = 2f, Radius = 3f });

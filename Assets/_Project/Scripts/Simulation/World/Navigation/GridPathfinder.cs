@@ -9,7 +9,9 @@ namespace WorldBeyond.Simulation.World.Navigation
     //   Budget überschreitet, wird im nächsten Tick fortgesetzt (eine aktive Suche, Zustand in wiederverwendeten Arrays).
     // - Regionen: Ziele in einer anderen Zusammenhangskomponente werden ohne Suche sofort als NotFound gemeldet.
     // - Ändert sich die Welt während einer Suche (NavigationVersion), startet die Suche neu.
-    // Pfadanfragen werden nicht gespeichert (ARCHITECTURE §11): Einheiten fordern nach dem Laden neu an.
+    // - Blockiertes Ziel (z. B. Gebäude): Ziel wird auf die nächste begehbare Nachbarkachel im selben Gebiet verlegt.
+    // - Speichern: das MovementSystem sichert die wartenden Anfragen in Reihenfolge samt Fortschritt der aktiven Suche;
+    //   RestoreQueue spielt die aktive Suche bis zum selben Stand nach, damit nach dem Laden identisch weitergerechnet wird.
     public sealed class GridPathfinder : IPathfinder
     {
         const float Sqrt2 = 1.41421356f;
@@ -42,6 +44,12 @@ namespace WorldBeyond.Simulation.World.Navigation
         Request _active;
         int _activeGoal;
         int _activeNavVersion;
+        int _activeExpansions;
+
+        // Kosten-Cache je MovementClass: Wert gilt, solange der Stempel der aktuellen NavigationVersion entspricht.
+        // MoveCost (Gelände + Hangneigung) ist teuer; A* fragt jede Kachel bis zu 8-mal ab.
+        readonly float[][] _costCache = new float[3][];
+        readonly int[][] _costStamp = new int[3][];
 
         public int PendingCount => _pending.Count + (_active != null ? 1 : 0);
 
@@ -72,11 +80,97 @@ namespace WorldBeyond.Simulation.World.Navigation
 
             if (!_world.InBounds(fromX, fromY) || !_world.InBounds(toX, toY))
                 r.Status = PathStatus.Invalid;
-            else if (!AreConnected(fromX, fromY, toX, toY, mc))
+            else if (!ResolveGoal(r))
+                r.Status = PathStatus.NotFound;
+            else if (!AreConnected(fromX, fromY, r.ToX, r.ToY, mc))
                 r.Status = PathStatus.NotFound;
             else
                 _pending.Enqueue(r);
             return r.Id;
+        }
+
+        // Liegt das Ziel auf einer gesperrten Kachel, wird die erste begehbare Nachbarkachel (feste Reihenfolge) im
+        // Gebiet des Starts gewählt. Der Pfad endet dann dort; der Aufrufer erkennt das an der letzten Wegpunktkachel.
+        bool ResolveGoal(Request r)
+        {
+            if (_world.IsWalkable(r.ToX, r.ToY, r.Mc))
+                return true;
+            int startRegion = _regions.RegionOfStart(r.FromX, r.FromY, r.Mc);
+            if (startRegion == 0)
+                return false;
+            for (int ring = 1; ring <= 2; ring++)
+            {
+                for (int dy = -ring; dy <= ring; dy++)
+                {
+                    for (int dx = -ring; dx <= ring; dx++)
+                    {
+                        if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != ring)
+                            continue;
+                        int nx = r.ToX + dx, ny = r.ToY + dy;
+                        if (_regions.RegionOf(nx, ny, r.Mc) == startRegion)
+                        {
+                            r.ToX = nx;
+                            r.ToY = ny;
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Für das Speichern: Anfrage-IDs in Abarbeitungsreihenfolge (aktive zuerst) und Fortschritt der aktiven Suche.
+        internal void GetQueueOrder(List<int> ids, out int activeExpansions)
+        {
+            ids.Clear();
+            activeExpansions = 0;
+            if (_active != null && _requests.ContainsKey(_active.Id))
+            {
+                ids.Add(_active.Id);
+                activeExpansions = _activeExpansions;
+            }
+            foreach (Request r in _pending)
+            {
+                if (r.Status == PathStatus.Pending && _requests.ContainsKey(r.Id) && r != _active)
+                    ids.Add(r.Id);
+            }
+        }
+
+        internal bool TryGetRequest(int id, out int fromX, out int fromY, out int toX, out int toY, out MovementClass mc)
+        {
+            fromX = fromY = toX = toY = 0;
+            mc = MovementClass.Foot;
+            if (!_requests.TryGetValue(id, out Request r))
+                return false;
+            fromX = r.FromX; fromY = r.FromY; toX = r.ToX; toY = r.ToY; mc = r.Mc;
+            return true;
+        }
+
+        // Nach dem Laden: Anfragen exakt in gespeicherter Reihenfolge einreihen (ohne erneute Prüfungen, die Ziele sind
+        // bereits aufgelöst) und die erste bis zum gespeicherten Fortschritt nachrechnen. Liefert die neuen IDs.
+        internal void RestoreQueue(IReadOnlyList<(int fromX, int fromY, int toX, int toY, MovementClass mc)> queue, int activeExpansions, List<int> newIds)
+        {
+            _pending.Clear();
+            _requests.Clear();
+            _active = null;
+            newIds.Clear();
+            foreach (var q in queue)
+            {
+                var r = new Request { Id = _nextId++, FromX = q.fromX, FromY = q.fromY, ToX = q.toX, ToY = q.toY, Mc = q.mc, Status = PathStatus.Pending };
+                if (_nextId == int.MaxValue)
+                    _nextId = 1;
+                _requests[r.Id] = r;
+                _pending.Enqueue(r);
+                newIds.Add(r.Id);
+            }
+            if (activeExpansions > 0 && _pending.Count > 0)
+            {
+                Request first = _pending.Dequeue();
+                Begin(first);
+                int done = 0;
+                while (_active == first && done < activeExpansions)
+                    done += Step(activeExpansions - done);
+            }
         }
 
         public PathStatus TryGetPath(int requestId, List<(int x, int y)> path)
@@ -191,6 +285,27 @@ namespace WorldBeyond.Simulation.World.Navigation
             _openStamp = new int[n];
             _closedStamp = new int[n];
             _stamp = 0;
+            for (int m = 0; m < _costCache.Length; m++)
+            {
+                _costCache[m] = new float[n];
+                _costStamp[m] = new int[n];
+            }
+        }
+
+        float CachedCost(int x, int y, MovementClass mc)
+        {
+            int i = y * _world.Width + x;
+            int m = (int)mc;
+            // Stempel 0 = leer; NavigationVersion + 1, damit Version 0 gültig gecacht wird.
+            int stamp = _world.NavigationVersion + 1;
+            if (stamp == 0)
+                stamp = 1;
+            if (_costStamp[m][i] != stamp)
+            {
+                _costCache[m][i] = _world.MoveCost(x, y, mc);
+                _costStamp[m][i] = stamp;
+            }
+            return _costCache[m][i];
         }
 
         void Begin(Request r)
@@ -206,6 +321,7 @@ namespace WorldBeyond.Simulation.World.Navigation
             _open.Clear();
             _active = r;
             _activeNavVersion = _world.NavigationVersion;
+            _activeExpansions = 0;
             int w = _world.Width;
             int start = r.FromY * w + r.FromX;
             _activeGoal = r.ToY * w + r.ToX;
@@ -235,6 +351,7 @@ namespace WorldBeyond.Simulation.World.Navigation
                     continue;
                 _closedStamp[cur] = _stamp;
                 used++;
+                _activeExpansions++;
                 TotalExpansions++;
 
                 if (cur == _activeGoal)
@@ -255,11 +372,11 @@ namespace WorldBeyond.Simulation.World.Navigation
                     int ni = ny * w + nx;
                     if (_closedStamp[ni] == _stamp)
                         continue;
-                    float nCost = _world.MoveCost(nx, ny, mc);
+                    float nCost = CachedCost(nx, ny, mc);
                     if (float.IsInfinity(nCost))
                         continue;
                     bool diagonal = dx != 0 && dy != 0;
-                    if (diagonal && (!_world.IsWalkable(cx + dx, cy, mc) || !_world.IsWalkable(cx, cy + dy, mc)))
+                    if (diagonal && (float.IsInfinity(CachedCost(cx + dx, cy, mc)) || float.IsInfinity(CachedCost(cx, cy + dy, mc))))
                         continue;
                     float step = (curCost + nCost) * 0.5f * (diagonal ? Sqrt2 : 1f);
                     float g = _g[cur] + step;
@@ -277,7 +394,7 @@ namespace WorldBeyond.Simulation.World.Navigation
         // Startkachel darf blockiert sein (Einheit steht z. B. auf einer gerade bebauten Kachel); dann normale Kosten.
         float Cost(int x, int y, MovementClass mc, bool isStart)
         {
-            float c = _world.MoveCost(x, y, mc);
+            float c = CachedCost(x, y, mc);
             if (float.IsInfinity(c))
                 return isStart ? 1f : c;
             return c;
@@ -313,7 +430,7 @@ namespace WorldBeyond.Simulation.World.Navigation
                     float maxCost = 0f;
                     for (int k = i + 1; k <= j; k++)
                     {
-                        float c = _world.MoveCost(raw[k].x, raw[k].y, mc);
+                        float c = CachedCost(raw[k].x, raw[k].y, mc);
                         if (c > maxCost) maxCost = c;
                     }
                     if (LineWalkable(raw[i].x, raw[i].y, raw[j].x, raw[j].y, mc, maxCost))
@@ -365,7 +482,9 @@ namespace WorldBeyond.Simulation.World.Navigation
 
             bool Ok(int tx, int ty)
             {
-                float c = _world.MoveCost(tx, ty, mc);
+                if (!_world.InBounds(tx, ty))
+                    return false;
+                float c = CachedCost(tx, ty, mc);
                 return !float.IsInfinity(c) && c <= maxCost + 1e-4f;
             }
         }

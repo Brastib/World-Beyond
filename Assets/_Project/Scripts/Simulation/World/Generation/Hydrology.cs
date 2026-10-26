@@ -111,7 +111,13 @@ namespace WorldBeyond.Simulation.World.Generation
         // Liefert die Anzahl der Landkacheln in Flutreihenfolge (_order), Eltern stehen vor ihren Kindern.
         int PriorityFlood(WorldGenSettings s, float[] height, float[] filled)
         {
-            var heap = new MinHeap(_n);
+            // Gleichstand auf Ebenen nach glattem Rauschen statt nach Index: Abflüsse über Ebenen winden sich,
+            // statt als gerade Linien parallel zu den Achsen zu laufen. Ändert keine Höhen.
+            float[] tie = new float[_n];
+            ulong seedT = HashNoise.DeriveSeed(s.Seed, WorldGenerator.StepFlatDrainage);
+            for (int i = 0; i < _n; i++)
+                tie[i] = HashNoise.Fbm(seedT, (i % _w) / 9f, (i / _w) / 9f, 2);
+            var heap = new MinHeap(_n, tie);
             bool[] done = new bool[_n];
             for (int i = 0; i < _n; i++)
             {
@@ -389,8 +395,11 @@ namespace WorldBeyond.Simulation.World.Generation
             float[] _keys;
             public int Count { get; private set; }
 
-            public MinHeap(int capacity)
+            readonly float[] _tie;
+
+            public MinHeap(int capacity, float[] tie = null)
             {
+                _tie = tie;
                 _items = new int[Math.Max(16, capacity)];
                 _keys = new float[_items.Length];
             }
@@ -437,7 +446,18 @@ namespace WorldBeyond.Simulation.World.Generation
                 }
             }
 
-            bool Less(int a, int b) => _keys[a] < _keys[b] || (_keys[a] == _keys[b] && _items[a] < _items[b]);
+            bool Less(int a, int b)
+            {
+                if (_keys[a] != _keys[b])
+                    return _keys[a] < _keys[b];
+                if (_tie != null)
+                {
+                    float ta = _tie[_items[a]], tb = _tie[_items[b]];
+                    if (ta != tb)
+                        return ta < tb;
+                }
+                return _items[a] < _items[b];
+            }
 
             void Swap(int a, int b)
             {
