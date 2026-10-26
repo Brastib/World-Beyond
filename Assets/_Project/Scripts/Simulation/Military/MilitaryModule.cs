@@ -39,6 +39,7 @@ namespace WorldBeyond.Simulation.Military
             ctx.Register<IArmyQuery>(armies);
             ctx.Register<AI.IArmyAI>(armyAI);
             ctx.Saveables.Add(armies);
+            ctx.Saveables.Add(armyAI);
             registerSystem(armyAI);
             return system;
         }
