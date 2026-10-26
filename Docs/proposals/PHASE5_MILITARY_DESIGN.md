@@ -116,3 +116,17 @@ PlayMode-Szene auf generierter Karte: Civ A (Infanterie, Humvee mit 4 Infanterie
 2. SYSTEM_INTERFACES §9/§10: Events `UnitDamagedEvent`, `WeaponFiredEvent`, `ExplosionEvent`, `ArmyCreated/Disbanded/OrderChangedEvent`, `IMilitaryQuery`, `CombatStance`, `IArmyQuery.TryGetArmyOf`, `ArmyView` aufnehmen.
 
 **Offen nach M1:** `ProjectileStore` (Ballistik, Raketen), Fahrzeugtypen, Versorgung, Transport, VFX/Modelle.
+
+## 9. Planung: Zerstörbare Gebäude auf Bauteil-Ebene (VISION V10, M7, noch nicht gebaut)
+
+Zweck: Ein Artillerie-Einschlag soll Gebäude an genau der getroffenen Stelle beschädigen. Military liefert dafür den Einschlag, Civ wendet ihn auf die Bauteile an.
+
+- `ExplosionEvent` (heute X, Z, Radius, Type) wird nur um Felder **ergänzt**, nichts wird umbenannt:
+  - `Y`: Höhe des Einschlags, wichtig für Stockwerke.
+  - `Strength`: Grundschaden in der Mitte.
+  - `InnerRadius`: Bereich ohne Abfall, gleiche Formel wie `DamageModel.AreaFalloff`.
+  - `Source` und `SourceCivId`: Verursacher für Chronik und Kriegsstatistik.
+  - Spätere Felder bekommen nur Standardwerte, damit alte Empfänger weiterlaufen. Events werden nicht gespeichert, das Speicherformat ändert sich also nicht.
+- `ICombatService.ApplyAreaDamage` bleibt der einzige Einstieg. Er schadet Einheiten wie bisher und veröffentlicht das erweiterte `ExplosionEvent`. Civ hört darauf und rechnet über `AreaFalloff` den Schaden pro Bauteil aus. Military kennt keine Gebäude-Interna.
+- Für Treffer ohne Fläche (Panzergranate in eine Wand) kommt später ein `StructureHitEvent` mit Punkt, Richtung, Stärke und Schadensart dazu.
+- `UnitDamagedEvent` bleibt auf Einheiten beschränkt. Für Bauteile gibt es ein eigenes Event von Civ, damit Einheiten- und Gebäudeschaden nicht vermischt werden.
