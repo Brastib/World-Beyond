@@ -220,9 +220,10 @@ namespace WorldBeyond.Simulation.Civilizations
 
         public void RegisterDefaults(UnitTypeRegistry unitTypes)
         {
-            WorkerType = unitTypes.Register(new UnitTypeData { Key = UnitWorker, DisplayName = "Arbeiter", Role = UnitRole.Worker, Movement = MovementClass.Foot, MaxHp = 60f, MaxSpeed = 1.4f, Radius = 0.35f });
-            SettlerType = unitTypes.Register(new UnitTypeData { Key = UnitSettler, DisplayName = "Siedler", Role = UnitRole.Settler, Movement = MovementClass.Foot, MaxHp = 80f, MaxSpeed = 1.3f, Radius = 0.45f });
-            CaravanType = unitTypes.Register(new UnitTypeData { Key = UnitCaravan, DisplayName = "Karawane", Role = UnitRole.Trader, Movement = MovementClass.Foot, MaxHp = 120f, MaxSpeed = 1.6f, Radius = 0.8f });
+            // Bereits registrierte Typen (z. B. aus contentSetup oder Tests) werden übernommen, nicht doppelt angelegt.
+            WorkerType = Unit(unitTypes, new UnitTypeData { Key = UnitWorker, DisplayName = "Arbeiter", Role = UnitRole.Worker, Movement = MovementClass.Foot, MaxHp = 60f, MaxSpeed = 1.4f, Radius = 0.35f });
+            SettlerType = Unit(unitTypes, new UnitTypeData { Key = UnitSettler, DisplayName = "Siedler", Role = UnitRole.Settler, Movement = MovementClass.Foot, MaxHp = 80f, MaxSpeed = 1.3f, Radius = 0.45f });
+            CaravanType = Unit(unitTypes, new UnitTypeData { Key = UnitCaravan, DisplayName = "Karawane", Role = UnitRole.Trader, Movement = MovementClass.Foot, MaxHp = 120f, MaxSpeed = 1.6f, Radius = 0.8f });
 
             // ---- Technologien (Frühzeit → Moderne) ----
             T("tech.fishing", "Fischfang", Epoch.Primitive, 25);
@@ -273,6 +274,9 @@ namespace WorldBeyond.Simulation.Civilizations
                     throw new InvalidOperationException($"Gebäude '{d.Key}': unbekannte Technologie '{d.RequiredTechKey}'.");
             }
         }
+
+        private static UnitTypeId Unit(UnitTypeRegistry types, UnitTypeData data) =>
+            types.TryGetByKey(data.Key, out var existing) ? existing : types.Register(data);
 
         private TechData T(string key, string name, Epoch epoch, float cost, params string[] prereqs)
         {
