@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using Newtonsoft.Json;
 using NUnit.Framework;
 using WorldBeyond.Application;
 using WorldBeyond.Application.Save;
@@ -32,11 +33,12 @@ namespace WorldBeyond.Tests.Integration
             Assert.AreEqual(2, civs.AllCivIds.Count, "Start-Civs");
             int startPop = Population(civs);
 
-            long war = -1, combat = -1;
+            long war = -1, combat = -1, warEnded = -1;
             ctx.Events.Subscribe<WarDeclaredEvent>(_ => { if (war < 0) war = ctx.Clock.Tick; });
+            ctx.Events.Subscribe<WarEndedEvent>(_ => { if (warEnded < 0) warEnded = ctx.Clock.Tick; });
             ctx.Events.Subscribe<UnitDiedEvent>(e => { if (combat < 0 && e.KillerCivId > 0 && e.KillerCivId != e.CivId) combat = ctx.Clock.Tick; });
 
-            for (int i = 0; i < MaxTicks && combat < 0; i++)
+            for (int i = 0; i < MaxTicks && (combat < 0 || warEnded < 0); i++)
             {
                 Assert.AreEqual(0, ctx.Commands.PendingCount, "Sandbox: kein Befehl darf anfallen");
                 comp.Runner.StepOnce();
@@ -44,6 +46,7 @@ namespace WorldBeyond.Tests.Integration
 
             Assert.GreaterOrEqual(war, 0, "kein Krieg in 4 Spielstunden");
             Assert.GreaterOrEqual(combat, war, "kein Kampftoter nach der Kriegserklärung");
+            Assert.GreaterOrEqual(warEnded, war, "kein Krieg endet in 4 Spielstunden (festhängender Krieg)");
             Assert.Greater(Population(civs), startPop, "Bevölkerung ist nicht gewachsen");
             Assert.AreEqual(0, comp.Runner.FaultCount, "Systemfehler im Lauf");
         }
@@ -74,11 +77,21 @@ namespace WorldBeyond.Tests.Integration
                 for (int i = 0; i < after; i++) current.Runner.StepOnce();
 
                 Assert.AreEqual(Fingerprint(reference), Fingerprint(current));
+                Assert.AreEqual(SaveablesJson(reference), SaveablesJson(current), "gespeicherter Zustand weicht ab");
             }
             finally
             {
                 if (Directory.Exists(dir)) Directory.Delete(dir, true);
             }
+        }
+
+        // Alles, was gespeichert wird, als JSON je Sektion (deckt auch Systeme ohne Zufall ab, z. B. Armeen, Kriegsstand).
+        private static string SaveablesJson(GameComposition comp)
+        {
+            var sb = new StringBuilder();
+            foreach (var s in comp.Context.Saveables.InLoadOrder())
+                sb.Append(s.SaveKey).Append(": ").Append(JsonConvert.SerializeObject(s.CaptureState(), SaveGameSerializer.CreateSettings())).Append('\n');
+            return sb.ToString();
         }
 
         private static int Population(ICivilizationQuery civs)

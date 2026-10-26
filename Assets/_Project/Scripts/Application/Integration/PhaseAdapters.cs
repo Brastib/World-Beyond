@@ -33,11 +33,13 @@ namespace WorldBeyond.Application.Integration
         private readonly IUnitQuery _units;
         private readonly IMilitaryQuery _military;
         private readonly IWorldQuery _world;
+        private readonly ISpatialIndex _spatial;
         private readonly List<EntityId> _scratchUnits = new List<EntityId>();
         private readonly Dictionary<int, int> _scratchOwners = new Dictionary<int, int>();
+        private readonly Dictionary<int, float> _scratchStrength = new Dictionary<int, float>();
 
         public DiplomacyWorldPortAdapter(ICivilizationQuery civs, ISettlementRegistry settlements, ITerritoryService territory,
-            IEconomy economy, IRecruitment recruitment, IUnitQuery units, IMilitaryQuery military, IWorldQuery world)
+            IEconomy economy, IRecruitment recruitment, IUnitQuery units, IMilitaryQuery military, IWorldQuery world, ISpatialIndex spatial)
         {
             _civs = civs ?? throw new ArgumentNullException(nameof(civs));
             _settlements = settlements ?? throw new ArgumentNullException(nameof(settlements));
@@ -47,6 +49,7 @@ namespace WorldBeyond.Application.Integration
             _units = units ?? throw new ArgumentNullException(nameof(units));
             _military = military ?? throw new ArgumentNullException(nameof(military));
             _world = world ?? throw new ArgumentNullException(nameof(world));
+            _spatial = spatial ?? throw new ArgumentNullException(nameof(spatial));
         }
 
         public IReadOnlyList<int> CivIds => _civs.AllCivIds;
@@ -116,6 +119,7 @@ namespace WorldBeyond.Application.Integration
             return _settlements.TryGet(settlementId, out var after) && after.CivId == newCivId;
         }
 
+        // Überträgt je Ressource den Anteil fraction; Rückgabe = Summe der Mengen über alle Ressourcen (gemischte Einheiten, nur als Größenordnung nutzen).
         public float TransferTribute(int fromCiv, int toCiv, float fraction)
         {
             if (fraction <= 0f || !_civs.Exists(fromCiv) || !_civs.Exists(toCiv)) return 0f;
@@ -133,21 +137,46 @@ namespace WorldBeyond.Application.Integration
 
         public bool RequestMilitaryBuildup(int civId, int unitCount, out string reason)
         {
-            var result = MilitaryRecruitment.Request(_civs, _recruitment, civId, unitCount);
-            reason = result == RecruitResult.Queued ? null : result.ToString();
-            return result == RecruitResult.Queued;
+            int queued = MilitaryRecruitment.Request(_civs, _settlements, _recruitment, civId, unitCount, out var last);
+            reason = queued > 0 ? null : last.ToString();
+            return queued > 0;
         }
 
-        // Besitzer mit mehr als der Hälfte der besetzten Kacheln im Quadrat; sonst 0.
+        // Wer hält den Punkt? Zuerst lebende Militäreinheiten im Kreis (Mehrheit der Kampfstärke, mehr als die Hälfte);
+        // ohne Einheiten im Kreis entscheidet der Gebietsbesitz (Mehrheit der besetzten Kacheln im Kreis). 0 = niemand oder umkämpft.
         public int GetDominantCivNear(int x, int y, int radius)
         {
+            if (radius < 0) radius = 0;
             _scratchOwners.Clear();
-            int owned = 0;
+            float cx = WorldCoords.TileCenterX(x), cz = WorldCoords.TileCenterZ(y);
+            _spatial.QueryRadius(cx, cz, (radius + 0.5f) * WorldConstants.TileSize, _scratchUnits);
+            float total = 0f;
+            var strength = _scratchStrength;
+            strength.Clear();
+            for (int i = 0; i < _scratchUnits.Count; i++)
+            {
+                if (!_units.TryGet(_scratchUnits[i], out var u) || u.CivId <= 0) continue;
+                float s = _military.GetCombatStrength(u.Type);
+                if (s <= 0f) continue;
+                strength.TryGetValue(u.CivId, out float cur);
+                strength[u.CivId] = cur + s;
+                total += s;
+            }
+            if (total > 0f)
+            {
+                foreach (var kv in strength)
+                    if (kv.Value * 2f > total) return kv.Key;
+                return 0;
+            }
+
+            int owned = 0, r2 = radius * radius;
             int x0 = Math.Max(0, x - radius), x1 = Math.Min(_world.Width - 1, x + radius);
             int y0 = Math.Max(0, y - radius), y1 = Math.Min(_world.Height - 1, y + radius);
             for (int ty = y0; ty <= y1; ty++)
             for (int tx = x0; tx <= x1; tx++)
             {
+                int dx = tx - x, dy = ty - y;
+                if (dx * dx + dy * dy > r2) continue;
                 int owner = _territory.OwnerAt(tx, ty);
                 if (owner <= 0) continue;
                 owned++;
@@ -174,10 +203,39 @@ namespace WorldBeyond.Application.Integration
             BuildYears = 0.1f,
         };
 
-        public static RecruitResult Request(ICivilizationQuery civs, IRecruitment recruitment, int civId, int count)
+        /// <summary>
+        /// Reiht bis zu count Schützen ein: Hauptstadt zuerst, dann Siedlungen nach Bevölkerung (absteigend, bei Gleichstand kleinere ID).
+        /// Je Siedlung die größte machbare Anzahl (count … 1), da Bevölkerung und Lager je Siedlung geprüft werden.
+        /// Liefert die Zahl eingereihter Einheiten; last = letztes Ergebnis (Grund bei 0).
+        /// </summary>
+        public static int Request(ICivilizationQuery civs, ISettlementQuery settlements, IRecruitment recruitment, int civId, int count, out RecruitResult last)
         {
-            if (count <= 0 || !civs.TryGet(civId, out var c) || c.CapitalSettlementId <= 0) return RecruitResult.InvalidRequest;
-            return recruitment.Request(civId, MilitaryContent.RiflemanKey, count, c.CapitalSettlementId);
+            last = RecruitResult.InvalidRequest;
+            if (count <= 0 || !civs.TryGet(civId, out var c)) return 0;
+            var ids = new List<int>(settlements.GetByCiv(civId));
+            ids.Sort((a, b) =>
+            {
+                if (a == b) return 0;
+                if (a == c.CapitalSettlementId) return -1;
+                if (b == c.CapitalSettlementId) return 1;
+                int pa = settlements.TryGet(a, out var sa) ? sa.Population : 0;
+                int pb = settlements.TryGet(b, out var sb) ? sb.Population : 0;
+                return pa != pb ? pb.CompareTo(pa) : a.CompareTo(b);
+            });
+            int remaining = count;
+            foreach (int sid in ids)
+            {
+                for (int n = remaining; n >= 1; n--)
+                {
+                    last = recruitment.Request(civId, MilitaryContent.RiflemanKey, n, sid);
+                    if (last == RecruitResult.Queued) { remaining -= n; break; }
+                    if (last == RecruitResult.TechMissing || last == RecruitResult.InvalidRequest) return count - remaining;
+                    if (last == RecruitResult.NoProductionBuilding) break;   // andere Siedlung versuchen
+                }
+                if (remaining == 0) break;
+            }
+            if (remaining < count) last = RecruitResult.Queued;
+            return count - remaining;
         }
     }
 
@@ -216,7 +274,7 @@ namespace WorldBeyond.Application.Integration
                 : (false, 0f, 0f);
             army.HomeOf = civId => civs.TryGet(civId, out var c) ? army.SettlementPosition(c.CapitalSettlementId) : (false, 0f, 0f);
             army.Recruit = (civId, role, count) =>
-                role == MilitaryRole.Rifleman && MilitaryRecruitment.Request(civs, recruitment, civId, count) == RecruitResult.Queued ? count : 0;
+                role == MilitaryRole.Rifleman ? MilitaryRecruitment.Request(civs, settlements, recruitment, civId, count, out _) : 0;
         }
     }
 }

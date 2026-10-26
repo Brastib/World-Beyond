@@ -119,7 +119,7 @@ namespace WorldBeyond.Application
 
             // War (Phase 4): Diplomatie und Kriegsentscheidung. Verluste abonniert DiplomacyService selbst (UnitDiedEvent).
             var port = new DiplomacyWorldPortAdapter(civ.Civilizations, civ.Settlements, civ.Territory, civ.Economy,
-                civ.Recruitment, ctx.Units, military, world);
+                civ.Recruitment, ctx.Units, military, world, spatial);
             var diplomacy = new DiplomacyService(port, ctx.Events, () => ctx.Clock.Tick);
             ctx.Register<IDiplomacyService>(diplomacy);
             ctx.Register<IDiplomacyQuery>(diplomacy);
@@ -127,6 +127,8 @@ namespace WorldBeyond.Application
             ctx.Register<ICivWarEvaluator>(new CivWarEvaluatorAdapter(new WarStrategyEvaluator(diplomacy)));
             ctx.Saveables.Add(new DiplomacySaveable(diplomacy));
             runner.Register(new DiplomacySystem(diplomacy));
+            // Abos nach SpawnInitialCivilizations sind unkritisch, weil Events erst beim Flush am Tickende ausgeliefert werden.
+            // Wer hier künftig synchron publiziert, muss diese Abos vor Civ setzen.
             ctx.Events.Subscribe<SettlementCapturedEvent>(e =>
                 diplomacy.ReportSettlementCaptured(e.SettlementId, e.OldCivId, e.NewCivId,
                     civ.Settlements.TryGet(e.SettlementId, out var s) ? s.Population : 0));
