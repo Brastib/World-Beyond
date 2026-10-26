@@ -106,9 +106,12 @@ namespace WorldBeyond.Simulation.Civilizations
         void CopyRecent(int civId, List<CivDecisionEvent> results);
     }
 
-    /// <summary>Kriegsbewerter aus Phase 4. Wird vom CivAISystem pro Entscheidungsrunde aufgerufen.</summary>
+    /// <summary>
+    /// Kriegsbewerter aus Phase 4 (WarStrategyEvaluator). Das CivAISystem ruft ihn für jede lebende Zivilisation in jeder
+    /// Entscheidungsrunde auf (alle 50 Ticks, Order 100), sofern ein Dienst ICivWarEvaluator registriert ist.
+    /// </summary>
     public interface ICivWarEvaluator
     {
-        void Evaluate(SimContext ctx, int civId);
+        void EvaluateAndAct(int civId);
     }
 }
