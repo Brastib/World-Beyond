@@ -84,6 +84,19 @@ Zu sehen: einzelner Laubbaum (ahornähnlich, passt zu `plant.acer`, W01/W02), fo
 
 **Abnahme-Zusatz:** Für jeden Baum in A1/A2 gibt es einen Screenshot aus Unity im gleichen Blickwinkel und vor hellem Hintergrund, neben R1 gestellt.
 
+### 3.1b Referenzbild R2 – Häuser (vom Nutzer am 2026-10-26 16:40 UTC geschickt)
+
+Datei: `/mnt/project-files/WorldBeyond/references/R2_haeuser_nutzer_2026-10-26.jpg` (Projektordner, **nicht** im Repo; Urheber/Lizenz unbekannt, wahrscheinlich Vorschaubild einer Modellsammlung, nur Qualitätsmaßstab, wird nicht nachgebaut). Nutzervorgabe: Häuser müssen in Qualität und Licht **zum Baum R1 passen**, kein „AI-Slop“; Blender darf genutzt werden.
+
+Zu sehen: ca. 35 freistehende Wohnhäuser (Einfamilienhäuser, Moderne/Industrie-Epoche, europäisch), fotorealistisch: Putz, Holzverschalung, Ziegel, Naturstein; Dächer rot, grau, anthrazit; Satteldach, Walmdach, Gauben, Erker, Balkone, Garagen.
+
+**Pflicht-Merkmale für Gebäude (Abnahme A7):**
+1. **Echte Geometrie für Details**: Fensterrahmen mit Tiefe, Fensterbänke, Dachüberstand mit Sparren/Traufe, Regenrinnen und Fallrohre, Schornsteine, Geländer, Sockel. Keine aufgemalten Fenster auf glatten Kästen.
+2. **Glaubwürdige Proportionen** (Geschosshöhe ~2,7–3 m, Türen ~2,1 m, Dachneigungen der Epoche) im Maßstab 1 Einheit = 1 m.
+3. **Materialmix pro Haus** (2–4 Materialien: Putz + Holz + Ziegeldach + Sockelstein), aus kalibrierten Fotoscans, mit leichter Verwitterung (Schmutz unten, Regenspuren, Moos am Dach).
+4. **Vielfalt ohne Zufallsbrei**: Jede Variante folgt einer Bauregel (Grundrissform, Dachform, Fensterraster, Materialpalette der Kultur/Epoche). Zufall wählt nur innerhalb dieser Regeln.
+5. **Dasselbe Licht und dieselbe Farbkalibrierung wie R1**: Haus und Baum nebeneinander im Style Board, ein Screenshot für beide.
+
 ### 3.2 R1-Niveau gilt für alle Assets (Nutzer, 2026-10-26 16:36 UTC)
 
 Nicht nur Bäume: Gebäude, Felsen, Gelände, Menschen, Fahrzeuge und Effekte bekommen dieselbe Qualitätsstufe und dasselbe Aussehen. Konkret für jedes Asset:
@@ -160,6 +173,16 @@ Häuser verändern sich mit ihren Bewohnern: Anbau bei Familienzuwachs, Renovier
 Die Darstellung nutzt dafür denselben Bruch-Baukasten wie bei Artillerie, nur langsam (Risse, Absacken) oder plötzlich (Einsturz).
 
 **Zuständigkeit und Stufe:** Gebäudedaten und Bauteil-Schaden liegen bei Civ, Schadensereignisse bei Military (`ICombatService`), Baukasten und Bruch-Werkzeug bei Art/Assets, der Zusammenbau in der Darstellung bei Presentation. Die bleibende Zerstörung gehört laut VISION zu V10/M7, Epochen-Gebäude setzen das Zeitalter-Modell aus M3 voraus. Den Baukasten mit Bruchstücken kann Art/Assets nach dem Style Lock (A7) vorbereiten.
+
+**Werkzeug Blender für Gebäude (Nutzer erlaubt, 2026-10-26):** Der Baukasten wird in **Blender** gebaut (kostenlos, GPL; die damit erstellten Modelle gehören uns):
+- Bauteile mit echter Detailgeometrie, abgerundeten Kanten (Bevel) und sauberen UVs modelliert, je Bauteil hoch- und niedrigaufgelöste Fassung; Normal- und AO-Karten von hoch nach niedrig gebacken.
+- Bauteil-Regeln (Raster 1–2 m, Anschlusspunkte, Pivot) sind fest, damit Unity jedes Haus aus dem Bauwunsch zusammensetzen kann (§4.4). Der Grundriss-Generator läuft in Unity, nicht in Blender, weil die Simulation zur Laufzeit neue Häuser bestellt.
+- Bruchstücke für die Zerstörung werden ebenfalls in Blender vorberechnet (Voronoi-Zerlegung je Bauteil) und als eigene Meshes exportiert.
+- Export FBX, Import nach ARCHITECTURE §16 (Maßstab, Pivot, URP-Material, LODs).
+- Blender lässt sich per Python-Skript ohne Oberfläche steuern. Damit sind wiederholbare Bauteil-Erzeugung und Vorschau-Renders möglich. In der Cloud ist Blender 4.0.2 über apt installierbar (am 2026-10-26 nur die Paketverfügbarkeit geprüft, nicht installiert oder getestet), auf dem PC des Nutzers die aktuelle Version.
+- Gegen „AI-Slop“: Jedes Bauteil wird gezielt gebaut und im Spiel-Licht neben R1/R2 geprüft. Kein Massenexport ungeprüfter, generierter Modelle. Was den Vergleich nicht besteht, bleibt im Katalog auf „in Arbeit“.
+
+Blender kann auch für Pflanzen helfen (Blattatlanten rendern, Impostor-Bilder backen). Der Baumgenerator selbst bleibt aber PlantForge in Unity (§4.1), weil Zustände und Wind dort zusammenhängen.
 
 ### 4.5 Menschen und Einheiten
 
