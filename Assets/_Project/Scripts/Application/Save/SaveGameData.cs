@@ -15,6 +15,7 @@ namespace WorldBeyond.Application.Save
         [JsonProperty("gameVersion")] public string GameVersion;
         [JsonProperty("createdUtc")] public string CreatedUtc;
         [JsonProperty("header")] public SaveHeader Header;
+        [JsonProperty("start")] public StartSettingsDto Start;      // zum Neuaufbau der leeren Simulation beim Laden
         [JsonProperty("settings")] public SimSettingsDto Settings;
         [JsonProperty("sections")] public Dictionary<string, SaveSection> Sections = new Dictionary<string, SaveSection>();
         [JsonProperty("checksum")] public string Checksum;
@@ -35,12 +36,21 @@ namespace WorldBeyond.Application.Save
     public sealed class SaveHeader
     {
         [JsonProperty("name")] public string Name;
-        [JsonProperty("worldSeed")] public long WorldSeed;
+        [JsonProperty("worldSeed")] public ulong WorldSeed;
         [JsonProperty("worldWidth")] public int WorldWidth;
         [JsonProperty("worldHeight")] public int WorldHeight;
         [JsonProperty("simTick")] public long SimTick;
         [JsonProperty("civCount")] public int CivCount;
         [JsonProperty("unitCount")] public int UnitCount;
+    }
+
+    // Spiegel von GameStartSettings ohne Abhängigkeit von dessen Feldnamen.
+    public sealed class StartSettingsDto
+    {
+        [JsonProperty("seed")] public ulong Seed;
+        [JsonProperty("worldWidth")] public int WorldWidth;
+        [JsonProperty("worldHeight")] public int WorldHeight;
+        [JsonProperty("civilizationCount")] public int CivilizationCount;
     }
 
     public sealed class SimSettingsDto
