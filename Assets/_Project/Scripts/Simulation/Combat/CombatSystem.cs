@@ -19,7 +19,7 @@ namespace WorldBeyond.Simulation.Combat
     /// Taktischer Kampf pro Einheit (Order 400, jeden Tick): Ziel wählen, Sichtlinie prüfen, feuern, verfolgen.
     /// M1: Hitscan-Waffen. Schaden nur über ICombatService. Speichert Waffen- und Zielzustand als Sektion "combat".
     /// </summary>
-    public sealed class CombatSystem : ISimulationSystem, ISaveable
+    public sealed class CombatSystem : ISimulationSystem, ISaveable, ISaveReferenceCheck
     {
         public const string Key = "combat";
         private const int AcquireStagger = 5;    // Zielsuche je Einheit alle 5 Ticks (0,5 s)
@@ -40,7 +40,8 @@ namespace WorldBeyond.Simulation.Combat
 
         private readonly List<EntityId> _alive = new List<EntityId>();
         private readonly List<EntityId> _nearby = new List<EntityId>();
-        private readonly List<string> _restoreWarnings = new List<string>();
+        // Weiche Fehler aus TryRestoreState; CheckReferences meldet sie an den LoadReport (ARCHITECTURE §11.1 Regel 6).
+        private readonly List<string> _pendingWarnings = new List<string>();
 
         public CombatSystem(IUnitStore units, MilitaryCatalog catalog, CombatService combat, CombatEnvironment env,
             SimRandom random, ISimEventBus events)
@@ -56,8 +57,6 @@ namespace WorldBeyond.Simulation.Combat
         public string Name => "Combat";
         public int Order => SystemOrder.Combat;
         public int TickInterval => 1;
-
-        public IReadOnlyList<string> LastRestoreWarnings => _restoreWarnings;
 
         // ---------------- Befehls-API (für Commands, Armee-KI) ----------------
 
@@ -275,7 +274,7 @@ namespace WorldBeyond.Simulation.Combat
 
         public bool TryRestoreState(object dto, out string error)
         {
-            _restoreWarnings.Clear();
+            _pendingWarnings.Clear();
             if (!(dto is CombatSaveState s) || s.Records == null) { error = "combat: Zustand fehlt oder hat falschen Typ."; return false; }
             foreach (var r in s.Records)
             {
@@ -289,12 +288,12 @@ namespace WorldBeyond.Simulation.Combat
                 var id = new EntityId(r.Index, r.Generation);
                 if (!_units.TryGet(id, out var u) || !_catalog.TryGet(u.Type, out var md))
                 {
-                    _restoreWarnings.Add($"combat: Einheit {id} existiert nicht oder ist kein Militär, Datensatz verworfen.");
+                    _pendingWarnings.Add($"combat: Einheit {id} existiert nicht oder ist kein Militär, Datensatz verworfen.");
                     continue;
                 }
                 if (md.Weapon.Key != r.WeaponKey)
                 {
-                    _restoreWarnings.Add($"combat: Einheit {id} hat jetzt Waffe '{md.Weapon.Key}' statt '{r.WeaponKey}', Waffe voll aufgefüllt.");
+                    _pendingWarnings.Add($"combat: Einheit {id} hat jetzt Waffe '{md.Weapon.Key}' statt '{r.WeaponKey}', Waffe voll aufgefüllt.");
                     continue;
                 }
                 int i = id.Index;
@@ -310,7 +309,7 @@ namespace WorldBeyond.Simulation.Combat
                 var target = new EntityId(r.TargetIndex, r.TargetGeneration);
                 if (target.IsValid && !_units.Exists(target))
                 {
-                    _restoreWarnings.Add($"combat: Ziel {target} von {id} existiert nicht mehr, Ziel gelöscht.");
+                    _pendingWarnings.Add($"combat: Ziel {target} von {id} existiert nicht mehr, Ziel gelöscht.");
                     target = EntityId.None;
                 }
                 _target[i] = target;
@@ -319,6 +318,18 @@ namespace WorldBeyond.Simulation.Combat
             }
             error = null;
             return true;
+        }
+        public void CheckReferences(SimContext ctx, LoadReport report)
+        {
+            foreach (var w in _pendingWarnings) report.Warn(w);
+            _pendingWarnings.Clear();
+            // Ziele erneut prüfen: andere Sektionen können nach "combat" eingespielt worden sein.
+            for (int i = 1; i < _owner.Length; i++)
+            {
+                if (!_owner[i].IsValid || !_target[i].IsValid || _units.Exists(_target[i])) continue;
+                report.Warn($"combat: Ziel {_target[i]} von {_owner[i]} existiert nicht mehr, Ziel gelöscht.");
+                _target[i] = EntityId.None;
+            }
         }
     }
 

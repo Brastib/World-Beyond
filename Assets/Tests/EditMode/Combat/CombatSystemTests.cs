@@ -34,7 +34,7 @@ namespace WorldBeyond.Tests.EditMode.Combat
             Ctx = new SimContext(new SimClock(), new SimRandom(seed), events, Commands, content, types, units, saveables);
             Runner = new SimulationRunner(Ctx);
             Runner.Register(new CommandProcessingSystem(Commands));
-            Civilian = types.Register(new UnitTypeData { Key = "unit.settler", Role = UnitRole.Settler, MaxHp = 50f });
+            Civilian = types.Register(new UnitTypeData { Key = "test.civilian", Role = UnitRole.Settler, MaxHp = 50f });
             Combat = MilitaryModule.Register(Ctx, Runner.Register, Env);
             extraSystems?.Invoke(Runner);
             Ctx.Seal();
@@ -233,7 +233,9 @@ namespace WorldBeyond.Tests.EditMode.Combat
             var w2 = new CombatWorld();
             Assert.That(((ISaveable)w2.Ctx.Units).TryRestoreState(unitsState, out var e1), Is.True, e1);
             Assert.That(w2.Combat.TryRestoreState(combatState, out var e2), Is.True, e2);
-            Assert.That(w2.Combat.LastRestoreWarnings, Is.Empty);
+            var rep = new LoadReport();
+            w2.Combat.CheckReferences(w2.Ctx, rep);
+            Assert.That(rep.Warnings, Is.Empty);
             Assert.That(w2.Combat.TryGetWeaponState(a, out var after), Is.True);
             Assert.That(after.InMagazine, Is.EqualTo(before.InMagazine));
             Assert.That(w2.Combat.GetStance(b), Is.EqualTo(CombatStance.HoldPosition));
@@ -254,7 +256,10 @@ namespace WorldBeyond.Tests.EditMode.Combat
                 TargetIndex = 50, TargetGeneration = 3 } } };
             Assert.That(w.Combat.TryRestoreState(dangling, out _), Is.True);
             Assert.That(w.Combat.GetTarget(a), Is.EqualTo(EntityId.None));
-            Assert.That(w.Combat.LastRestoreWarnings.Count, Is.EqualTo(1));
+            var report = new LoadReport();
+            w.Combat.CheckReferences(w.Ctx, report);
+            Assert.That(report.Warnings.Count, Is.EqualTo(1), "Warnung landet im LoadReport");
+            Assert.That(report.HasErrors, Is.False);
         }
 
         [Test]
