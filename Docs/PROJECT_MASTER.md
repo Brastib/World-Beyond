@@ -5,6 +5,8 @@ Dieses Dokument ist die oberste Referenz. Bei Widerspruch gilt: Aussage des Nutz
 
 ## 1. Vision
 
+> Langfristige Vision, Ausbaustufen M1–M6 und die Architekturentscheidungen dazu: **`Docs/VISION.md`** (Nutzeranweisung 2026-10-26, hat Vorrang vor älteren Aussagen hier).
+
 World Beyond ist ein eigenständiger God-Simulator und eine Echtzeit-Weltsimulation für Windows-PC, inspiriert vom Sandbox-Prinzip von WorldBox, erweitert um echte Zivilisationen, moderne Militärtechnik, dynamische Kriege und strategische Mechaniken. Der Spieler erschafft und verändert eine Welt, beobachtet Zivilisationen und beeinflusst ihre Geschichte. Die Welt lebt auch ohne Eingriffe des Spielers weiter.
 
 Kein Konzept-Mockup, keine Fake-Buttons, keine isolierten Systeme. Ziel ist ein integriertes, spielbares Spiel.
@@ -56,7 +58,7 @@ Status-Kennzeichnung: **[B]** = bestätigt (vom Nutzer vorgegeben oder geprüft)
 | D9 | Speichern: versioniertes JSON über das offizielle Paket `com.unity.nuget.newtonsoft-json` | [E] | Lesbar, debugbar, Versionsmigration möglich; später optional komprimiert |
 | D10 | Tests: Unity Test Framework (EditMode für Simulation, PlayMode für Integration) | [E] | Offizielles Paket |
 | D11 | Versionsverwaltung: eigenes GitHub-Repository für das Unity-Projekt, Git LFS für Binär-Assets | [O] | Nutzer muss Repository anlegen; existiert noch nicht |
-| D12 | Art-Stil: verbindliche Regeln in §8; konkrete Stilrichtung wird per "Style Lock" nach der Asset-Recherche festgelegt | [O] | Nutzerregel vom 2026-10-25: echte Internet-Assets, einheitlicher Stil, realistische Proportionen |
+| D12 | Art-Stil: verbindliche Regeln in §8. **Richtung seit 2026-10-26: modern, realistisch, nicht Low-Poly** (VISION.md V5); konkrete Assets per Style Lock nach Recherche | [B] | Nutzerregel vom 2026-10-25: echte Internet-Assets, einheitlicher Stil, realistische Proportionen |
 | D13 | Maßstab: 1 Unity-Einheit = 1 Meter; 1 Kachel = 4 m (`WorldConstants.TileSize`) | [E] | Echte Modelle (Soldat ≈ 1,8 m, Humvee ≈ 4,6 m, Panzer ≈ 9 m) passen ohne Umskalieren zueinander |
 | D14 | ID-Regeln und Speicherformat nach `Docs/proposals/SAVE_FORMAT_PROPOSAL.md` Abschnitt A–F | [E] | Übernommen aus dem Vorschlag des Phase-7-Threads, damit alle Phasen von Anfang an speicherbar bauen |
 | D15 | Phasennummern = Nummern aus den Aufträgen des Nutzers (Phase 1 Doku … Phase 8 Endabnahme) | [B] | Nutzer hat Phase 2–8 so beauftragt |
@@ -79,6 +81,7 @@ Ein Feature gilt nur als fertig, wenn:
 6. `Docs/INTEGRATION.md` (Zuständigkeitsregister: wer besitzt welche Klasse)
 7. bei Asset-Arbeit: `Assets/ThirdParty/ASSET_CREDITS.md`
 8. bei Tests: `Docs/TEST_PLAN.md`
+9. `Docs/VISION.md` (Langfristziele, Ausbaustufen M1–M7; nichts davon vor Test von M1 bauen)
 
 Danach: betroffene Dateien lesen, bestehenden Code erweitern, keine zweite Implementierung anlegen, CURRENT_STATE am Ende aktualisieren.
 

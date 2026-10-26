@@ -166,6 +166,8 @@ namespace WorldBeyond.Application
         void StepOnce();                       // ein Tick, auch bei Pause
         event System.Action<long> TickCompleted;
     }
+    // SimulationRunner zusätzlich: event Action<long tick, string source, Exception> SystemFailed; int FaultCount; void ReportFault(...).
+    // Wirft ein System oder Event-Handler, wird der Fehler gemeldet, der Tick abgeschlossen und die Uhr rückt vor (kein doppelter Tick).
 
     public sealed class GameComposition    // Composition Root, reines C#
     {
@@ -185,7 +187,7 @@ namespace WorldBeyond.Application
 }
 ```
 
-Ablauf eines Ticks (`SimulationRunner`): Systeme nach `Order` (bei Gleichstand Registrierungsreihenfolge) → `Events.Flush()` → `Clock.Advance()` → `TickCompleted`.
+Ablauf eines Ticks (`SimulationRunner`): Systeme nach `Order` (bei Gleichstand Registrierungsreihenfolge) → `Events.Flush()` → `Clock.Advance()` → `TickCompleted`. Exceptions aus Systemen und Handlern werden einzeln gefangen und über `SystemFailed` gemeldet; `CommandProcessingSystem` fängt auch Exceptions aus `Validate` (→ `CommandRejectedEvent`).
 
 | Order (`SystemOrder`) | System |
 |---|---|

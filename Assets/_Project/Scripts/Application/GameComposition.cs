@@ -57,6 +57,8 @@ namespace WorldBeyond.Application
             saveables.Add(units);
 
             var runner = new SimulationRunner(ctx);
+            // Handler-Fehler melden statt mitten im Tick zu werfen (sonst liefe derselbe Tick erneut).
+            events.HandlerFailed += ex => runner.ReportFault(clock.Tick, "EventHandler", ex);
             runner.Register(new CommandProcessingSystem(commands));
 
             contentSetup?.Invoke(ctx);

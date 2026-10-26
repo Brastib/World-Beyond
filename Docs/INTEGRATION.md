@@ -16,6 +16,9 @@ Rang: gleichrangig mit ARCHITECTURE. Bei Widerspruch zur Aussage des Nutzers gil
 3. **Realistisches erstes Spielziel = Meilenstein M1** (§4). Alles, was M1 nicht braucht, wartet.
 4. **Sandbox: Die Welt entwickelt sich ohne Eingreifen des Spielers** (Nutzervorgabe 2026-10-26). Jedes Fachsystem muss mit null Spielereingaben sinnvoll laufen: Civs wachsen, expandieren, erklären Krieg und schließen Frieden durch ihre KI. Spieleraktionen (God-Tools, UI-Befehle) sind optionale Eingriffe über dieselben `IWorldCommand`s, nie Voraussetzung. Jede Phase weist das mit einem Test nach, der N Spieltage ohne Commands simuliert. M1 ist erst erreicht, wenn M1.2 und M1.4 ohne Spielereingabe eintreten.
 
+5. **Ressourcen sparen** (Nutzervorgabe 2026-10-26): kurze Antworten, keine wiederholten Vollanalysen, kleine abgeschlossene Pakete, je Paket: Stand prüfen → kleinste Änderung → testen → knapp dokumentieren. Eine Aufgabe nach der anderen, gegenseitige Prüfung (Prüf-Thread reviewt jeden PR).
+6. **Vision und Ausbaustufen:** `Docs/VISION.md`. Nichts aus M2–M6 beginnen, bevor M1 getestet ist.
+
 Ablauf:
 - **Das Repository `Brastib/World-Beyond` ist die einzige Wahrheit** (seit 2026-10-25). Der Projektordner `/mnt/project-files/WorldBeyond/Docs/` ist nur noch eine veraltete Kopie.
 - Jede Phase arbeitet auf ihrem eigenen Branch (`phaseN-<name>`) und öffnet einen Pull Request gegen `main`. Gemergt wird nach Prüfung durch den Integrations-Thread und Freigabe durch den Nutzer.
@@ -105,7 +108,7 @@ M1-Umfang je Phase (alles darüber hinaus erst nach M1): World: Höhen, Wasser, 
 |---|---|---|---|
 | 1 | Projektort festlegen | Nutzer | **erledigt**: GitHub `Brastib/World-Beyond` |
 | 2 | Docs ins Repo | 1 | **erledigt** (main, 2026-10-25) |
-| 3 | Fundament (Core, Clock, Runner, EventBus, CommandQueue, ISaveable, UnitStore, GameComposition, GameBootstrap) + Tests | 1 | **Code geschrieben, dotnet-Tests grün (41/41), nicht im Unity-Editor kompiliert** – Branch `claude/phase1b-fundament` |
+| 3 | Fundament (Core, Clock, Runner, EventBus, CommandQueue, ISaveable, UnitStore, GameComposition, GameBootstrap) + Tests | 1 | **Code geschrieben, dotnet-Tests grün (44/44), nicht im Unity-Editor kompiliert** – Branch `claude/phase1b-fundament` |
 | 4 | Unity-Projekt anlegen (Version prüfen, URP, Pakete, ProjectSettings) | Unity-Version vom Nutzer / Remote Control | offen |
 | 5 | Fundament in Unity kompilieren, EditMode-Tests per Unity Test Runner | 3, 4 | offen |
 | 6 | M1.1 + M1.3 World | 3 | offen (World) |
@@ -146,3 +149,6 @@ Definition of Done (vom Nutzer): Systeme interagieren tatsächlich, Kernspielsch
 | 2026-10-26 | World-Abweichungen akzeptiert: `TileData.WaterLevel`; `IWorldQuery.Version`/`NavigationVersion`; `System.Numerics.Vector3` + `WorldRay` statt UnityEngine-Vektoren in Simulation; `IPathfinder`/`ISpatialIndex`/`SpatialHash` in `WorldBeyond.Simulation.World`; `TileChangeKind.Owner = 6`; Fluss als Furt (Foot 3, Wheeled gesperrt, Tracked 3); Terrain/Biome/Resource-Enums im Spielstand als Namen; `WorldEventsSystem` Order 850; `GameStartSettings` → `WorldGenSettings`. SYSTEM_INTERFACES §4/§5 wird beim Review des World-PR nachgezogen | [E] | Simulation bleibt ohne UnityEngine testbar; Fundament-Ordner unverändert |
 | 2026-10-26 | `ISaveContentCheck` (Vorschlag Phase 7) liegt im Fundament; `UnitStore` implementiert es. `SaveLoadError.CaptureFailed = 8`, Rahmenfeld `start` übernommen. `Tools/SimTests` referenziert Newtonsoft.Json 13.0.2 | [E] | Fehlende Inhalte werden als MissingContent erkannt; Application/Save braucht Newtonsoft im dotnet-Test |
 | 2026-10-26 | Sandbox-Prinzip verbindlich: Simulation läuft ohne Spielereingaben (§0 Regel 4); Nachweis je Phase durch einen Autonomie-Test | [B] | Nutzervorgabe |
+| 2026-10-26 | Fehlertoleranter Tick: Exceptions aus Systemen und Event-Handlern werden gemeldet (`SimulationRunner.SystemFailed`), der Tick wird abgeschlossen, die Uhr rückt vor; `Validate`-Exceptions werden zu `CommandRejectedEvent` | [E] | Review PR #2 (nachgewiesener Doppel-Tick); Sandbox muss ohne Eingriff weiterlaufen |
+| 2026-10-26 | Start-Civs anlegen (`GameStartSettings.CivilizationCount`) gehört Civ: deren Zeilen in `RegisterPhaseServices` gründen die Civs an `FindStartLocations` (World) | [E] | Review PR #2; ohne Start-Civs entwickelt sich die Sandbox nicht |
+| 2026-10-26 | Nutzeranweisungen vom 2026-10-26 in `VISION.md` aufgenommen; Entscheidungen V1–V6 (mehrstufige Simulation, Chronik-Log, RunUntil, LLM nur in Application, realistische URP-Grafik, Namenssystem) | [E] | Erweitert bestehende Architektur, keine Neuplanung |
