@@ -9,11 +9,13 @@ namespace WorldBeyond.Simulation.Military
     /// </summary>
     public static class MilitaryModule
     {
-        public static CombatSystem Register(SimContext ctx, Action<ISimulationSystem> registerSystem, CombatEnvironment env = null)
+        public static CombatSystem Register(SimContext ctx, Action<ISimulationSystem> registerSystem, CombatEnvironment env = null,
+            ArmyEnvironment armyEnv = null)
         {
             if (ctx == null) throw new ArgumentNullException(nameof(ctx));
             if (registerSystem == null) throw new ArgumentNullException(nameof(registerSystem));
             env ??= new CombatEnvironment();
+            armyEnv ??= new ArmyEnvironment();
 
             var catalog = new MilitaryCatalog();
             MilitaryContent.RegisterM1(catalog, ctx.UnitTypes);
@@ -28,6 +30,16 @@ namespace WorldBeyond.Simulation.Military
             ctx.Register(system);
             ctx.Saveables.Add(system);
             registerSystem(system);
+
+            var armies = new ArmyRegistry(ctx.Units, catalog, ctx.Events, ctx.Clock, armyEnv);
+            var armyAI = new ArmyAISystem(armies, ctx.Units, catalog, system, env, armyEnv);
+            ctx.Register(armyEnv);
+            ctx.Register(armies);
+            ctx.Register<IArmyRegistry>(armies);
+            ctx.Register<IArmyQuery>(armies);
+            ctx.Register<AI.IArmyAI>(armyAI);
+            ctx.Saveables.Add(armies);
+            registerSystem(armyAI);
             return system;
         }
     }

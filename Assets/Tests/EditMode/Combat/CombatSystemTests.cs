@@ -24,7 +24,7 @@ namespace WorldBeyond.Tests.EditMode.Combat
         public UnitTypeId Rifleman;
         public UnitTypeId Civilian;
 
-        public CombatWorld(ulong seed = 7)
+        public CombatWorld(ulong seed = 7, System.Action<SimulationRunner> extraSystems = null)
         {
             var events = new SimEventBus();
             var content = new ContentRegistry();
@@ -36,6 +36,7 @@ namespace WorldBeyond.Tests.EditMode.Combat
             Runner.Register(new CommandProcessingSystem(Commands));
             Civilian = types.Register(new UnitTypeData { Key = "unit.settler", Role = UnitRole.Settler, MaxHp = 50f });
             Combat = MilitaryModule.Register(Ctx, Runner.Register, Env);
+            extraSystems?.Invoke(Runner);
             Ctx.Seal();
             types.TryGetByKey(MilitaryContent.RiflemanKey, out Rifleman);
             events.Subscribe<UnitDiedEvent>(e => Deaths.Add(e));
@@ -126,7 +127,7 @@ namespace WorldBeyond.Tests.EditMode.Combat
             w.Ticks(10);
             var h = w.Ctx.Units.Get(hunter);
             Assert.That(h.HasMoveTarget, Is.True);
-            Assert.That(h.MoveTargetX, Is.EqualTo(190f).Within(0.01f));
+            Assert.That(h.MoveTargetX, Is.EqualTo(190f).Within(5f), "Verfolgung (Kampf) oder Formation am Feind (Armee-KI)");
             Assert.That(w.Ctx.Units.Get(holder).HasMoveTarget, Is.False);
             Assert.That(w.Shots, Is.Empty);
         }
