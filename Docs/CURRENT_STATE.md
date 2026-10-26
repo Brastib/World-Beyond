@@ -56,4 +56,4 @@ Siehe SYSTEM_INTERFACES §0 (Status je Schnittstelle). Implementiert (1b, ungeme
 
 ## 7. Nächste Aufgabe
 
-K6 beheben (War), dann M1-Sandbox-Abnahmetest auf `integration/m1` (ohne Eingriff: Wachstum, Krieg, Kampf, Speichern/Laden), Unity-Lauf von `integration/m1`, danach Phasen-PRs der Reihe nach nach main.
+Unity-Lauf von `integration/m1` (DevOps), danach UI (M1.5) verdrahten: Beobachten, Zeitsteuerung, Speichern/Laden-Menü. Phasen-PRs einzeln nach main, jeweils nach Unity-Test.
