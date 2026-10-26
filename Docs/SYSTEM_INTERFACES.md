@@ -14,7 +14,7 @@ Namensraum-Präfix: `WorldBeyond.`
 | `EntityStore`, `SequentialIdAllocator`, `ContentRegistry` | Core | 1b | Integration | implementiert (1b), dotnet-Tests grün, nicht in Unity kompiliert |
 | `ISimulationSystem`, `SimContext`, `SimulationRunner`, `GameComposition`, `GameBootstrap` | Sim/App | 1b | Integration | implementiert (1b), dotnet-Tests grün außer `GameBootstrap` (braucht Unity), nicht in Unity kompiliert |
 | `IWorldCommand`, `ICommandQueue`, `CommandProcessingSystem` | Sim | 1b | Integration (Queue), Fachsysteme (Commands) | implementiert (1b), dotnet-Tests grün |
-| `ISaveable`, `SaveableRegistry`, `SimCoreSaveable` | Sim | 1b | Integration (Definition), jedes System (Implementierung) | implementiert (1b), dotnet-Tests grün |
+| `ISaveable`, `SaveableRegistry`, `SimCoreSaveable`, `ISaveReferenceCheck`, `LoadReport` | Sim | 1b | Integration (Definition), jedes System (Implementierung) | implementiert (1b), dotnet-Tests grün |
 | `ISaveLoadService`, `SaveGameData`, `SaveGameSerializer`, `SaveGameMigrator`, `ISaveMigration`, `ISaveReferenceCheck`, `LoadReport` | App/Sim | 1b Gerüst, 7 vollständig | Save (Phase 7); Migrationsschritte und `ISaveReferenceCheck` implementiert das jeweilige Fachsystem | geplant |
 | `IUnitStore`, `IUnitQuery`, `UnitStore`, `UnitTypeData`, `UnitTypeRegistry` | Sim | 1b | Integration (Store); Civ/Military tragen Typen ein | implementiert (1b), dotnet-Tests grün |
 | `IWorldGrid`, `IWorldQuery`, `IWorldGenerator`, Koordinaten | Sim | 2 | World | Signaturen präzisiert (§4), kein Code |
