@@ -1,6 +1,7 @@
 using System;
 using WorldBeyond.Core;
 using WorldBeyond.Simulation;
+using WorldBeyond.Simulation.Civilizations;
 using WorldBeyond.Simulation.Commands;
 using WorldBeyond.Simulation.Save;
 using WorldBeyond.Simulation.Units;
@@ -95,6 +96,11 @@ namespace WorldBeyond.Application
             ctx.Saveables.Add(world);
             runner.Register(new MovementSystem(world, pathfinder, spatial));
             runner.Register(new WorldEventsSystem(world));
+
+            // Civ (Phase 3): Zivilisationen, Siedlungen, Territorium, Wirtschaft, Forschung, Rekrutierung, Civ-KI.
+            // Neue Welt startet mit CivilizationCount Zivilisationen, die sich ohne Eingriff entwickeln (Sandbox).
+            var civ = CivModule.Install(ctx, runner.Register);
+            civ.SpawnInitialCivilizations(settings.CivilizationCount, settings.Seed);
         }
     }
 }
