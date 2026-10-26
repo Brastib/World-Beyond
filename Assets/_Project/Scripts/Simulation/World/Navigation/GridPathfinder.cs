@@ -9,7 +9,9 @@ namespace WorldBeyond.Simulation.World.Navigation
     //   Budget überschreitet, wird im nächsten Tick fortgesetzt (eine aktive Suche, Zustand in wiederverwendeten Arrays).
     // - Regionen: Ziele in einer anderen Zusammenhangskomponente werden ohne Suche sofort als NotFound gemeldet.
     // - Ändert sich die Welt während einer Suche (NavigationVersion), startet die Suche neu.
-    // Pfadanfragen werden nicht gespeichert (ARCHITECTURE §11): Einheiten fordern nach dem Laden neu an.
+    // - Blockiertes Ziel (z. B. Gebäude): Ziel wird auf die nächste begehbare Nachbarkachel im selben Gebiet verlegt.
+    // - Speichern: das MovementSystem sichert die wartenden Anfragen in Reihenfolge samt Fortschritt der aktiven Suche;
+    //   RestoreQueue spielt die aktive Suche bis zum selben Stand nach, damit nach dem Laden identisch weitergerechnet wird.
     public sealed class GridPathfinder : IPathfinder
     {
         const float Sqrt2 = 1.41421356f;
@@ -42,6 +44,7 @@ namespace WorldBeyond.Simulation.World.Navigation
         Request _active;
         int _activeGoal;
         int _activeNavVersion;
+        int _activeExpansions;
 
         public int PendingCount => _pending.Count + (_active != null ? 1 : 0);
 
@@ -72,11 +75,97 @@ namespace WorldBeyond.Simulation.World.Navigation
 
             if (!_world.InBounds(fromX, fromY) || !_world.InBounds(toX, toY))
                 r.Status = PathStatus.Invalid;
-            else if (!AreConnected(fromX, fromY, toX, toY, mc))
+            else if (!ResolveGoal(r))
+                r.Status = PathStatus.NotFound;
+            else if (!AreConnected(fromX, fromY, r.ToX, r.ToY, mc))
                 r.Status = PathStatus.NotFound;
             else
                 _pending.Enqueue(r);
             return r.Id;
+        }
+
+        // Liegt das Ziel auf einer gesperrten Kachel, wird die erste begehbare Nachbarkachel (feste Reihenfolge) im
+        // Gebiet des Starts gewählt. Der Pfad endet dann dort; der Aufrufer erkennt das an der letzten Wegpunktkachel.
+        bool ResolveGoal(Request r)
+        {
+            if (_world.IsWalkable(r.ToX, r.ToY, r.Mc))
+                return true;
+            int startRegion = _regions.RegionOfStart(r.FromX, r.FromY, r.Mc);
+            if (startRegion == 0)
+                return false;
+            for (int ring = 1; ring <= 2; ring++)
+            {
+                for (int dy = -ring; dy <= ring; dy++)
+                {
+                    for (int dx = -ring; dx <= ring; dx++)
+                    {
+                        if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != ring)
+                            continue;
+                        int nx = r.ToX + dx, ny = r.ToY + dy;
+                        if (_regions.RegionOf(nx, ny, r.Mc) == startRegion)
+                        {
+                            r.ToX = nx;
+                            r.ToY = ny;
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Für das Speichern: Anfrage-IDs in Abarbeitungsreihenfolge (aktive zuerst) und Fortschritt der aktiven Suche.
+        internal void GetQueueOrder(List<int> ids, out int activeExpansions)
+        {
+            ids.Clear();
+            activeExpansions = 0;
+            if (_active != null && _requests.ContainsKey(_active.Id))
+            {
+                ids.Add(_active.Id);
+                activeExpansions = _activeExpansions;
+            }
+            foreach (Request r in _pending)
+            {
+                if (r.Status == PathStatus.Pending && _requests.ContainsKey(r.Id) && r != _active)
+                    ids.Add(r.Id);
+            }
+        }
+
+        internal bool TryGetRequest(int id, out int fromX, out int fromY, out int toX, out int toY, out MovementClass mc)
+        {
+            fromX = fromY = toX = toY = 0;
+            mc = MovementClass.Foot;
+            if (!_requests.TryGetValue(id, out Request r))
+                return false;
+            fromX = r.FromX; fromY = r.FromY; toX = r.ToX; toY = r.ToY; mc = r.Mc;
+            return true;
+        }
+
+        // Nach dem Laden: Anfragen exakt in gespeicherter Reihenfolge einreihen (ohne erneute Prüfungen, die Ziele sind
+        // bereits aufgelöst) und die erste bis zum gespeicherten Fortschritt nachrechnen. Liefert die neuen IDs.
+        internal void RestoreQueue(IReadOnlyList<(int fromX, int fromY, int toX, int toY, MovementClass mc)> queue, int activeExpansions, List<int> newIds)
+        {
+            _pending.Clear();
+            _requests.Clear();
+            _active = null;
+            newIds.Clear();
+            foreach (var q in queue)
+            {
+                var r = new Request { Id = _nextId++, FromX = q.fromX, FromY = q.fromY, ToX = q.toX, ToY = q.toY, Mc = q.mc, Status = PathStatus.Pending };
+                if (_nextId == int.MaxValue)
+                    _nextId = 1;
+                _requests[r.Id] = r;
+                _pending.Enqueue(r);
+                newIds.Add(r.Id);
+            }
+            if (activeExpansions > 0 && _pending.Count > 0)
+            {
+                Request first = _pending.Dequeue();
+                Begin(first);
+                int done = 0;
+                while (_active == first && done < activeExpansions)
+                    done += Step(activeExpansions - done);
+            }
         }
 
         public PathStatus TryGetPath(int requestId, List<(int x, int y)> path)
@@ -206,6 +295,7 @@ namespace WorldBeyond.Simulation.World.Navigation
             _open.Clear();
             _active = r;
             _activeNavVersion = _world.NavigationVersion;
+            _activeExpansions = 0;
             int w = _world.Width;
             int start = r.FromY * w + r.FromX;
             _activeGoal = r.ToY * w + r.ToX;
@@ -235,6 +325,7 @@ namespace WorldBeyond.Simulation.World.Navigation
                     continue;
                 _closedStamp[cur] = _stamp;
                 used++;
+                _activeExpansions++;
                 TotalExpansions++;
 
                 if (cur == _activeGoal)
