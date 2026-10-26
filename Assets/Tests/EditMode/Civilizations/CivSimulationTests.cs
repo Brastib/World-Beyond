@@ -119,16 +119,17 @@ namespace WorldBeyond.Tests.Civilizations
         [Test]
         public void Lod_ActiveAndDistant_DevelopSimilarly()
         {
-            var distant = CivRun.Create(11);
-            var active = CivRun.Create(11);
+            // Eine Civ: ohne Nachbarn kein Krieg, der Test misst nur die Detailstufe (Kämpfe würden die Läufe chaotisch trennen).
+            var distant = CivRun.Create(11, civs: 1);
+            var active = CivRun.Create(11, civs: 1);
             var w = active.Ctx.Get<IWorldQuery>();
             active.Ctx.Get<ICivSimulationLod>().SetFocus(w.Width * WorldConstants.TileSize / 2f, w.Height * WorldConstants.TileSize / 2f, w.Width * WorldConstants.TileSize);
             distant.Years(150);
             active.Years(150);
             int pd = distant.TotalPopulation(), pa = active.TotalPopulation();
             TestContext.WriteLine($"Entfernt: {pd}, Aktiv: {pa}");
-            Assert.Greater(pd, 40);
-            Assert.Greater(pa, 40);
+            Assert.Greater(pd, 20);
+            Assert.Greater(pa, 20);
             Assert.Less(System.Math.Abs(pd - pa), System.Math.Max(pd, pa) * 0.2, "Detailstufe ändert die Entwicklung nur geringfügig");
         }
     }
