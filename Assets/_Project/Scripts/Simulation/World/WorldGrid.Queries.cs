@@ -384,9 +384,39 @@ namespace WorldBeyond.Simulation.World
             }
             SortDescending(candidates);
 
+            // Sandbox: Zivilisationen sollen sich ohne Spielereingriff begegnen können. Deshalb zuerst alle Starts
+            // auf demselben zu Fuß zusammenhängenden Landstück suchen (größtes zuerst); erst wenn keines genügend
+            // Platz hat, über alle Landstücke verteilen.
+            var regions = new Navigation.NavRegions(this);
+            var regionSize = new Dictionary<int, int>();
+            foreach (TileScore c in candidates)
+            {
+                int r = regions.RegionOf(c.X, c.Y, MovementClass.Foot);
+                regionSize[r] = regionSize.TryGetValue(r, out int n) ? n + 1 : 1;
+            }
+            var order = new List<KeyValuePair<int, int>>(regionSize);
+            order.Sort((a, b) => a.Value != b.Value ? b.Value.CompareTo(a.Value) : a.Key.CompareTo(b.Key));
+            foreach (var region in order)
+            {
+                if (region.Key == 0 || region.Value < count)
+                    continue;
+                PickSpread(candidates, count, minDistanceTiles, results, regions, region.Key);
+                if (results.Count >= count)
+                    return results.Count;
+                results.Clear();
+            }
+            PickSpread(candidates, count, minDistanceTiles, results, null, 0);
+            return results.Count;
+        }
+
+        static void PickSpread(List<TileScore> candidates, int count, int minDistanceTiles, List<TileScore> results,
+            Navigation.NavRegions regions, int region)
+        {
             int minD2 = minDistanceTiles * minDistanceTiles;
             foreach (TileScore c in candidates)
             {
+                if (regions != null && regions.RegionOf(c.X, c.Y, MovementClass.Foot) != region)
+                    continue;
                 bool farEnough = true;
                 foreach (TileScore r in results)
                 {
@@ -403,7 +433,6 @@ namespace WorldBeyond.Simulation.World
                 if (results.Count >= count)
                     break;
             }
-            return results.Count;
         }
 
         float ScoreStartArea(int cx, int cy, int radius)
