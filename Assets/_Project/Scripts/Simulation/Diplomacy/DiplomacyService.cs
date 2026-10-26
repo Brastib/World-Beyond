@@ -126,11 +126,24 @@ namespace WorldBeyond.Simulation.Diplomacy
             return 0f;
         }
 
-        // Nach einem Frieden ist der angestaute Grenzgroll zwischen den Parteien abgebaut.
+        // Nach einem Frieden ist der angestaute Grenzgroll abgebaut, und der Vertrag gleicht die bestehende
+        // Grenz- und Ressourcenreibung aus. Ein neuer Kriegsgrund muss erst wieder entstehen (Ausgleich klingt
+        // über WarWearinessTicks linear ab, Groll wächst nach).
         void ClearGrievance(int a, int b)
         {
             SetPersistentModifier(a, b, RelationReason.BorderGrievance, 0f);
             SetPersistentModifier(b, a, RelationReason.BorderGrievance, 0f);
+            Reconcile(a, b);
+            Reconcile(b, a);
+        }
+
+        void Reconcile(int from, int to)
+        {
+            float standing = GetPersistentValue(from, to, RelationReason.BorderFriction)
+                           + GetPersistentValue(from, to, RelationReason.ResourceCompetition);
+            if (standing >= 0f) return;
+            float seconds = Math.Max(1f, Settings.WarWearinessTicks / (float)SimClock.TicksPerSecond);
+            AddModifier(from, to, RelationReason.PeaceSettlement, -standing, -standing / seconds);
         }
 
         // ================= Status =================
@@ -479,6 +492,21 @@ namespace WorldBeyond.Simulation.Diplomacy
             if (accept <= 0f && dominance > 0.5f) { reason = "Der Empfänger ist klar überlegen und noch nicht kriegsmüde."; return accept; }
             if (accept <= 0f) reason = "Der Kriegsverlauf spricht aus Sicht des Empfängers gegen diesen Frieden.";
             return accept;
+        }
+
+        // 0..1: Kriegsmüdigkeit von civ gegenüber target aus beendeten Kriegen (WarHistory, also Teil des Spielstands).
+        public float WarWeariness(int civ, int target)
+        {
+            float sum = 0f;
+            foreach (var w in WarHistory)
+            {
+                if (w.EndTick < 0 || w.EndReason != WarEndReason.Peace) continue;
+                var a = w.SideOf(civ); var b = w.SideOf(target);
+                if (a == WarSide.None || b == WarSide.None || a == b) continue;
+                float f = 1f - (Now - w.EndTick) / (float)Math.Max(1L, Settings.WarWearinessTicks);
+                if (f > 0f) sum += Settings.WarWearinessPerWar * Math.Min(1f, f);
+            }
+            return Clamp01(sum);
         }
 
         // 0..1: militärische Überlegenheit der Seite des Empfängers, abgeschwächt durch dessen Erschöpfung.
