@@ -23,9 +23,9 @@ namespace WorldBeyond.Simulation.World
     // Bewegt alle Einheiten mit Bewegungsziel (IUnitStore.SetMoveTarget) über das Gelände.
     // Ablauf je Einheit: Pfad anfordern (Budget pro Tick) → Wegpunkte mit MotionIntegrator abfahren
     // (Wenderate, Beschleunigung, Geländekosten) → am Ziel Bewegungsziel löschen und UnitArrivedEvent senden.
-    // Hält den SpatialHash für alle lebenden Einheiten aktuell. Pfade werden nicht gespeichert:
-    // nach dem Laden fordert jede Einheit mit Bewegungsziel ihren Pfad neu an (ARCHITECTURE §11).
-    public sealed class MovementSystem : ISimulationSystem
+    // Hält den SpatialHash für alle lebenden Einheiten aktuell. Agenten (Ziel, Wegpunkte) und die Pfadanfragen-
+    // Warteschlange werden gespeichert (MovementSystem.Save.cs), damit die Simulation nach dem Laden identisch weiterläuft (M1.6).
+    public sealed partial class MovementSystem : ISimulationSystem
     {
         public const int DefaultPathBudget = 20000;
         const float SeparationStrength = 0.5f;
@@ -83,13 +83,18 @@ namespace WorldBeyond.Simulation.World
 
             units.CopyAliveIds(_ids);
             _tracked.Clear();
+            // Erst alle neuen Einheiten eintragen, damit die Trennung im selben Tick alle Nachbarn sieht
+            // (auch direkt nach dem Laden, wenn der Raumindex leer ist).
+            foreach (EntityId id in _ids)
+            {
+                if (!_spatial.Contains(id) && units.TryGet(id, out UnitView v0))
+                    _spatial.Insert(id, v0.X, v0.Z);
+            }
             foreach (EntityId id in _ids)
             {
                 if (!units.TryGet(id, out UnitView view))
                     continue;
                 _tracked.Add(id);
-                if (!_spatial.Contains(id))
-                    _spatial.Insert(id, view.X, view.Z);
 
                 if (!view.HasMoveTarget || view.State == UnitState.Dead)
                 {
@@ -187,8 +192,7 @@ namespace WorldBeyond.Simulation.World
             float wx, wz;
             if (final)
             {
-                wx = agent.TargetX;
-                wz = agent.TargetZ;
+                FinalPoint(agent, out wx, out wz);
             }
             else
             {
@@ -231,6 +235,25 @@ namespace WorldBeyond.Simulation.World
             agent.SeenTick = -1;
         }
 
+        // Endpunkt: das Bewegungsziel; wurde das Ziel auf eine Nachbarkachel verlegt (Ziel blockiert, z. B. Gebäude),
+        // der dem Ziel nächstgelegene Punkt dieser Kachel.
+        static void FinalPoint(Agent agent, out float x, out float z)
+        {
+            x = agent.TargetX;
+            z = agent.TargetZ;
+            if (agent.Waypoints.Count == 0)
+                return;
+            var last = agent.Waypoints[agent.Waypoints.Count - 1];
+            var (tx, ty) = WorldCoords.WorldToTile(x, z);
+            if (tx == last.x && ty == last.y)
+                return;
+            const float inset = 0.3f;
+            float minX = last.x * WorldConstants.TileSize + inset, maxX = (last.x + 1) * WorldConstants.TileSize - inset;
+            float minZ = last.y * WorldConstants.TileSize + inset, maxZ = (last.y + 1) * WorldConstants.TileSize - inset;
+            x = x < minX ? minX : (x > maxX ? maxX : x);
+            z = z < minZ ? minZ : (z > maxZ ? maxZ : z);
+        }
+
         bool RemainingPathWalkable(Agent agent, MovementClass mc)
         {
             for (int i = Math.Max(1, agent.Next); i < agent.Waypoints.Count; i++)
@@ -248,6 +271,8 @@ namespace WorldBeyond.Simulation.World
         {
             float range = Math.Max(0.2f, radius) * 2f;
             _spatial.QueryRadius(s.X, s.Z, range, _neighbors);
+            // Feste Reihenfolge, unabhängig von der Einfügereihenfolge im Raumindex (Gleitkomma-Summe deterministisch).
+            _neighbors.Sort((a, b) => a.Index != b.Index ? a.Index.CompareTo(b.Index) : a.Generation.CompareTo(b.Generation));
             float pushX = 0f, pushZ = 0f;
             foreach (EntityId other in _neighbors)
             {
