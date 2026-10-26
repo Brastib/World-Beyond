@@ -420,3 +420,24 @@ namespace WorldBeyond.Tests
         }
     }
 }
+
+namespace WorldBeyond.Tests
+{
+    public class UnitContentCheckTests
+    {
+        [Test]
+        public void CollectContentKeys_ListsEveryUnitTypeKey()
+        {
+            var comp = WorldBeyond.Application.GameComposition.Create(null, TestContent.Setup);
+            var ctx = comp.Context;
+            ctx.UnitTypes.TryGetByKey("unit.settler", out var s);
+            ctx.UnitTypes.TryGetByKey("unit.rifleman", out var r);
+            ctx.Units.Spawn(s, 1, 0, 0);
+            ctx.Units.Spawn(r, 1, 0, 0);
+            var store = (WorldBeyond.Simulation.ISaveable)ctx.Units;
+            var keys = new List<(WorldBeyond.Core.ContentKind, string)>();
+            ((WorldBeyond.Simulation.ISaveContentCheck)ctx.Units).CollectContentKeys(store.CaptureState(), keys);
+            CollectionAssert.AreEquivalent(new[] { (WorldBeyond.Core.ContentKind.Unit, "unit.settler"), (WorldBeyond.Core.ContentKind.Unit, "unit.rifleman") }, keys);
+        }
+    }
+}

@@ -8,7 +8,7 @@ namespace WorldBeyond.Simulation.Units
     /// Dichte Arrays, indiziert über EntityId.Index. Speichert sich selbst als Sektion "units";
     /// Einheitentypen stehen im Spielstand als Key, nie als Laufzeit-int.
     /// </summary>
-    public sealed class UnitStore : IUnitStore, ISaveable
+    public sealed class UnitStore : IUnitStore, ISaveable, ISaveContentCheck
     {
         public const string Key = "units";
 
@@ -178,6 +178,13 @@ namespace WorldBeyond.Simulation.Units
             }
             state.Units = units.ToArray();
             return state;
+        }
+
+        public void CollectContentKeys(object dto, ICollection<(ContentKind kind, string key)> keys)
+        {
+            if (!(dto is UnitStoreState s) || s.Units == null) return;
+            foreach (var r in s.Units)
+                if (r != null) keys.Add((ContentKind.Unit, r.TypeKey));
         }
 
         public bool TryRestoreState(object dto, out string error)
