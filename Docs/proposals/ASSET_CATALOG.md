@@ -96,7 +96,7 @@ Pflanzen-Gattungen gesamt (§2.2–2.7): **104** (Etappe P2). Ziel P3: 250–400
 
 ### 2.2 Bäume (Etappe P2)
 
-Biome laut `BiomeType`; **Tropen** und **Mittelmeer** gibt es in der Simulation noch nicht (Anfrage an World).
+Biome laut `BiomeType`. „Tropen“ = `TropicalForest` (9), „Mittelmeer“ = `Mediterranean` (10), seit 2026-10-26 in der Simulation (World, 24bd411 auf `integration/m1`).
 
 | ID | Name | Wuchsform | Biome | Status |
 |---|---|---|---|---|

@@ -27,13 +27,15 @@ Diese Datei ändert **keine** gemeinsame Datei. Wo gemeinsame Dateien angepasst 
 | Vegetationsdarstellung | `VegetationLayer`: GPU-Instancing pro Chunk, 3 Arten (Nadel, Laub, Fels), Platzierung deterministisch per Hash aus Kachel + Seed, rein darstellend; auf brennenden/verbrannten Kacheln steht **nichts** | `Presentation/WorldView/VegetationLayer.cs` (World) |
 | Vegetation in der Simulation | nur `TerrainType.Forest` + `ResourceType.Wood`-Menge je Kachel; keine Arten, kein Alter, keine Gesundheit | `Simulation/World/WorldTypes.cs`, `Generation/Climate.cs` |
 | Feuer/Zerstörung in der Simulation | Flags `Burning`, `Scorched`, `Crater`, `Wreck` existieren; **kein System** setzt oder verbreitet sie | `WorldTypes.cs` (TileFlags) |
-| Biome | 9: Ocean, Coast, Temperate, Boreal, Tundra, Desert, Savanna, Wetland, Alpine. **Kein** Tropenwald, **kein** Mittelmeerklima | `WorldTypes.cs` (BiomeType) |
+| Biome | 9: Ocean, Coast, Temperate, Boreal, Tundra, Desert, Savanna, Wetland, Alpine. **Kein** Tropenwald, **kein** Mittelmeerklima. *Nachtrag 2026-10-26:* World hat `TropicalForest` (9) und `Mediterranean` (10) angehängt (24bd411). | `WorldTypes.cs` (BiomeType) |
 | Wetter, Wind, Blitz, Tsunami | existiert nirgends; Umweltfelder sind VISION V9 (Stufe M5) | VISION §3/§4 |
 | Gebäude, Einheiten | Inhalte definiert (19 Gebäude, 3 Zivil-Einheiten, 1 Soldat), **keine Darstellung** | `CivContent.cs`, `MilitaryCatalog.cs` auf `integration/m1` |
 
 Die Ersatzmodelle sind genau das, was der Nutzer als „Vierecke/Minecraft“ beschreibt. Sie sind als Platzhalter in Ordnung (Nutzerpunkt 6), stehen aber noch nicht im Platzhalter-Register (ASSET_CREDITS §3). Der Katalog führt sie jetzt als P-001 bis P-005.
 
 ## 2. Konflikte mit bestehenden Regeln (offengelegt)
+
+**Stand 2026-10-26 16:16 UTC: KA1–KA4 vom Integrations-Thread übernommen** (`integration/m1` @70a2d99, PR #10: PROJECT_MASTER §8.1, UI_STYLE_GUIDE A1/A3 mit LOD-Kette, INTEGRATION §3 mit Besitzern „Art/Assets“ und „Umwelt“, ASSET_CREDITS §3 P-001–P-005 und §4 Link auf diesen Katalog). Die Tabelle bleibt als Begründung stehen.
 
 | # | Konflikt | Vorschlag | Wer entscheidet |
 |---|---|---|---|
@@ -201,7 +203,7 @@ Ehrlich: Es gibt grob 350 000–400 000 beschriebene Pflanzenarten (häufig gena
 | P3 | Erweiterung nach Klimazonen (Köppen) und Epochen: Nutzpflanzen, Zierpflanzen, Wasserpflanzen, fehlende Biome (Tropen, Mittelmeer) | ca. 250–400 Gattungen | große Vielfalt, Landwirtschaft je Kultur |
 | P4 | Arten als Datensätze in einer Pflanzen-Datenbank (Gattungs-Preset + Abweichungen) | beliebig erweiterbar, Tausende möglich | „jede Pflanze“ im Sinne von: jede Art kann eingetragen werden |
 
-Voraussetzung in der Simulation: Biome **Tropischer Regenwald** und **Mittelmeer/Hartlaub** fehlen (Anfrage an World, Enum nur anhängen).
+Voraussetzung in der Simulation: Biome **Tropischer Regenwald** und **Mittelmeer/Hartlaub**. Erledigt am 2026-10-26 durch World (`TropicalForest` = 9, `Mediterranean` = 10, 24bd411).
 
 ## 8. Etappenplan (Reihenfolge, je Etappe eigener Test)
 
@@ -235,8 +237,8 @@ Nach VISION liegt die Umweltsimulation eigentlich in M5. Vorschlag: Vegetation/B
 
 **Tests:** keine (reine Dokumentation). Code-Befunde in §1 durch Lesen der genannten Dateien geprüft.
 
-**Offene Probleme:** KA1–KA4; MakeHuman-Lizenz ungeprüft; Texturquellen-Lizenzen je Datei noch zu prüfen; Polygon-Budgets nur geschätzt.
+**Offene Probleme:** KA1–KA4 übernommen (70a2d99); offen bleibt die Zustimmung des Nutzers, Umwelt (A3–A5) vor M5 einzuplanen; MakeHuman-Lizenz ungeprüft; Texturquellen-Lizenzen je Datei noch zu prüfen; Polygon-Budgets nur geschätzt.
 
-**Nächste Schritte:** Integration übernimmt KA1/KA2 in PROJECT_MASTER §8.1 / UI_STYLE_GUIDE A1, legt Besitzer „Umwelt“ und „Art/Assets“ in INTEGRATION §3 an und verlinkt den Katalog aus ASSET_CREDITS §4; World trägt P-001–P-005 ins Platzhalter-Register ein (oder Integration). Nach M1-Test: Etappe A1.
+**Nächste Schritte:** (erledigt: Regeln, Besitzer, Platzhalter-Register, Biome.) Nutzer entscheidet über die frühere Umwelt-Etappe. Nach M1-Test: Etappe A1.
 
 **Dokumentation:** PROJECT_MASTER §8.1, UI_STYLE_GUIDE A1/A3, ARCHITECTURE §16 (Budgets), INTEGRATION §3, ASSET_CREDITS §3/§4, VISION §4 (Reihenfolge Umwelt), CURRENT_STATE.
