@@ -14,7 +14,7 @@ Namensraum-Präfix: `WorldBeyond.`
 | `EntityStore`, `SequentialIdAllocator`, `ContentRegistry` | Core | 1b | Integration | implementiert (1b), dotnet-Tests grün, nicht in Unity kompiliert |
 | `ISimulationSystem`, `SimContext`, `SimulationRunner`, `GameComposition`, `GameBootstrap` | Sim/App | 1b | Integration | implementiert (1b), dotnet-Tests grün außer `GameBootstrap` (braucht Unity), nicht in Unity kompiliert |
 | `IWorldCommand`, `ICommandQueue`, `CommandProcessingSystem` | Sim | 1b | Integration (Queue), Fachsysteme (Commands) | implementiert (1b), dotnet-Tests grün |
-| `ISaveable`, `SaveableRegistry`, `SimCoreSaveable` | Sim | 1b | Integration (Definition), jedes System (Implementierung) | implementiert (1b), dotnet-Tests grün |
+| `ISaveable`, `SaveableRegistry`, `SimCoreSaveable`, `ISaveReferenceCheck`, `ISaveContentCheck`, `LoadReport` | Sim | 1b | Integration (Definition), jedes System (Implementierung) | implementiert (1b), dotnet-Tests grün |
 | `ISaveLoadService`, `SaveGameData`, `SaveGameSerializer`, `SaveGameMigrator`, `ISaveMigration`, `ISaveReferenceCheck`, `LoadReport` | App/Sim | 1b Gerüst, 7 vollständig | Save (Phase 7); Migrationsschritte und `ISaveReferenceCheck` implementiert das jeweilige Fachsystem | geplant |
 | `IUnitStore`, `IUnitQuery`, `UnitStore`, `UnitTypeData`, `UnitTypeRegistry` | Sim | 1b | Integration (Store); Civ/Military tragen Typen ein | implementiert (1b), dotnet-Tests grün |
 | `IWorldGrid`, `IWorldQuery`, `IWorldGenerator`, Koordinaten | Sim | 2 | World | Signaturen präzisiert (§4), kein Code |
@@ -667,6 +667,12 @@ namespace WorldBeyond.Simulation
         bool TryRestoreState(object dto, out string error);  // dto ist bereits migriert und vom Typ StateType; false = harte Inkonsistenz → LoadResult Corrupted
     }
 
+    // Optional, für ISaveable mit Inhaltsschlüsseln. Fehlende Schlüssel → MissingContent statt Corrupted. UnitStore implementiert es.
+    public interface ISaveContentCheck
+    {
+        void CollectContentKeys(object dto, System.Collections.Generic.ICollection<(ContentKind kind, string key)> keys);
+    }
+
     // Optional, für Systeme mit Querverweisen. Wird nach dem Einspielen ALLER Sektionen aufgerufen.
     // Weiche Fehler: Rückfall anwenden (ARCHITECTURE §11.1 Regel 6) und als Warnung melden.
     // Harte Fehler (Datenmodell widersprüchlich): als Fehler melden → Laden schlägt fehl.
@@ -687,7 +693,7 @@ namespace WorldBeyond.Simulation
 
 namespace WorldBeyond.Application.Save
 {
-    public enum SaveLoadError { None = 0, NotFound = 1, IoError = 2, Corrupted = 3, TooNew = 4, Unsupported = 5, MissingContent = 6, InvalidReferences = 7 }
+    public enum SaveLoadError { None = 0, NotFound = 1, IoError = 2, Corrupted = 3, TooNew = 4, Unsupported = 5, MissingContent = 6, InvalidReferences = 7, CaptureFailed = 8 }
 
     public sealed class SaveGameData                  // Wurzel-Datenmodell
     {
