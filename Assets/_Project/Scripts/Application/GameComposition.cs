@@ -4,6 +4,9 @@ using WorldBeyond.Simulation;
 using WorldBeyond.Simulation.Commands;
 using WorldBeyond.Simulation.Save;
 using WorldBeyond.Simulation.Units;
+using WorldBeyond.Simulation.World;
+using WorldBeyond.Simulation.World.Generation;
+using WorldBeyond.Simulation.World.Navigation;
 
 namespace WorldBeyond.Application
 {
@@ -75,6 +78,23 @@ namespace WorldBeyond.Application
         /// </summary>
         private static void RegisterPhaseServices(SimContext ctx, SimulationRunner runner, GameStartSettings settings)
         {
+            // World (Phase 2): eine Welt, aus Seed und Größe der Startparameter erzeugt.
+            var world = new WorldGenerator().Generate(new WorldGenSettings
+            {
+                Seed = settings.Seed,
+                Width = settings.WorldWidth,
+                Height = settings.WorldHeight,
+            });
+            world.AttachEvents(ctx.Events);
+            var pathfinder = new GridPathfinder(world);
+            var spatial = new SpatialHash(world.Width * WorldConstants.TileSize, world.Height * WorldConstants.TileSize);
+            ctx.Register<IWorldGrid>(world);
+            ctx.Register<IWorldQuery>(world);
+            ctx.Register<IPathfinder>(pathfinder);
+            ctx.Register<ISpatialIndex>(spatial);
+            ctx.Saveables.Add(world);
+            runner.Register(new MovementSystem(world, pathfinder, spatial));
+            runner.Register(new WorldEventsSystem(world));
         }
     }
 }
