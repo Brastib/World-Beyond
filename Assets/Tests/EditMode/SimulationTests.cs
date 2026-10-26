@@ -335,7 +335,9 @@ namespace WorldBeyond.Tests
                 loadOrder.Add(s.SaveKey);
                 Assert.IsTrue(s.TryRestoreState(captured[s.SaveKey], out var err), err);
             }
-            CollectionAssert.AreEqual(new[] { "core", "units" }, loadOrder);
+            // Fachphasen fügen eigene Sektionen hinzu (z. B. "world"); geprüft wird nur die Fundament-Reihenfolge.
+            Assert.AreEqual("core", loadOrder[0], "core wird zuerst eingespielt");
+            Assert.Less(loadOrder.IndexOf("core"), loadOrder.IndexOf("units"));
 
             var rc = b.Context;
             Assert.AreEqual(7, rc.Clock.Tick);
