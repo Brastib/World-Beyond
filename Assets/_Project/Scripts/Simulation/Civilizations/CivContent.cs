@@ -226,19 +226,21 @@ namespace WorldBeyond.Simulation.Civilizations
             CaravanType = Unit(unitTypes, new UnitTypeData { Key = UnitCaravan, DisplayName = "Karawane", Role = UnitRole.Trader, Movement = MovementClass.Foot, MaxHp = 120f, MaxSpeed = 1.6f, Radius = 0.8f });
 
             // ---- Technologien (Frühzeit → Moderne) ----
-            T("tech.fishing", "Fischfang", Epoch.Primitive, 25);
-            T("tech.masonry", "Steinbearbeitung", Epoch.Primitive, 30);
-            T("tech.writing", "Schrift", Epoch.Ancient, 60, "tech.masonry");
-            T("tech.mining", "Bergbau", Epoch.Ancient, 70, "tech.masonry");
-            T("tech.metallurgy", "Metallurgie", Epoch.Ancient, 110, "tech.mining");
-            T("tech.construction", "Bauwesen", Epoch.Medieval, 180, "tech.writing", "tech.masonry");
-            T("tech.toolmaking", "Werkzeugbau", Epoch.Medieval, 170, "tech.metallurgy");
-            T("tech.crop_rotation", "Fruchtwechsel", Epoch.Medieval, 200, "tech.writing").FoodYieldBonus = 0.3f;
-            var ind = T("tech.industrialization", "Industrialisierung", Epoch.Industrial, 450, "tech.construction", "tech.toolmaking");
+            // Kosten in Forschungspunkten; abgestimmt auf realistische Zeiträume (Nutzervorgabe VISION V7):
+            // Frühzeit einige Jahrhunderte, Antike und Mittelalter je rund ein Jahrtausend (Test CivTechPaceTests).
+            T("tech.fishing", "Fischfang", Epoch.Primitive, 120);
+            T("tech.masonry", "Steinbearbeitung", Epoch.Primitive, 200);
+            T("tech.writing", "Schrift", Epoch.Ancient, 2500, "tech.masonry");
+            T("tech.mining", "Bergbau", Epoch.Ancient, 3000, "tech.masonry");
+            T("tech.metallurgy", "Metallurgie", Epoch.Ancient, 4500, "tech.mining");
+            T("tech.construction", "Bauwesen", Epoch.Medieval, 9000, "tech.writing", "tech.masonry");
+            T("tech.toolmaking", "Werkzeugbau", Epoch.Medieval, 8000, "tech.metallurgy");
+            T("tech.crop_rotation", "Fruchtwechsel", Epoch.Medieval, 10000, "tech.writing").FoodYieldBonus = 0.3f;
+            var ind = T("tech.industrialization", "Industrialisierung", Epoch.Industrial, 12000, "tech.construction", "tech.toolmaking");
             ind.ProductionBonus = 0.4f;
-            T("tech.medicine", "Medizin", Epoch.Industrial, 400, "tech.writing", "tech.construction").DeathRateReduction = 0.35f;
-            T("tech.combustion", "Verbrennungsmotor", Epoch.Modern, 900, "tech.industrialization");
-            T("tech.modern_warfare", "Moderne Kriegsführung", Epoch.Modern, 1100, "tech.combustion");
+            T("tech.medicine", "Medizin", Epoch.Industrial, 10000, "tech.writing", "tech.construction").DeathRateReduction = 0.35f;
+            T("tech.combustion", "Verbrennungsmotor", Epoch.Modern, 15000, "tech.industrialization");
+            T("tech.modern_warfare", "Moderne Kriegsführung", Epoch.Modern, 18000, "tech.combustion");
             Techs.Resolve();
 
             // ---- Gebäude ----
@@ -261,7 +263,7 @@ namespace WorldBeyond.Simulation.Civilizations
             B(new BuildingTypeData { Key = "building.oil_well", DisplayName = "Ölförderung", Category = BuildingCategory.Production, BuildWorkYears = 4f, Cost = new ResourceCost { Metal = 30, Tools = 10 }, Job = JobKind.OilWorker, JobSlots = 3, Produces = ResourceType.Oil, OutputPerWorkerYear = 3f, HarvestFrom = ResourceType.Oil, CatchmentRadius = 6, RequiredTechKey = "tech.combustion" });
             B(new BuildingTypeData { Key = "building.storehouse", DisplayName = "Lagerhaus", Category = BuildingCategory.Storage, BuildWorkYears = 1.5f, Cost = new ResourceCost { Wood = 25 }, Storage = 250 });
             B(new BuildingTypeData { Key = "building.warehouse", DisplayName = "Großlager", Category = BuildingCategory.Storage, SizeX = 2, SizeY = 2, BuildWorkYears = 4f, Cost = new ResourceCost { Wood = 30, Stone = 40 }, Storage = 800, RequiredTechKey = "tech.construction", MinTier = SettlementTier.Town });
-            B(new BuildingTypeData { Key = "building.library", DisplayName = "Bibliothek", Category = BuildingCategory.Research, BuildWorkYears = 3f, Cost = new ResourceCost { Wood = 20, Stone = 30 }, Job = JobKind.Scholar, JobSlots = 3, ResearchPerWorkerYear = 1.5f, RequiredTechKey = "tech.writing", MinTier = SettlementTier.Village, MaxPerSettlement = 2 });
+            B(new BuildingTypeData { Key = "building.library", DisplayName = "Bibliothek", Category = BuildingCategory.Research, BuildWorkYears = 3f, Cost = new ResourceCost { Wood = 20, Stone = 30 }, Job = JobKind.Scholar, JobSlots = 3, ResearchPerWorkerYear = 0.25f, RequiredTechKey = "tech.writing", MinTier = SettlementTier.Village, MaxPerSettlement = 2 });
             B(new BuildingTypeData { Key = "building.palisade", DisplayName = "Palisade", Category = BuildingCategory.Defense, BuildWorkYears = 2f, Cost = new ResourceCost { Wood = 40 }, Job = JobKind.Guard, JobSlots = 2, Defense = 10f, MinTier = SettlementTier.Village, MaxPerSettlement = 1 });
             B(new BuildingTypeData { Key = "building.stone_wall", DisplayName = "Steinmauer", Category = BuildingCategory.Defense, SizeX = 2, SizeY = 1, BuildWorkYears = 5f, Cost = new ResourceCost { Stone = 80 }, Job = JobKind.Guard, JobSlots = 3, Defense = 30f, RequiredTechKey = "tech.construction", MinTier = SettlementTier.Town, MaxPerSettlement = 2 });
             B(new BuildingTypeData { Key = "building.barracks", DisplayName = "Kaserne", Category = BuildingCategory.Defense, SizeX = 2, SizeY = 2, BuildWorkYears = 4f, Cost = new ResourceCost { Wood = 40, Stone = 40 }, Job = JobKind.Guard, JobSlots = 4, Defense = 15f, RequiredTechKey = "tech.metallurgy", MinTier = SettlementTier.Village, MaxPerSettlement = 1 });
