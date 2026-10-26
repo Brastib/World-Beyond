@@ -35,6 +35,12 @@ namespace WorldBeyond.Simulation.Civilizations
             Buildings = new BuildingStore(content.Buildings);
         }
 
+        // Lesezugriff für Darstellung, Debug-Ansichten und Tests (anderes Assembly). Schreiben nur über die Civ-Dienste.
+        public IReadOnlyList<int> CivIdsInOrder => CivOrder;
+        public IReadOnlyList<int> SettlementIdsInOrder => SettlementOrder;
+        public Civilization FindCiv(int id) => Civ(id);
+        public Settlement FindSettlement(int id) => Settlement(id);
+
         internal Civilization Civ(int id) => Civs.TryGetValue(id, out var c) ? c : null;
         internal Settlement Settlement(int id) => Settlements.TryGetValue(id, out var s) ? s : null;
 
