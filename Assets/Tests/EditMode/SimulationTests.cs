@@ -308,6 +308,8 @@ namespace WorldBeyond.Tests
         {
             var a = GameComposition.Create(new GameStartSettings { Seed = 77 }, TestContent.Setup);
             var ctx = a.Context;
+            // Ticks vor dem Aufstellen: Fachsysteme (z. B. Bewegung) sollen die geprüften Felder nicht verändern.
+            for (int i = 0; i < 7; i++) a.Runner.StepOnce();
             ctx.UnitTypes.TryGetByKey("unit.rifleman", out var rifle);
             ctx.UnitTypes.TryGetByKey("unit.settler", out var settler);
             var u1 = ctx.Units.Spawn(rifle, 1, 1, 2);
@@ -317,7 +319,6 @@ namespace WorldBeyond.Tests
             ctx.Units.SetMoveTarget(u1, 9, 9);
             ctx.Units.SetTask(u3, new UnitTask { Kind = UnitTaskKind.Attack, TargetEntity = u1 });
             ctx.Units.SetHp(u3, 42);
-            for (int i = 0; i < 7; i++) a.Runner.StepOnce();
             ctx.Random.NextULong();
 
             var captured = new Dictionary<string, object>();
