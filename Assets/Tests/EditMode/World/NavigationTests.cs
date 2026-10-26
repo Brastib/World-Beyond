@@ -422,7 +422,12 @@ namespace WorldBeyond.Tests.World
             }
             // Pfade anfordern und abarbeiten lassen (eigener Test für Pfadkosten: Pathfinder-Tests), JIT aufwärmen.
             var pf = (GridPathfinder)ctx.Get<IPathfinder>();
+            comp.Runner.StepOnce();
+            var movement = (MovementSystem)System.Linq.Enumerable.First(comp.Runner.Systems, s => s is MovementSystem);
+            Assert.Greater(movement.CurrentPathBudget, MovementSystem.DefaultPathBudget, "Budget wächst mit der Warteschlange");
+            Assert.LessOrEqual(movement.CurrentPathBudget, MovementSystem.MaxPathBudget);
             for (int i = 0; i < 20 || (pf.PendingCount > 0 && i < 1000); i++) comp.Runner.StepOnce();
+            Assert.AreEqual(MovementSystem.DefaultPathBudget, movement.CurrentPathBudget, "Ohne Warteschlange Grundbudget");
             long exp0 = pf.TotalExpansions;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             const int ticks = 100;
