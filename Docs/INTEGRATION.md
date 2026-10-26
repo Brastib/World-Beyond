@@ -105,7 +105,7 @@ M1-Umfang je Phase (alles darüber hinaus erst nach M1): World: Höhen, Wasser, 
 |---|---|---|---|
 | 1 | Projektort festlegen | Nutzer | **erledigt**: GitHub `Brastib/World-Beyond` |
 | 2 | Docs ins Repo | 1 | **erledigt** (main, 2026-10-25) |
-| 3 | Fundament (Core, Clock, Runner, EventBus, CommandQueue, ISaveable, UnitStore, GameComposition, GameBootstrap) + Tests | 1 | **Code geschrieben, dotnet-Tests grün (41/41), nicht im Unity-Editor kompiliert** – Branch `claude/phase1b-fundament` |
+| 3 | Fundament (Core, Clock, Runner, EventBus, CommandQueue, ISaveable, UnitStore, GameComposition, GameBootstrap) + Tests | 1 | **Code geschrieben, dotnet-Tests grün (44/44), nicht im Unity-Editor kompiliert** – Branch `claude/phase1b-fundament` |
 | 4 | Unity-Projekt anlegen (Version prüfen, URP, Pakete, ProjectSettings) | Unity-Version vom Nutzer / Remote Control | offen |
 | 5 | Fundament in Unity kompilieren, EditMode-Tests per Unity Test Runner | 3, 4 | offen |
 | 6 | M1.1 + M1.3 World | 3 | offen (World) |
@@ -146,3 +146,5 @@ Definition of Done (vom Nutzer): Systeme interagieren tatsächlich, Kernspielsch
 | 2026-10-26 | World-Abweichungen akzeptiert: `TileData.WaterLevel`; `IWorldQuery.Version`/`NavigationVersion`; `System.Numerics.Vector3` + `WorldRay` statt UnityEngine-Vektoren in Simulation; `IPathfinder`/`ISpatialIndex`/`SpatialHash` in `WorldBeyond.Simulation.World`; `TileChangeKind.Owner = 6`; Fluss als Furt (Foot 3, Wheeled gesperrt, Tracked 3); Terrain/Biome/Resource-Enums im Spielstand als Namen; `WorldEventsSystem` Order 850; `GameStartSettings` → `WorldGenSettings`. SYSTEM_INTERFACES §4/§5 wird beim Review des World-PR nachgezogen | [E] | Simulation bleibt ohne UnityEngine testbar; Fundament-Ordner unverändert |
 | 2026-10-26 | `ISaveContentCheck` (Vorschlag Phase 7) liegt im Fundament; `UnitStore` implementiert es. `SaveLoadError.CaptureFailed = 8`, Rahmenfeld `start` übernommen. `Tools/SimTests` referenziert Newtonsoft.Json 13.0.2 | [E] | Fehlende Inhalte werden als MissingContent erkannt; Application/Save braucht Newtonsoft im dotnet-Test |
 | 2026-10-26 | Sandbox-Prinzip verbindlich: Simulation läuft ohne Spielereingaben (§0 Regel 4); Nachweis je Phase durch einen Autonomie-Test | [B] | Nutzervorgabe |
+| 2026-10-26 | Fehlertoleranter Tick: Exceptions aus Systemen und Event-Handlern werden gemeldet (`SimulationRunner.SystemFailed`), der Tick wird abgeschlossen, die Uhr rückt vor; `Validate`-Exceptions werden zu `CommandRejectedEvent` | [E] | Review PR #2 (nachgewiesener Doppel-Tick); Sandbox muss ohne Eingriff weiterlaufen |
+| 2026-10-26 | Start-Civs anlegen (`GameStartSettings.CivilizationCount`) gehört Civ: deren Zeilen in `RegisterPhaseServices` gründen die Civs an `FindStartLocations` (World) | [E] | Review PR #2; ohne Start-Civs entwickelt sich die Sandbox nicht |
