@@ -146,6 +146,8 @@ namespace WorldBeyond.Tests.EditMode.Save
         {
             var settings = new GameStartSettings { Seed = 777, WorldWidth = 512, WorldHeight = 384, CivilizationCount = 3 };
             _current = Create(settings);
+            // Ticks vor dem Aufstellen: Fachsysteme im Tick (z. B. MovementSystem) dürfen die geprüften Felder nicht verändern.
+            for (int i = 0; i < 7; i++) _current.Runner.StepOnce();
             var a = SpawnType(_current, "unit.settler", 1, 10.5f, 20.25f);
             var b = SpawnType(_current, "unit.rifleman", 2, -3f, 4f);
             var c = SpawnType(_current, "unit.rifleman", 2, 7f, 8f);
@@ -155,7 +157,6 @@ namespace WorldBeyond.Tests.EditMode.Save
             _current.Context.Units.Despawn(a);
             var reused = SpawnType(_current, "unit.settler", 1, 0f, 0f);     // nutzt Index von a mit neuer Generation
             Assert.AreEqual(a.Index, reused.Index, "Testannahme: Index wird wiederverwendet");
-            for (int i = 0; i < 7; i++) _current.Runner.StepOnce();
             _current.Context.Random.Range(0, 1000);
             _current.Runner.Speed = GameSpeed.x5;
             var original = _current;
