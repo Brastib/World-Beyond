@@ -398,7 +398,7 @@ Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude
 
 ### 8.1 Innenausstattung (jedes Haus ist begehbar, `ASSETS_STYLE_ENVIRONMENT.md` §4.4)
 
-Jeder Eintrag gibt es je Epoche und je Vermögensklasse (arm / mittel / reich) in eigener Ausführung. Weg: MB in Blender (+T0). Stufe: M4 (NPCs), Baukasten ab A7.
+Jeden Eintrag gibt es je Epoche und je Vermögensklasse (arm / mittel / reich) in eigener Ausführung. Die Gegenstände sind Besitz der Bewohner: Die NPCs beschaffen und stellen sie nach ihren Bedürfnissen und ihrem Geld selbst auf (Konzept §4.4). Weg: MB in Blender (+T0). Stufe: M4 (NPCs), Baukasten ab A7.
 
 | ID | Gegenstand | Beispiele arm → reich | Etappe | Status |
 |---|---|---|---|---|
