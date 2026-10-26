@@ -84,6 +84,15 @@ Zu sehen: einzelner Laubbaum (ahornähnlich, passt zu `plant.acer`, W01/W02), fo
 
 **Abnahme-Zusatz:** Für jeden Baum in A1/A2 gibt es einen Screenshot aus Unity im gleichen Blickwinkel und vor hellem Hintergrund, neben R1 gestellt.
 
+### 3.2 R1-Niveau gilt für alle Assets (Nutzer, 2026-10-26 16:36 UTC)
+
+Nicht nur Bäume: Gebäude, Felsen, Gelände, Menschen, Fahrzeuge und Effekte bekommen dieselbe Qualitätsstufe und dasselbe Aussehen. Konkret für jedes Asset:
+- Materialien aus kalibrierten Fotoscans (§4.2) mit Normal-, Rauheits- und AO-Karten, keine einfarbigen Flächen.
+- Feine Details, wo man nah herankommt (Kanten abgerundet, Fugen, Abnutzung, Schmutz an der Unterseite).
+- Dieselbe Licht- und Farbkalibrierung, dieselbe Texeldichte (§3).
+- Alle Zustände aus §5.1 (nass, Schnee, brennend, verkohlt …) über dieselbe gemeinsame Shader-Schicht.
+- Beim Style Lock bekommt jede Kategorie ein eigenes Referenzbild nach dem Vorbild von R1 (Nutzer wählt oder bestätigt), und der Nahvergleich wird dokumentiert.
+
 ## 4. Produktionsweg (wie wir die Assets selbst herstellen)
 
 ### 4.1 Bäume und Pflanzen: eigener Generator „PlantForge“
@@ -120,9 +129,23 @@ CC0-Fotoscans für Rinde, Blätter, Boden, Fels, Sand, Schnee (Kandidaten: Poly 
 - Gelände: bleibt Chunk-Mesh (ARCHITECTURE §3). Statt reiner Vertexfarben Materialmischung (Splat) aus kalibrierten Bodentexturen je TerrainType, Zustände Verbrannt/Überflutet/Krater als Overlays. Besitzer: World.
 - Wasser: Shader-Graph mit Tiefenfarbe, Wellen und Uferschaum; Tsunami-Welle als eigenes Mesh (§6.6).
 
-### 4.4 Gebäude
+### 4.4 Gebäude: jede Epoche, an jeder Stelle zerstörbar (Nutzer, 2026-10-26 16:36 UTC)
 
-Modularer Baukasten je Epoche und Kultur (Wände, Dächer, Fenster, Türen, Schornsteine, Zäune), selbst modelliert bzw. prozedural zusammengesetzt. Kultur-Parameter (Dachform, Materialien, Farben) erzeugen Vielfalt, ohne jedes Haus einzeln zu bauen. Zustände: Baustelle, intakt, beschädigt, brennend, verkohlte Ruine, Trümmer.
+**Epochen:** Jeder Gebäudetyp bekommt ab der Epoche seiner Technologie eine eigene Ausführung je Epoche (`Epoch`: Frühzeit, Antike, Mittelalter, Industrie, Moderne; spätere Epochen werden angehängt). Für die 19 vorhandenen Gebäude sind das 75 Epochen-Ausführungen, mit den 4 neuen Brandschutz-Gebäuden 95 (Katalog §4). Dazu kommen Kultur-Stilfamilien (Dachform, Baumaterial, Farben, Verzierungen), damit nicht jede Civ gleich aussieht.
+
+**Bauweise:** modularer Baukasten aus Bauteilen von etwa 1–2 m: Wandsegment, Ecke, Pfeiler/Stütze, Decke, Dachfeld, Fenster, Tür, Schornstein, Fundament. Ein Haus = Grundriss + Bauteile, prozedural zusammengesetzt. Jedes Bauteil gibt es in den Materialien seiner Epoche (Lehm, Holz, Fachwerk, Naturstein, Ziegel, Stahlbeton, Glas).
+
+**Zerstörung an jeder Stelle:**
+1. Jedes Bauteil wird im Editor vorab in Bruchstücke zerlegt (eigenes Bruch-Werkzeug, Voronoi-Zerlegung) mit passendem Innenmaterial (Ziegelbruch, gesplittertes Holz, Beton mit Bewehrung je Epoche).
+2. Ein Einschlag (Artillerie, Bombe, Rakete, Feuer, Erdbeben, Tsunami) ist ein Schadensereignis mit Ort, Stärke und Art (VISION V10). Der Schaden pro Bauteil hängt vom Abstand zum Einschlagpunkt und vom Material ab.
+3. Bauteil-Zustände: intakt → angeschlagen (Risse, Einschuss- und Brandspuren) → durchbrochen (Loch: die Bruchstücke im Trefferradius fehlen) → zerstört.
+4. Vereinfachte Statik: Was keine Verbindung mehr zum Fundament hat, stürzt ein (Decken, Dächer, obere Stockwerke). Daraus entstehen Teil-Einstürze statt „ganz oder gar nicht“.
+5. Trümmer: Nahe der Kamera fallen kurz echte Bruchstücke, danach bleiben dauerhafte Trümmerhaufen und Decals liegen, dazu Staubwolke und gegebenenfalls Brand. Die Zerstörung bleibt, bis die Civ das Haus abreißt oder repariert (Wiederaufbau zeigt wieder die Baustelle).
+6. Gespeichert wird in der Simulation nur ein kompakter Schadenswert je Bauteil. Das ist deterministisch und lässt sich speichern und laden. Die Darstellung baut daraus das Gebäude. In der Ferne gibt es nur die Stufen intakt, beschädigt und Ruine.
+
+**Ehrliche Grenzen:** Ein Gebäude-Mesh wird nicht in Echtzeit beliebig zerschnitten, weil das zu teuer und zu fehleranfällig wäre. „An jeder Stelle“ heißt deshalb: auf Bauteil-Auflösung (1–2 m) plus vorberechnete Bruchstücke. Das ist fein genug, dass jeder Einschlag ein eigenes Loch an der getroffenen Stelle reißt. Volle Detailstufe gibt es nur für Gebäude nahe der Kamera.
+
+**Zuständigkeit und Stufe:** Gebäudedaten und Bauteil-Schaden liegen bei Civ, Schadensereignisse bei Military (`ICombatService`), Baukasten und Bruch-Werkzeug bei Art/Assets, der Zusammenbau in der Darstellung bei Presentation. Die bleibende Zerstörung gehört laut VISION zu V10/M7, Epochen-Gebäude setzen das Zeitalter-Modell aus M3 voraus. Den Baukasten mit Bruchstücken kann Art/Assets nach dem Style Lock (A7) vorbereiten.
 
 ### 4.5 Menschen und Einheiten
 
@@ -139,7 +162,7 @@ Jede Pflanze hat dieselben Zustände. Fast alle kommen **ohne zusätzliches Mode
 | Zustand | Umsetzung |
 |---|---|
 | Keimling, jung, ausgewachsen, alt | Skalierung + eigene Seeds für junge Formen (weniger Äste) |
-| Jahreszeiten (Austrieb, Sommer, Herbstfärbung, kahl, Schnee) | Shader-Parameter: Laubfarbe, Laubdichte, Schneeauflage |
+| Jahreszeiten (Austrieb, Sommer, Herbstfärbung, kahl) | Shader-Parameter: Laubfarbe, Laubdichte; Schnee, Nässe und Frost über §5.1 |
 | Trockenstress / Dürre | Laub gelb-braun, lichter (Blätter nach Hierarchie ausgeblendet) |
 | Krank | Flecken, lichtere Krone |
 | Tot stehend | kein Laub, graue Rinde, einzelne Äste abgebrochen |
@@ -148,6 +171,21 @@ Jede Pflanze hat dieselben Zustände. Fast alle kommen **ohne zusätzliches Mode
 | Umgestürzt (Sturm, Tsunami, Fällung) | gleicher Mesh gekippt in Wind- bzw. Wellenrichtung + Wurzelteller-Mesh; Fallrichtung kommt aus der Simulation |
 | Stumpf (gefällt) | eigene Generator-Ausgabe (Stamm abgeschnitten) |
 | Nachwachsen | Sukzession: Gras → Kräuter → Sträucher → Pionierbäume → Wald (§6.2) |
+
+### 5.1 Wetter- und Oberflächenzustände für **alle** Assets (Nutzer, 2026-10-26 16:36 UTC)
+
+Alle Materialien im Spiel (Pflanzen, Gebäude, Felsen, Gelände, Fahrzeuge, Menschen) nutzen **eine gemeinsame Shader-Schicht**. Sie wird nur einmal gebaut, deshalb sehen die Zustände überall gleich aus. Zustände lassen sich kombinieren, zum Beispiel nass und verschneit oder Schnee über Glut (schmilzt und dampft).
+
+| Zustand | Aussehen | Umsetzung |
+|---|---|---|
+| Nass | dunklere Farben, glänzende Oberflächen, Tropfen auf Blättern und Glas, Pfützen am Boden, Rinnsale an Wänden; Trocknen von oben nach unten | Nässe-Wert: Albedo dunkler, Glanz höher, Tropfen-Normalmap; Pfützen als Gelände-Maske |
+| Schnee | Schnee auf allem, was nach oben zeigt: Blätter, Äste, Nadeln, Dächer, Fensterbänke, Fahrzeuge, Felsen; Nadelbäume halten mehr Schnee; Schneehöhe wächst und taut | Schneemenge × Ausrichtung der Fläche nach oben × Bewuchs-Abschattung; ab hoher Last biegen sich Zweige (Wind-Daten, §4.1) |
+| Raureif, Eis | feiner weißer Belag, vereiste Pfützen und Gewässer | Frost-Wert, eigene Detailtextur |
+| Brennend | Flammen an Ästen, Dachbalken und Fenstern, Glühen der Oberfläche, Rauch | Brand-Wert pro Objekt: Glüh-Maske im Shader + Partikel an im Asset hinterlegten Brandpunkten |
+| Verkohlt, glimmend | schwarz, rissig, Glutnester, Asche | Verkohlungs-Wert, Ruß-Detailtextur |
+| Staub, Ruß, Schlamm | nach Explosionen, Bränden, Fluten | Schmutz-Werte nach Art |
+
+Woher die Werte kommen: Bis M5 setzen Jahreszeit und Testregler die Werte, damit die Zustände im Style Board geprüft werden können. Ab M5 liefert die Wetter- und Umweltsimulation die Werte (Regen, Schneehöhe, Temperatur, Brand). Brand und Schaden pro Objekt kommen aus dem Brand- und Schadenssystem.
 
 ## 6. Umweltkopplung
 

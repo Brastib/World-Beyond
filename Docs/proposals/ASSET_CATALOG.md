@@ -265,33 +265,33 @@ Hinweis: Alle Terrain-Zeilen mit „Platzhalter“ teilen sich P-004, alle Wasse
 
 ## 4. Gebäude (Sim-Schlüssel aus `CivContent.cs`, `integration/m1`)
 
-Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Alle Gebäude bekommen Varianten je Epoche und Kultur und die Zustände aus §0.4.
+Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude gibt es **ab seiner Epoche in jeder späteren Epoche** in eigener Ausführung (Spalte „ab Epoche“, aus der benötigten Technologie in `CivContent.cs`; Frühzeit F, Antike A, Mittelalter M, Industrie I, Moderne Mo), außerdem je Kultur-Stilfamilie. Alle Gebäude sind auf Bauteil-Ebene an jeder Stelle zerstörbar und haben die Zustände aus §0.4 sowie nass, Schnee und Brand (`ASSETS_STYLE_ENVIRONMENT.md` §4.4, §5.1). Epochen-Ausführungen: 75 für die 19 vorhandenen Gebäude, 95 mit den 4 neuen.
 
-| ID | Name | Sim-Schlüssel | Größe (Kacheln) | Etappe | Status | Bemerkung |
-|---|---|---|---|---|---|---|
-| bld.town_center | Ortskern | building.town_center | 2×2 | A7 | geplant | |
-| bld.hut | Hütte | building.hut | 1×1 | A7 | geplant | |
-| bld.house | Steinhaus | building.house | 1×1 | A7 | geplant | |
-| bld.apartment | Mietshaus | building.apartment | 2×2 | A7 | geplant | |
-| bld.farm | Farm | building.farm | 2×2 | A7 | geplant | Felder: §2.7 |
-| bld.fishery | Fischerhütte | building.fishery | 1×1 | A7 | geplant | |
-| bld.woodcutter | Holzfäller | building.woodcutter | 1×1 | A7 | geplant | erzeugt Stümpfe (§0.4) |
-| bld.quarry | Steinbruch | building.quarry | 1×1 | A7 | geplant | |
-| bld.mine | Mine | building.mine | 1×1 | A7 | geplant | |
-| bld.gold_mine | Goldmine | building.gold_mine | 1×1 | A7 | geplant | |
-| bld.smelter | Schmelze | building.smelter | 1×1 | A7 | geplant | Rauch-Effekt |
-| bld.workshop | Werkstatt | building.workshop | 1×1 | A7 | geplant | |
-| bld.oil_well | Ölförderung | building.oil_well | 1×1 | A7 | geplant | |
-| bld.storehouse | Lagerhaus | building.storehouse | 1×1 | A7 | geplant | |
-| bld.warehouse | Großlager | building.warehouse | 2×2 | A7 | geplant | |
-| bld.library | Bibliothek | building.library | 1×1 | A7 | geplant | |
-| bld.palisade | Palisade | building.palisade | 1×1 | A7 | geplant | |
-| bld.stone_wall | Steinmauer | building.stone_wall | 2×1 | A7 | geplant | |
-| bld.barracks | Kaserne | building.barracks | 2×2 | A7 | geplant | |
-| bld.fire_station | Feuerwache (nach Epoche) | – (neu, Civ) | – | A4 | geplant | für Brandbekämpfung |
-| bld.watchtower | Wachturm / Feuerturm | – (neu, Civ) | – | A4 | geplant | erhöht Sichtung |
-| bld.well | Brunnen / Löschteich | – (neu, Civ) | – | A4 | geplant | Löschwasser |
-| bld.construction_site | Baustelle (generisch) | – | – | A7 | geplant | |
+| ID | Name | Sim-Schlüssel | Größe (Kacheln) | ab Epoche | Etappe | Status | Bemerkung |
+|---|---|---|---|---|---|---|---|
+| bld.town_center | Ortskern | building.town_center | 2×2 | F | A7 | geplant | |
+| bld.hut | Hütte | building.hut | 1×1 | F | A7 | geplant | |
+| bld.house | Steinhaus | building.house | 1×1 | M | A7 | geplant | |
+| bld.apartment | Mietshaus | building.apartment | 2×2 | I | A7 | geplant | |
+| bld.farm | Farm | building.farm | 2×2 | F | A7 | geplant | Felder: §2.7 |
+| bld.fishery | Fischerhütte | building.fishery | 1×1 | F | A7 | geplant | |
+| bld.woodcutter | Holzfäller | building.woodcutter | 1×1 | F | A7 | geplant | erzeugt Stümpfe (§0.4) |
+| bld.quarry | Steinbruch | building.quarry | 1×1 | F | A7 | geplant | |
+| bld.mine | Mine | building.mine | 1×1 | A | A7 | geplant | |
+| bld.gold_mine | Goldmine | building.gold_mine | 1×1 | A | A7 | geplant | |
+| bld.smelter | Schmelze | building.smelter | 1×1 | A | A7 | geplant | Rauch-Effekt |
+| bld.workshop | Werkstatt | building.workshop | 1×1 | M | A7 | geplant | |
+| bld.oil_well | Ölförderung | building.oil_well | 1×1 | Mo | A7 | geplant | |
+| bld.storehouse | Lagerhaus | building.storehouse | 1×1 | F | A7 | geplant | |
+| bld.warehouse | Großlager | building.warehouse | 2×2 | M | A7 | geplant | |
+| bld.library | Bibliothek | building.library | 1×1 | A | A7 | geplant | |
+| bld.palisade | Palisade | building.palisade | 1×1 | F | A7 | geplant | |
+| bld.stone_wall | Steinmauer | building.stone_wall | 2×1 | M | A7 | geplant | |
+| bld.barracks | Kaserne | building.barracks | 2×2 | A | A7 | geplant | |
+| bld.fire_station | Feuerwache (nach Epoche) | – (neu, Civ) | – | F | A4 | geplant | für Brandbekämpfung |
+| bld.watchtower | Wachturm / Feuerturm | – (neu, Civ) | – | F | A4 | geplant | erhöht Sichtung |
+| bld.well | Brunnen / Löschteich | – (neu, Civ) | – | F | A4 | geplant | Löschwasser |
+| bld.construction_site | Baustelle (generisch) | – | – | F | A7 | geplant | |
 
 ## 5. Personen, Einheiten, Fahrzeuge
 
