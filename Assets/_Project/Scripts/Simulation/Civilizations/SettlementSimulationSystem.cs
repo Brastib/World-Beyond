@@ -15,13 +15,15 @@ namespace WorldBeyond.Simulation.Civilizations
     {
         // ---- Raten pro Spieljahr (abgestimmt im Langzeittest, Docs/drafts/CIVILIZATION_DESIGN_DRAFT.md §15) ----
         public const double FoodPerAdult = 1.0, FoodPerChild = 0.6, FoodPerElder = 0.8;
-        public const double BirthRate = 0.16;          // je Erwachsenem bei voller Versorgung und freiem Wohnraum
+        public const double BirthRate = 0.085;         // je Erwachsenem bei voller Versorgung und freiem Wohnraum
         public const double MaturationRate = 1.0 / 6;  // Kinder → Erwachsene
         public const double AgingRate = 1.0 / 40;      // Erwachsene → Alte
-        public const double ChildDeathRate = 0.01, AdultDeathRate = 0.008, ElderDeathRate = 0.15;
+        // Vorindustriell realistisch (VISION V7): hohe Kindersterblichkeit, Nettowachstum höchstens ~1 %/Jahr;
+        // Medizin (−35 % Sterblichkeit) hebt es auf ~2 %/Jahr.
+        public const double ChildDeathRate = 0.09, AdultDeathRate = 0.015, ElderDeathRate = 0.15;
         public const double StarvationRate = 0.4;      // Anteil der Hungernden, die pro Jahr sterben
         public const double ToolWearPerWorker = 0.03;
-        public const double BaseResearchPerPerson = 0.05;
+        public const double BaseResearch = 0.08;           // × √Einwohner je Siedlung: Wissen wächst langsamer als die Bevölkerung
         public const int BuildersPerSite = 3;
 
         private readonly CivState _s;
@@ -241,7 +243,7 @@ namespace WorldBeyond.Simulation.Civilizations
             }
             double toolFactor = hasTools ? 1.25 : 1.0;
             bool famine = st.HasModifier(CivEventKind.Famine, now);
-            double research = st.Population * BaseResearchPerPerson * dt;
+            double research = Math.Sqrt(Math.Max(0, st.Population)) * BaseResearch * dt;
 
             foreach (var b in st.Buildings)
             {
@@ -399,7 +401,9 @@ namespace WorldBeyond.Simulation.Civilizations
             double freeHousing = st.HousingCapacity - pop;
             double housingFactor = Math.Max(0, Math.Min(1.0, freeHousing / Math.Max(2.0, 0.15 * st.HousingCapacity)));
             double boom = st.HasModifier(CivEventKind.BabyBoom, now) ? 2.0 : 1.0;
-            double births = st.Adults * BirthRate * civ.Traits.Fertility * foodFactor * housingFactor * boom * dt;
+            // Merkmal wirkt gedämpft: bei ~1 %/Jahr Nettowachstum würde es sonst allein über Wachstum oder Schrumpfen entscheiden.
+            double fertility = 1.0 + (civ.Traits.Fertility - 1.0) * 0.25;
+            double births = st.Adults * BirthRate * fertility * foodFactor * housingFactor * boom * dt;
             // Geburten nie über den freien Wohnraum hinaus.
             births = Math.Min(births, Math.Max(0, freeHousing));
 

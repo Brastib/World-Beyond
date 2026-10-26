@@ -11,7 +11,7 @@ namespace WorldBeyond.Tests.Civilizations
     // Alle Läufe nutzen die echte GameComposition (Welt, Einheiten, Bewegung, Civ) – keine Attrappen.
     public class CivAutonomyTests
     {
-        const double LongRunYears = 40;   // 40 Spieljahre = 40 Spielminuten = 24 000 Ticks
+        const double LongRunYears = 200;  // 200 Spieljahre (120 000 Ticks); vorindustriell wächst ein Volk höchstens ~1 %/Jahr
 
         [Test]
         public void TwoCivs_GrowAndExpand_WithoutAnyCommand([Values(1UL, 42UL, 2026UL)] ulong seed)
@@ -31,13 +31,15 @@ namespace WorldBeyond.Tests.Civilizations
             foreach (int id in r.Civs.AllCivIds)
             {
                 var c = r.Civs.Get(id);
-                Assert.GreaterOrEqual(c.Population, startPop[id] * 3, $"{c.Name}: Bevölkerung wächst deutlich");
+                Assert.GreaterOrEqual(c.Population, startPop[id] * 2, $"{c.Name}: Bevölkerung wächst deutlich");
                 Assert.Greater(c.TerritoryTiles, 80, $"{c.Name}: Gebiet wächst");
             }
-            Assert.Greater(settlements, 2 + 2, "Mindestens drei neue Siedlungen durch Siedler gegründet");
+            Assert.GreaterOrEqual(settlements, 2 + 3, "Mindestens drei neue Siedlungen durch Siedler gegründet");
             Assert.Greater(r.Recruited, 0, "Siedler/Karawanen wurden als echte Einheiten rekrutiert");
             Assert.Greater(r.BuildingsCompleted, 20, "Gebäude wurden gebaut");
-            Assert.Greater(r.TechsResearched, 0, "Forschung schreitet voran");
+            // Realistisches Tempo (VISION V7): Forschung läuft, Zeitalterwechsel kommen erst nach Jahrhunderten (CivTechPaceTests).
+            foreach (int id in r.Civs.AllCivIds)
+                Assert.IsTrue(r.TechsResearched > 0 || r.State.FindCiv(id).ResearchPoints > 0, "Forschung schreitet voran");
             Assert.Less(r.WorldResource(ResourceType.Wood), woodBefore, "Holz wird auf den Weltkacheln abgebaut");
         }
 
@@ -45,7 +47,7 @@ namespace WorldBeyond.Tests.Civilizations
         public void FoundedSettlements_RespectPlacementRules()
         {
             var r = CivRun.Create(1);
-            r.Years(30);
+            r.Years(200);
             var world = r.Ctx.Get<IWorldQuery>();
             var ids = r.Settlements.AllSettlementIds;
             Assert.Greater(ids.Count, 2);
@@ -121,8 +123,8 @@ namespace WorldBeyond.Tests.Civilizations
             var active = CivRun.Create(11);
             var w = active.Ctx.Get<IWorldQuery>();
             active.Ctx.Get<ICivSimulationLod>().SetFocus(w.Width * WorldConstants.TileSize / 2f, w.Height * WorldConstants.TileSize / 2f, w.Width * WorldConstants.TileSize);
-            distant.Years(25);
-            active.Years(25);
+            distant.Years(150);
+            active.Years(150);
             int pd = distant.TotalPopulation(), pa = active.TotalPopulation();
             TestContext.WriteLine($"Entfernt: {pd}, Aktiv: {pa}");
             Assert.Greater(pd, 40);

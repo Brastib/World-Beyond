@@ -175,19 +175,22 @@ civ.SpawnInitialCivilizations(settings.CivilizationCount, settings.Seed);
 
 - 1 Spieljahr = 60 Spielsekunden = 600 Ticks. 30 Spielminuten = 30 Spieljahre.
 - Detailstufen: aktive Siedlungen alle 10 Ticks, entfernte alle 50 Ticks, beide mit der tatsächlich vergangenen Zeit als Zeitschritt.
-- Pro Jahr: Nahrung 1,0 je Erwachsenem, 0,6 je Kind, 0,8 je Altem; Geburten 0,16 je Erwachsenem (skaliert mit Versorgung, Wohnraum, Fruchtbarkeitsmerkmal); Reifung 1/6, Altern 1/40; Sterblichkeit Kinder 1 %, Erwachsene 0,8 %, Alte 15 %; bei Hunger sterben 40 % der Unversorgten pro Jahr.
-- Forschung: 0,05 Punkte je Einwohner und Jahr plus Bibliotheken.
+- Pro Jahr: Nahrung 1,0 je Erwachsenem, 0,6 je Kind, 0,8 je Altem; Geburten 0,085 je Erwachsenem (skaliert mit Versorgung, Wohnraum, gedämpftem Fruchtbarkeitsmerkmal ±7,5 %); Reifung 1/6, Altern 1/40; Sterblichkeit Kinder 9 %, Erwachsene 1,5 %, Alte 15 %; bei Hunger sterben 40 % der Unversorgten pro Jahr. Ergebnis: vorindustriell höchstens ~1 %/Jahr Nettowachstum, mit Medizin ~2 %/Jahr.
+- Forschung: 0,08 × √Einwohner je Siedlung und Jahr plus Bibliotheken (0,25 je Gelehrtem). Kosten: Frühzeit 120–200, Antike 2 500–4 500, Mittelalter 8 000–10 000, Industrie 10 000–12 000, Moderne 15 000–18 000 Punkte.
+- Tochtersiedlungen erst ab 20 Erwachsenen im Ursprungsort.
 - Zielvorräte statt Horten: Rohstoffbetriebe ruhen über einem Zielvorrat (Holz 80 + 3 je Einwohner, Stein 60 + 2, Erz 40 + 1 …); Lager werden nur gebaut, wenn der Zielvorrat die Lagergrenze übersteigt. Rodungsholz zählt nur bis zur Lagergrenze.
 - Startwerte je Civ: 10 Einwohner, Nahrung 80, Holz 60, Stein 10. Siedler kosten Nahrung 40, Holz 30 und 5 Erwachsene; neue Siedlung startet mit 5 Einwohnern, Nahrung 30, Holz 20.
 
-Beobachtete Entwicklung ohne Eingriff (Welt 128 × 128, 2 Civs, headless): nach 40 Jahren 54–218 Einwohner je Civ, 4–11 Siedlungen je Civ, Forschung bis Antike; nach 60 Jahren 120–900 Einwohner, bis zu 30 Siedlungen, Mittelalter erreicht. Die Zahlen schwanken je Seed (Gelände, Wasser, Wald).
+**Realistisches Tempo (VISION V7, 2026-10-26):** Der Unity-Lauf (Seed 20261026, 4 Civs) erreichte das Industriezeitalter nach 75 Jahren. Ursachen: Forschung wuchs linear mit der Einwohnerzahl, Technologien waren billig, und die Bevölkerung wuchs ~8 %/Jahr. Nach der Umstellung, gemessen headless (Welt 128 × 128, 2 Civs, Seeds 1 und 20261026): Frühzeit dauert 700 bis über 1 000 Jahre, Antike beginnt um Jahr 700–900; die Bevölkerung wächst in 1 000 Jahren von 10 auf 1 000–3 400 je Civ mit 16–37 Siedlungen. Abgesichert durch `CivTechPaceTests` (300 Jahre: noch Frühzeit, aber Wachstum und Tochtersiedlungen; explizit 1 000 Jahre: höchstens Mittelalter).
+
+Offen (Fundament/Integration): `CivTime.TicksPerYear = 600` (1 Jahr = 60 s bei 1×) ist bis zum `GameCalendar` (VISION V7/M2) die Kalenderbasis der Civ-Schicht. Alle Civ-Raten sind „pro Jahr“ formuliert; wenn der Kalender kommt, wird nur diese Konstante ersetzt. Bei 1× = Echtzeit wären Jahrhunderte nur mit Zeitsprung (V1/V3) erlebbar.
 
 Im Langzeittest gefundene und behobene Fehler: Einheiten zielten in den Ortskern (Gebäude blockieren Bewegung) → begehbarer Ankunftspunkt neben dem Kern; Expansion scheiterte an der Wegprüfung vom blockierten Kern aus; Lager-Schleife (volles Holzlager → neues Lager → mehr Holz); Holzfäller kostete Holz (Siedlung ohne Holz kam nie wieder heraus).
 
 ## 16. Tests und Übergabestatus
 
-Headless (Tools/SimTests, .NET 8, NUnit) – Stand Commit auf `phase3-civilization`: 114 von 114 Tests grün, davon 12 Civ-Tests in `Assets/Tests/EditMode/Civilizations/`:
-- `TwoCivs_GrowAndExpand_WithoutAnyCommand` (3 Seeds, 40 Spieljahre, kein Command): Bevölkerung mindestens verdreifacht, Gebiet wächst, mindestens drei neue Siedlungen durch echte Siedler-Einheiten, Gebäude gebaut, Forschung, Holz auf den Weltkacheln abgebaut, keine Civ bricht zusammen.
+Headless (Tools/SimTests, .NET 8, NUnit) – Stand Commit auf `phase3-civilization`: 120 von 120 Tests grün, davon 14 Civ-Tests (+2 explizite Langläufe) in `Assets/Tests/EditMode/Civilizations/`:
+- `TwoCivs_GrowAndExpand_WithoutAnyCommand` (3 Seeds, 200 Spieljahre, kein Command): Bevölkerung mindestens verdoppelt, Gebiet wächst, mindestens drei neue Siedlungen durch echte Siedler-Einheiten, Gebäude gebaut, Forschung, Holz auf den Weltkacheln abgebaut, keine Civ bricht zusammen.
 - `FoundedSettlements_RespectPlacementRules`, `AutonomousRun_IsDeterministic`, `Hunger_ReducesPopulation_AndConsumesFood`, `Territory_IsConsistent_WithSettlementsAndCounts`, `Lod_ActiveAndDistant_DevelopSimilarly` (Abweichung < 20 %, gemessen 0–7 %), `CreateCivilization_FoundSettlement_AndEvents_Work`, `Recruitment_SpawnsRealUnit_AndPaysPopulation`.
 - `SaveMidGrowth_LoadIntoFreshGame_ContinuesIdentically`: nach 15 Jahren alle Sektionen über JSON (Newtonsoft) in ein frisches Spiel mit anderem Seed eingespielt, danach 10 Jahre weitergerechnet – Zustand bitgenau gleich. `CivSection_RejectsBrokenState_AndKeepsCurrent`.
 - Tools/UnityApiCheck (netstandard2.1) baut ohne Warnungen.
