@@ -380,6 +380,34 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.AreEqual(0, war.AttackerStats.UnitsLost);
         }
 
+        // Prüf-Befund: ziviler Despawn (Siedler gründet, Karawane kommt an, KillerCivId 0) ist kein Kriegsverlust.
+        [Test]
+        public void UnitDiedEvent_CivilianDespawn_IsNotWarLoss()
+        {
+            var bus = new WorldBeyond.Core.SimEventBus();
+            var types = new WorldBeyond.Simulation.Units.UnitTypeRegistry(new WorldBeyond.Core.ContentRegistry());
+            var type = types.Register(new WorldBeyond.Simulation.Units.UnitTypeData { Key = "unit.test_settler", DisplayName = "Test" });
+            var units = new WorldBeyond.Simulation.Units.UnitStore(types, bus);
+            var world = new FakeDiplomacyWorld { UnitStrength = 7f };
+            world.AddCiv(1, 0, 0); world.AddCiv(2, 40, 0);
+            var d = new DiplomacyService(world, bus, () => 0);
+            d.DeclareWar(1, 2);
+            bus.Flush();
+
+            for (int i = 0; i < 5; i++)
+            {
+                var settler = units.Spawn(type, 2, 5f, 5f);
+                Assert.IsTrue(units.Despawn(settler, default, 0));
+            }
+            bus.Flush();
+            d.ReportUnitLost(2, 2, 7f); // Eigenverlust zählt ebenfalls nicht
+
+            var war = d.FindWar(1, 2);
+            Assert.AreEqual(0, war.DefenderStats.UnitsLost);
+            Assert.AreEqual(0f, war.DefenderStats.StrengthLost, 0.001f);
+            Assert.AreEqual(0, war.AttackerStats.UnitsLost);
+        }
+
         // ---------- T-4-06 Verluste ----------
 
         [Test]

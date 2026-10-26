@@ -44,7 +44,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         // Verluste kommen direkt vom UnitStore (UnitDiedEvent enthält CivId, KillerCivId und UnitType).
         void OnUnitDied(UnitDiedEvent e)
         {
-            if (e.CivId <= 0) return;
+            if (e.CivId <= 0 || e.KillerCivId <= 0) return;
             ReportUnitLost(e.CivId, e.KillerCivId, _world.GetUnitCombatStrength(e.UnitType.Value));
         }
 
@@ -588,14 +588,17 @@ namespace WorldBeyond.Simulation.Diplomacy
         // ================= Meldungen aus anderen Systemen (über den Adapter im GameBootstrap) =================
 
         // Aus UnitDiedEvent (abonniert im Konstruktor) oder direkt gemeldet. strength = Kampfstärke des Einheitentyps.
+        // Nur Tode durch einen Kriegsgegner zählen. Ziviler Despawn (Siedler gründet, Karawane kommt an,
+        // KillerCivId 0) und Eigenverluste sind keine Kriegsverluste.
         public void ReportUnitLost(int civId, int killerCivId, float strength)
         {
+            if (civId <= 0 || killerCivId <= 0 || killerCivId == civId) return;
             foreach (var war in Wars)
             {
                 var side = war.SideOf(civId);
                 if (side == WarSide.None) continue;
-                if (killerCivId != 0 && war.SideOf(killerCivId) == side) continue;
-                if (killerCivId != 0 && war.SideOf(killerCivId) == WarSide.None) continue;
+                var killerSide = war.SideOf(killerCivId);
+                if (killerSide == WarSide.None || killerSide == side) continue;
                 var stats = war.StatsOf(side);
                 stats.UnitsLost++;
                 stats.StrengthLost += Math.Max(0f, strength);

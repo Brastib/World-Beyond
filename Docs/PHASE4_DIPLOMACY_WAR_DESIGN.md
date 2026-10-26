@@ -167,7 +167,7 @@ Events: WarDeclared, PeaceSigned, TruceSigned, AllianceFormed, TreatyBroken,
 | `.../DiplomacyCommands.cs` | DeclareWar (optional erzwungen), ProposePeace (optional erzwungen), SignTruce, FormAlliance, BreakTreaty, ModifyRelation |
 | `.../DiplomacySaveable.cs` | ISaveable "diplomacy" (SectionVersion 1, LoadOrder 800), Validierung, tiefe Kopien, Referenzprüfung mit Rückfall (`ISaveReferenceCheck`) |
 | `.../DiplomacyOverview.cs` | Lesemodell für die UI-Übersicht (Kriege, Bündnisse, Feindschaften) |
-| `Assets/Tests/EditMode/Diplomacy/DiplomacyTests.cs`, `DiplomacyTestDoubles.cs` | 42 EditMode-Tests, Testwelt für den Port |
+| `Assets/Tests/EditMode/Diplomacy/DiplomacyTests.cs`, `DiplomacyTestDoubles.cs` | 43 EditMode-Tests, Testwelt für den Port |
 
 ### 11.2 Anbindung an andere Phasen (über `IDiplomacyWorldPort`)
 
@@ -190,7 +190,7 @@ Neu ist der Grenzgroll (`RelationReason.BorderGrievance`). Er wächst an einer g
 
 ### 11.3 Tests
 
-Ausgeführt am 2026-10-26 mit `dotnet test Tools/SimTests` (.NET 8, C# 9, Warnungen als Fehler) gegen das echte Fundament aus PR #2: 82 von 82 bestanden (40 Fundament, 42 Phase 4). **Nicht im Unity Test Runner ausgeführt.**
+Ausgeführt am 2026-10-26 mit `dotnet test Tools/SimTests` (.NET 8, C# 9, Warnungen als Fehler) gegen das echte Fundament aus PR #2: 83 von 83 bestanden (40 Fundament, 43 Phase 4; ziviler Despawn mit KillerCivId 0 zählt nicht als Kriegsverlust). **Nicht im Unity Test Runner ausgeführt.**
 Abgedeckt: T-4-01 Kriegserklärung und Bündnisruf, T-4-02 Frieden abhängig vom Kriegsstand inkl. Abtretung und Tribut, T-4-03 Bündnisse, T-4-04 Zielauswahl, T-4-05 kein Krieg ohne Grund (30 Spielminuten) und Krieg mit Grund samt Begründung, Autonomie mit symmetrischen Nachbarn (4 Fälle aus dem Review), UnitDiedEvent über echten SimEventBus und UnitStore, T-4-06 Verluste/Erschöpfung/Friedensangebot des Verlierers, T-4-07 Sandbox-Autonomie (Krieg und Frieden ohne Spielereingabe, INTEGRATION.md §0 Regel 4), T-4-07 Speichern/Laden während des Kriegs mit identischer Fortsetzung (DTO-Rundlauf; der JSON-Teil gehört dem SaveLoadService, Phase 7), Validierung beschädigter Daten, Referenzprüfung; außerdem Waffenstillstand, Zusammenbruch einer Civ, strategische Punkte, Rekrutierung, Grenzreibung, Befehle, Übersicht, nie wiederverwendete IDs.
 
 ### 11.4 Noch fehlend (ehrlich)
