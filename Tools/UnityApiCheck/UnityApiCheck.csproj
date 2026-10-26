@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Kompiliert die Unity-unabhängigen Quellen gegen netstandard2.1 (Unitys API-Kompatibilitätsstufe), C# 9.
+    Findet APIs, die es nur in .NET 8 gibt. Kein Testlauf, nur Build: dotnet build Tools/UnityApiCheck
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/_Project/Scripts/Core/**/*.cs" />
+    <Compile Include="../../Assets/_Project/Scripts/Simulation/**/*.cs" />
+    <Compile Include="../../Assets/_Project/Scripts/Application/**/*.cs" Exclude="../../Assets/_Project/Scripts/Application/Unity/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+  </ItemGroup>
+</Project>

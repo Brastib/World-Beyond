@@ -141,7 +141,7 @@ Zusätzlich: Aufträge sind Daten (Typ + Ziel-ID/Position), keine Coroutines ode
 
 ### 11.3 Dateiformat
 
-JSON (Newtonsoft), Datei `<slot>.wbsave` in `Application.persistentDataPath/Saves/`. Rahmen: `format = "WorldBeyondSave"`, `formatVersion` (int), `gameVersion` (nur Info), `createdUtc`, `header` (Name, Seed, Weltgröße, Tick, Anzahl Civs/Einheiten), `settings` (Simulationsgeschwindigkeit, Pause, relevante Einstellungen), `sections` (Schlüssel = `ISaveable.SaveKey`, je `{ "v": SectionVersion, "data": … }`), `checksum` (SHA-256 über die kanonisch serialisierten `sections`). Terrain: Seed + geänderte Kacheln, ab ca. 30 % Änderungen komplettes Raster (`fullGrid`), siehe World-Entwurf §9.
+JSON (Newtonsoft), Datei `<slot>.wbsave` in `Application.persistentDataPath/Saves/`. Rahmen: `format = "WorldBeyondSave"`, `formatVersion` (int), `gameVersion` (nur Info), `createdUtc`, `header` (Name, Seed, Weltgröße, Tick, Anzahl Civs/Einheiten), `settings` (Simulationsgeschwindigkeit, Pause, relevante Einstellungen), `start` (Start-Einstellungen: Seed, Weltgröße, Civ-Anzahl; damit baut der Ladevorgang die leere Simulation neu auf), `sections` (Schlüssel = `ISaveable.SaveKey`, je `{ "v": SectionVersion, "data": … }`), `checksum` (SHA-256 über die kanonisch serialisierten `sections`). Terrain: Seed + geänderte Kacheln, ab ca. 30 % Änderungen komplettes Raster (`fullGrid`), siehe World-Entwurf §9.
 
 ### 11.4 Speichern
 
@@ -153,9 +153,10 @@ JSON (Newtonsoft), Datei `<slot>.wbsave` in `Application.persistentDataPath/Save
 ### 11.5 Laden (Reihenfolge verbindlich)
 
 1. **Datei und Metadaten validieren:** lesbar, JSON gültig, `format` korrekt, Pflichtfelder vorhanden, Prüfsumme stimmt → sonst `Corrupted` (bzw. `NotFound`, `IoError`).
+   *Präzisierung (Phase 7, 2026-10-26):* `TooNew` wird **vor** der Prüfsummenprüfung gemeldet, weil eine neuere Formatversion die Prüfsumme anders bilden könnte.
 2. **Formatversion feststellen:** `formatVersion` und jede Sektionsversion. Neuer als unterstützt → `TooNew`. Älter, aber keine lückenlose Migrationskette → `Unsupported`. Eine nicht unterstützte Version wird **nie** als aktuelle Version interpretiert.
-3. **Migrieren:** `SaveGameMigrator` arbeitet auf einer Kopie im Speicher, Schritt für Schritt (v → v+1), Rahmen zuerst, dann Sektionen.
-4. **Inhaltsschlüssel und Referenzen validieren:** alle Schlüssel in der `ContentRegistry` vorhanden → sonst `MissingContent` mit Liste der Schlüssel. Pflichtsektionen vorhanden → sonst `Corrupted`. Querverweise werden nach dem Einspielen geprüft (11.6).
+3. **Migrieren:** `SaveGameMigrator` arbeitet auf einer Kopie im Speicher, Schritt für Schritt (v → v+1), Rahmen zuerst, dann Sektionen. Die Rahmen-Migration (Schlüssel `"$frame"`) läuft zwischen `SaveGameSerializer.TryParseFrame` und `TryMap`.
+4. **Inhaltsschlüssel und Referenzen validieren:** Systeme mit Inhaltsschlüsseln implementieren `ISaveContentCheck` und liefern ihre Schlüssel vor dem Einspielen; alle Schlüssel in der `ContentRegistry` vorhanden → sonst `MissingContent` mit Liste der Schlüssel. Pflichtsektionen vorhanden → sonst `Corrupted`. Querverweise werden nach dem Einspielen geprüft (11.6).
 5. **In eine neue, leere Simulationsinstanz einspielen** (`LoadOrder` aufsteigend), danach Referenzprüfung. Harte Inkonsistenz (z. B. doppelte IDs, Generationstabelle widersprüchlich) → `Corrupted`. Weiche Inkonsistenz (Verweis auf nicht existierende Einheit) → Rückfall nach Regel 6 + Warnung im Ladebericht.
 6. **Erst nach erfolgreicher Validierung** wird die neue Instanz übernommen und die Presentation neu aufgebaut. Bei jedem Fehler bleibt der bisherige Spielzustand unverändert.
 
@@ -167,7 +168,7 @@ Systeme mit Querverweisen implementieren zusätzlich zur `ISaveable`-Implementie
 
 ### 11.7 Fehlermeldungen
 
-`SaveLoadError`: `None = 0, NotFound = 1, IoError = 2, Corrupted = 3, TooNew = 4, Unsupported = 5, MissingContent = 6, InvalidReferences = 7`. Jede Art hat eine deutsche Meldung für den Spieler (z. B. "Dieser Spielstand wurde mit einer neueren Version von World Beyond erstellt und kann nicht geladen werden.") und technische Details im Log.
+`SaveLoadError`: `None = 0, NotFound = 1, IoError = 2, Corrupted = 3, TooNew = 4, Unsupported = 5, MissingContent = 6, InvalidReferences = 7, CaptureFailed = 8` (CaptureFailed: ein `CaptureState` warf beim Speichern; nichts wird geschrieben). Jede Art hat eine deutsche Meldung für den Spieler (z. B. "Dieser Spielstand wurde mit einer neueren Version von World Beyond erstellt und kann nicht geladen werden.") und technische Details im Log.
 
 ## 1a. Zuständigkeiten
 

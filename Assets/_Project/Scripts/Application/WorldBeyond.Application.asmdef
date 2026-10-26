@@ -1,0 +1,17 @@
+{
+    "name": "WorldBeyond.Application",
+    "rootNamespace": "WorldBeyond.Application",
+    "references": [
+        "WorldBeyond.Core",
+        "WorldBeyond.Simulation"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

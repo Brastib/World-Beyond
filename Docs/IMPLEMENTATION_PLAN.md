@@ -17,19 +17,24 @@ Jede Phase endet mit: Tests laut TEST_PLAN ausgeführt (oder ehrlich als "nicht 
 | 7 | Save System und Performance | SaveLoadService vollständig, Migration, Fehlerfälle, Profiling, Optimierung | 1b–5 |
 | 8 | Endabnahme | 15-Schritte-Spieltest (TEST_PLAN §6), Windows-Build, Abschlussdoku | alle |
 
-**Harte Regel:** Vor Abschluss von 1b schreibt keine Phase Code im Projekt. Erlaubt sind Entwürfe unter `Docs/drafts/` oder `Docs/proposals/` und Asset-Recherche.
+**Harte Regel:** Fachcode kommt erst auf `main`, wenn 1b gemergt ist; vorher sind eigene Branches mit eigenen Dateien erlaubt. Erlaubt sind Entwürfe unter `Docs/drafts/` oder `Docs/proposals/` und Asset-Recherche.
 
 Hinweis: Der God-Modus (Systemliste Punkt 8) hat keinen eigenen Nutzerauftrag. Er liegt laut INTEGRATION.md bei Phase 6 (Werkzeuge/UI); die zugehörigen Commands liefern die Fachsysteme (Terrain-Commands: Phase 2, Spawn/Siedlung: Phase 3, Krieg/Frieden erzwingen: Phase 4, Explosion/Zerstörung: Phase 5).
 
-## Durchstich-Reihenfolge (damit früh ein spielbares Ganzes entsteht)
+## Erstes Spielziel: Meilenstein M1 (Nutzervorgabe 2026-10-25)
 
-1. 1b fertig → leere Simulation tickt, Geschwindigkeit umschaltbar, Speichern/Laden des Takts.
-2. Phase 2 Schritt 1–4 → Welt sichtbar, Kamera bedienbar.
-3. Phase 3 Schritt 1–4 → eine Siedlung wächst sichtbar.
-4. Phase 7 Durchstich → Welt + Einheiten + Siedlung speichern/laden.
-5. Phase 6 Durchstich → Geschwindigkeitsleiste, Auswahl, ein God-Tool mit echtem Command.
-6. Phase 4 + 5 Durchstich → Kriegserklärung → zwei Verbände Infanterie kämpfen.
-7. Danach jede Phase in die Breite.
+Generierte Welt mit Terrain · zwei wachsende Zivilisationen · Einheiten, die sich bewegen · eine Kriegserklärung mit funktionierendem Kampf · bedienbare Oberfläche · Speichern und Laden. Ziele, Nachweise und M1-Umfang je Phase: `Docs/INTEGRATION.md` §4. Alles, was M1 nicht braucht, wartet bis nach M1.
+
+Reihenfolge bis M1:
+1. 1b Fundament → Simulation tickt, Geschwindigkeit, core/units speicherbar. *(Code + dotnet-Tests fertig, Unity offen)*
+2. Phase 2 → Welt sichtbar, Kamera, Einheiten bewegen sich (M1.1, M1.3).
+3. Phase 3 → zwei Civs mit Siedlung wachsen (M1.2).
+4. Phase 7 → Welt + Einheiten + Civs speichern/laden (M1.6).
+5. Phase 6 → Geschwindigkeit, Auswahl, Feed, Krieg-Knopf über echte Commands (M1.5).
+6. Phase 4 + 5 → Kriegserklärung → zwei Infanteriegruppen kämpfen (M1.4).
+7. M1-Abnahme im Editor, danach jede Phase in die Breite.
+
+Arbeitsregeln (keine parallelen Änderungen an gemeinsamen Dateien, Branch + PR je Phase, prüfbarer Übergabestatus): `Docs/INTEGRATION.md` §0.
 
 ---
 
