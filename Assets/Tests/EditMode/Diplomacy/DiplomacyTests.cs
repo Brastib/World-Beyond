@@ -598,6 +598,21 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.IsTrue(W.RecruitRequests.Any(r => r.civ == 1));
         }
 
+        // Prüf-Befund (PR #10): 5 Einheiten auf einmal scheiterten an Ressourcen, die Civ bekam nie Nachschub.
+        [Test]
+        public void Ai_Recruitment_FallsBackToSingleUnit_WhenBatchRejected()
+        {
+            W.AddCiv(1, 0, 0, strength: 50); W.AddCiv(2, 20, 0, strength: 300);
+            W.MaxRecruitBatch = 1;
+            D.DeclareWar(2, 1);
+            _rig.RunSeconds(5);
+            var mine = W.RecruitRequests.Where(r => r.civ == 1).ToList();
+            Assert.IsTrue(mine.Any(r => r.count > 1), "zuerst wird die volle Menge angefragt");
+            Assert.IsTrue(mine.Any(r => r.count == 1), "nach Ablehnung wird eine einzelne Einheit angefragt");
+            Assert.IsTrue(D.RecentDecisions.Any(d => d.CivId == 1 && d.Action == DiplomaticActionType.Recruit
+                && d.Factors.Any(f => f.Name == "Angenommen" && f.Value == 1f)));
+        }
+
         [Test]
         public void BorderFriction_LowersOpinion_AndCausesTension()
         {
