@@ -27,7 +27,9 @@ namespace WorldBeyond.Simulation.World
     // Warteschlange werden gespeichert (MovementSystem.Save.cs), damit die Simulation nach dem Laden identisch weiterläuft (M1.6).
     public sealed partial class MovementSystem : ISimulationSystem
     {
-        public const int DefaultPathBudget = 20000;
+        // ~1 µs pro Expansion (.NET 8, Cloud); in Unity (Mono/IL2CPP) nicht gemessen. 6000 hält den Tick auch bei vielen
+        // gleichzeitigen Anfragen im einstelligen Millisekundenbereich; längere Warteschlangen verteilen sich auf mehrere Ticks.
+        public const int DefaultPathBudget = 6000;
         const float SeparationStrength = 0.5f;
 
         sealed class Agent
