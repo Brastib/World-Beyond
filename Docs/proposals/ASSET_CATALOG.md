@@ -56,7 +56,8 @@ Wer ein Asset anlegt, ändert, ersetzt oder entfernt, aktualisiert hier sofort d
 | Tiere (§6) | 10 | 10 | 0 | 0 | 0 | 0 |
 | Effekte, Decals (§7) | 26 | 26 | 0 | 0 | 0 | 0 |
 | Requisiten (§8) | 14 | 14 | 0 | 0 | 0 | 0 |
-| **Summe** | **257** | **242** | **15** (5 Platzhalter-Dateien P-001–P-005) | **0** | **0** | **0** |
+| Innenausstattung (§8.1) | 14 | 14 | 0 | 0 | 0 | 0 |
+| **Summe** | **271** | **256** | **15** (5 Platzhalter-Dateien P-001–P-005) | **0** | **0** | **0** |
 
 Pflanzen-Gattungen gesamt (§2.2–2.7): **104** (Etappe P2). Ziel P3: 250–400 Gattungen, P4: Arten als Datensätze.
 
@@ -394,6 +395,27 @@ Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude
 | prop.debris_flood | Treibgut | A6 | geplant |
 | prop.grave | Grab/Gedenkstein | A7 | geplant |
 | prop.market_stall | Marktstand | A7 | geplant |
+
+### 8.1 Innenausstattung (jedes Haus ist begehbar, `ASSETS_STYLE_ENVIRONMENT.md` §4.4)
+
+Jeder Eintrag gibt es je Epoche und je Vermögensklasse (arm / mittel / reich) in eigener Ausführung. Weg: MB in Blender (+T0). Stufe: M4 (NPCs), Baukasten ab A7.
+
+| ID | Gegenstand | Beispiele arm → reich | Etappe | Status |
+|---|---|---|---|---|
+| int.stairs | Treppe, Leiter | Leiter → Holztreppe → Steintreppe mit Geländer | A7 / M4 | geplant |
+| int.door | Innentür | Vorhang → Brettertür → Kassettentür | A7 / M4 | geplant |
+| int.bed | Schlafplatz | Strohlager → Holzbett → Himmelbett | A7 / M4 | geplant |
+| int.table | Tisch | Brett auf Böcken → Esstisch → Tafel | A7 / M4 | geplant |
+| int.chair | Sitzplatz | Hocker → Stuhl → Polstersessel, Sofa | A7 / M4 | geplant |
+| int.hearth | Feuerstelle, Herd, Kamin | offene Feuerstelle → Kachelofen/Herd → Kamin, Küchenzeile | A7 / M4 | geplant |
+| int.storage | Aufbewahrung | Korb, Truhe → Schrank → Kleiderkammer | A7 / M4 | geplant |
+| int.shelf | Regal, Vorräte | Wandbrett → Regal → Vitrine | A7 / M4 | geplant |
+| int.light | Licht | Feuerschein, Kienspan → Öllampe, Kerze → Kronleuchter, elektrisch | A7 / M4 | geplant |
+| int.wash | Waschen, Bad | Wassereimer → Waschzuber → Badezimmer | A7 / M4 | geplant |
+| int.kitchen | Küchengerät, Geschirr | Tontopf → Küchenbord → Küche | A7 / M4 | geplant |
+| int.workbench | Arbeitsplatz je Beruf | Werkbank, Webstuhl, Schreibtisch | A7 / M4 | geplant |
+| int.decor | Schmuck, Wohlstand | Felle → Teppich, Wandbehang → Bilder, Statuen | A7 / M4 | geplant |
+| int.debris | Innentrümmer | eingestürzte Decke, umgestürzte Möbel, Brandreste | A7 / M7 | geplant |
 
 UI-Icons und Schriften: siehe `Docs/UI_STYLE_GUIDE.md` B §2/§5 (nicht hier gezählt).
 
