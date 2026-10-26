@@ -54,6 +54,6 @@ Siehe SYSTEM_INTERFACES §0 (Status je Schnittstelle). Implementiert (1b, ungeme
 1. Unity-Projektdateien im Repo (DevOps, `devops/unity-project`).
 2. Nutzerfreigabe für den Merge von PR #2.
 
-## 7. Nächste Aufgabe
+## 7. Nächste Aufgabe (Stand 2026-10-26 21:35 UTC)
 
-Unity-Lauf von `integration/m1` (DevOps), danach UI (M1.5) verdrahten: Beobachten, Zeitsteuerung, Speichern/Laden-Menü. Phasen-PRs einzeln nach main, jeweils nach Unity-Test.
+M1 ist auf `integration/m1` @b47cad3 im Code vollständig: Welt, Wachstum, autonomer Krieg mit Besetzung und Frieden (Krieg kein Zwang), Speichern/Laden bitgenau, HUD (UI-Thread). Headless: SimTests 335/335, UiTests 7/7, UnityApiCheck und UiViewCheck grün. **Nicht in Unity geprüft.** Nächster Schritt: Unity-Lauf mit Szene `World.unity` und Screenshots (DevOps), dann Phasen-PRs einzeln nach main. main enthält #2, #1, #5; PR #11 (Newtonsoft im Tests-asmdef) wartet auf den Unity-Test.
