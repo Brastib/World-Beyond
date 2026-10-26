@@ -84,6 +84,8 @@ Regel: Nur der Besitzer legt die Klasse an und ändert ihre Signatur. Andere Thr
 | Auswahl, God-Tools, HUD, Minimap, Ereignis-Feed | `ISelectionService`, `GodToolController`, UI Toolkit-Dokumente, `IGameEventFeed` | UI |
 | Audio/VFX-Darstellung | `IAudioService`, `IVfxService` | UI |
 | Asset-Import und ASSET_CREDITS.md | eine Datei `Assets/ThirdParty/ASSET_CREDITS.md` | jeweiliger Importeur trägt ein; Integration prüft |
+| Art/Assets (Asset-Katalog, Stilregeln, eigene Modelle, z. B. PlantForge) | `Docs/proposals/ASSET_CATALOG.md`, `ASSETS_STYLE_ENVIRONMENT.md`; Darstellung im Spiel weiter über World/UI | Asset-Katalog-Thread |
+| Umwelt (Vegetationszustand, Feuer, Wetter, Umweltfelder V9) | eigenes Datenfeld, **ohne** `TileData` zu ändern; Sektion `environment` | Umwelt (Thread noch nicht gestartet; erst ab Freigabe des Nutzers bzw. M5) |
 
 Schnittstellen zwischen War und Military: War erklärt Krieg (`IDiplomacyService.DeclareWar`) und setzt Kriegsziele; Military reagiert auf `WarDeclaredEvent` und führt Verbände über `IArmyRegistry`. War ruft nie direkt Kampf- oder Geschosscode auf.
 
@@ -156,3 +158,4 @@ Definition of Done (vom Nutzer): Systeme interagieren tatsächlich, Kernspielsch
 | 2026-10-26 | Adapter zwischen Phasen (IDiplomacyWorldPort, ICivWarEvaluator, Combat-/ArmyEnvironment, Rifleman-Rekrutierung) liegen in `Application/Integration/PhaseAdapters.cs` und gehören der Integration; Heuristiken dort sind als PLATZHALTER markiert, bis die Fachphase echte Abfragen liefert | [E] | Simulation-Phasen bleiben voneinander unabhängig; eine Stelle für Verbindungen |
 | 2026-10-26 | Verluste an Diplomatie: `DiplomacyService` abonniert `UnitDiedEvent` selbst, keine zusätzliche Weiterleitung | [E] | War 2285b8f; sonst doppelte Zählung |
 | 2026-10-26 | Nutzeranweisungen „Realistische Welt, Umwelt und NPC-Kontrolle“ als VISION V7–V12 und Stufen M2–M7 aufgenommen; nichts davon vor M1-Test | [E] | Nutzer: schrittweise, eine Etappe zur Zeit |
+| 2026-10-26 | Asset-Regeln KA1–KA4 übernommen: eigene Modelle, aus dem Netz nur CC0-Rohstoffe (PROJECT_MASTER §8.1); Stil „Naturrealismus mit warmer Farbgebung“ (UI_STYLE_GUIDE A1); Baum-Budget als LOD-Kette (A3); neue Besitzer Art/Assets und Umwelt (§3) | [E] | Nutzeraussage 2026-10-26 hat Vorrang; Vorschlag PR #9 |
