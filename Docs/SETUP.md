@@ -29,3 +29,4 @@ Das Repository enthält noch keine `ProjectSettings/` und kein `Packages/manifes
 - Ohne Editor (Kommandozeile):
   `Unity.exe -batchmode -projectPath <Pfad> -runTests -testPlatform EditMode -testResults results.xml -logFile -`
 - Reine C#-Logik ohne Unity (auch in der Cloud): `dotnet test Tools/SimTests`
+- API-Kompatibilität mit Unity (netstandard2.1, C# 9), nur Build: `dotnet build Tools/UnityApiCheck`

@@ -335,7 +335,9 @@ namespace WorldBeyond.Tests
                 loadOrder.Add(s.SaveKey);
                 Assert.IsTrue(s.TryRestoreState(captured[s.SaveKey], out var err), err);
             }
-            CollectionAssert.AreEqual(new[] { "core", "units" }, loadOrder);
+            // Fachphasen fügen eigene Sektionen hinzu (z. B. "world"); geprüft wird nur die Fundament-Reihenfolge.
+            Assert.AreEqual("core", loadOrder[0], "core wird zuerst eingespielt");
+            Assert.Less(loadOrder.IndexOf("core"), loadOrder.IndexOf("units"));
 
             var rc = b.Context;
             Assert.AreEqual(7, rc.Clock.Tick);
@@ -417,6 +419,27 @@ namespace WorldBeyond.Tests
             Assert.IsTrue(r.HasErrors);
             CollectionAssert.AreEqual(new[] { "Auftrag zurückgesetzt" }, r.Warnings);
             CollectionAssert.AreEqual(new[] { "doppelte ID" }, r.Errors);
+        }
+    }
+}
+
+namespace WorldBeyond.Tests
+{
+    public class UnitContentCheckTests
+    {
+        [Test]
+        public void CollectContentKeys_ListsEveryUnitTypeKey()
+        {
+            var comp = WorldBeyond.Application.GameComposition.Create(null, TestContent.Setup);
+            var ctx = comp.Context;
+            ctx.UnitTypes.TryGetByKey("unit.settler", out var s);
+            ctx.UnitTypes.TryGetByKey("unit.rifleman", out var r);
+            ctx.Units.Spawn(s, 1, 0, 0);
+            ctx.Units.Spawn(r, 1, 0, 0);
+            var store = (WorldBeyond.Simulation.ISaveable)ctx.Units;
+            var keys = new List<(WorldBeyond.Core.ContentKind, string)>();
+            ((WorldBeyond.Simulation.ISaveContentCheck)ctx.Units).CollectContentKeys(store.CaptureState(), keys);
+            CollectionAssert.AreEquivalent(new[] { (WorldBeyond.Core.ContentKind.Unit, "unit.settler"), (WorldBeyond.Core.ContentKind.Unit, "unit.rifleman") }, keys);
         }
     }
 }
