@@ -221,7 +221,7 @@ Regel INTEGRATION §0.6: Nichts aus M2–M6 beginnen, bevor M1 getestet ist. Des
 | A7 | Gebäude-Baukasten, Menschen-Grundkörper, Fahrzeuge (eigene Stilfamilie) | Style Lock | Style Board laut PROJECT_MASTER §8.3 |
 | laufend | Pflanzen P3/P4 als Daten | A2 | Katalog-Zähler |
 
-Nach VISION liegt die Umweltsimulation eigentlich in M5. Vorschlag: Vegetation/Brand/Wind (A3–A5) früher, weil der Nutzer sie ausdrücklich will und sie auf vorhandenen Flags aufbauen. Das ist eine Reihenfolgeänderung und braucht die Zustimmung des Nutzers bzw. des Integrations-Threads.
+**Entscheidung des Nutzers (2026-10-26 16:28 UTC): Umwelt bleibt bei M5.** A3–A6 (Vegetationsfeld, Blitz/Brand/Feuerwehr, Sturm, Tsunami) beginnen erst mit M5. Nach dem M1-Test kommen nur A1/A2 (neue Bäume, Pflanzen, Felsen, Zustände per Shader) und später A7.
 
 ## 9. Übergabe (Format laut Projektregeln §9)
 
@@ -237,8 +237,8 @@ Nach VISION liegt die Umweltsimulation eigentlich in M5. Vorschlag: Vegetation/B
 
 **Tests:** keine (reine Dokumentation). Code-Befunde in §1 durch Lesen der genannten Dateien geprüft.
 
-**Offene Probleme:** KA1–KA4 übernommen (70a2d99); offen bleibt die Zustimmung des Nutzers, Umwelt (A3–A5) vor M5 einzuplanen; MakeHuman-Lizenz ungeprüft; Texturquellen-Lizenzen je Datei noch zu prüfen; Polygon-Budgets nur geschätzt.
+**Offene Probleme:** KA1–KA4 übernommen (70a2d99); Umwelt bleibt laut Nutzer bei M5; MakeHuman-Lizenz ungeprüft; Texturquellen-Lizenzen je Datei noch zu prüfen; Polygon-Budgets nur geschätzt.
 
-**Nächste Schritte:** (erledigt: Regeln, Besitzer, Platzhalter-Register, Biome.) Nutzer entscheidet über die frühere Umwelt-Etappe. Nach M1-Test: Etappe A1.
+**Nächste Schritte:** (erledigt: Regeln, Besitzer, Platzhalter-Register, Biome.) Umwelt bleibt bei M5 (Nutzer). Nach M1-Test: Etappe A1.
 
 **Dokumentation:** PROJECT_MASTER §8.1, UI_STYLE_GUIDE A1/A3, ARCHITECTURE §16 (Budgets), INTEGRATION §3, ASSET_CREDITS §3/§4, VISION §4 (Reihenfolge Umwelt), CURRENT_STATE.
