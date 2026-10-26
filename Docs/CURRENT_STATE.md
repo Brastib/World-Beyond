@@ -43,7 +43,7 @@ Siehe SYSTEM_INTERFACES §0 (Status je Schnittstelle). Implementiert (1b, ungeme
 
 | # | Problem | Status |
 |---|---|---|
-| K1 | `UI_STYLE_GUIDE.md` Teil A2 und `PHASE5_MILITARY_ASSETS.md` nennen noch 1 Kachel ≈ 10 m; gültig ist D13 (4 m, 1 Einheit = 1 m) | an Phase 6 und 5 gemeldet, offen |
+| K1 | UI_STYLE_GUIDE A2 auf D13 korrigiert (1 Einheit = 1 m, 1 Kachel = 4 m, Modelle in Originalgröße). PHASE5_MILITARY_ASSETS.md prüfen, ob dort noch alte Werte stehen. | Phase 6 erledigt, Phase 5 offen |
 | K2 | Stilrichtung nur Arbeitshypothese; Style Lock braucht Unity und Nutzerbestätigung | offen |
 | K3 | Asset-Downloads aus der Cloud laut Phase 5 vom Proxy blockiert (403); Import realistisch nur auf dem PC | nicht selbst geprüft |
 | K4 | Ob `Newtonsoft.Json.dll` aus `com.unity.nuget.newtonsoft-json` in `WorldBeyond.Application` automatisch referenziert wird, ist ungeprüft | prüfen beim ersten Unity-Import |
