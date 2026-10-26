@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Nur Build: kompiliert ALLE Skripte inklusive Unity-Code (Application/Unity, Presentation mit UI Toolkit) gegen die
+    Unity-Referenz-DLLs aus dem NuGet-Paket UnityEngine.Modules 2021.3.33. Findet Tipp- und Typfehler in Unity-Code ohne Editor.
+    Grenzen: Referenz ist Unity 2021.3, nicht Unity 6; Input-System-Zweig (WB_INPUT_SYSTEM) wird nicht geprüft;
+    ersetzt keinen Unity-Lauf (Layout, Darstellung, Verhalten). Aufruf: dotnet build Tools/UiViewCheck
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DefineConstants>ENABLE_LEGACY_INPUT_MANAGER</DefineConstants>
+    <!-- Serialisierte Felder, die nur der Inspector setzt -->
+    <NoWarn>CS0649</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/_Project/Scripts/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+  </ItemGroup>
+</Project>
