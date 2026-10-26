@@ -89,9 +89,38 @@ namespace WorldBeyond.Simulation.World.Navigation
                 s.Speed = Math.Max(target, s.Speed - p.Acceleration * 2f * dt);   // Bremsen doppelt so stark
 
             float move = Math.Min(s.Speed * dt, dist);
-            s.X += MathF.Sin(s.Heading) * move;
-            s.Z += MathF.Cos(s.Heading) * move;
+            float mx = MathF.Sin(s.Heading) * move;
+            float mz = MathF.Cos(s.Heading) * move;
+            // Nie auf eine nicht befahrbare Kachel wechseln (Fahrzeuge schneiden in Kurven sonst Hänge oder Ufer an):
+            // erst entlang einer Achse gleiten, sonst stehen bleiben und weiterdrehen. Wer schon auf einer blockierten
+            // Kachel steht, darf sie frei verlassen.
+            bool onBlocked = float.IsInfinity(world.MoveCost(tx, ty, p.MovementClass));
+            if (onBlocked || CanEnter(world, p.MovementClass, tx, ty, s.X + mx, s.Z + mz))
+            {
+                s.X += mx;
+                s.Z += mz;
+            }
+            else if (CanEnter(world, p.MovementClass, tx, ty, s.X + mx, s.Z))
+            {
+                s.X += mx;
+                s.Speed *= 0.7f;
+            }
+            else if (CanEnter(world, p.MovementClass, tx, ty, s.X, s.Z + mz))
+            {
+                s.Z += mz;
+                s.Speed *= 0.7f;
+            }
+            else
+            {
+                s.Speed = 0f;
+            }
             return false;
+        }
+
+        static bool CanEnter(IWorldQuery world, MovementClass mc, int fromX, int fromY, float x, float z)
+        {
+            var (nx, ny) = WorldCoords.WorldToTile(x, z);
+            return (nx == fromX && ny == fromY) || world.IsWalkable(nx, ny, mc);
         }
 
         static float WrapAngle(float a)

@@ -41,6 +41,7 @@ namespace WorldBeyond.Simulation.World
         // Bereiche, ohne Allokation pro Aufruf
         void ForEachInRect(int minX, int minY, int maxX, int maxY, TileVisitor visitor);
         int FindBestTiles(int cx, int cy, int radius, TileScorer scorer, int maxResults, List<TileScore> results);
+        // Startplätze für Zivilisationen; bevorzugt alle auf einem zu Fuß zusammenhängenden Landstück (Sandbox: Civs müssen sich begegnen können).
         int FindStartLocations(int count, int minDistanceTiles, List<TileScore> results);
     }
 
