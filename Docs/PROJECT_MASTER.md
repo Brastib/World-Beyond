@@ -5,7 +5,7 @@ Dieses Dokument ist die oberste Referenz. Bei Widerspruch gilt: Aussage des Nutz
 
 ## 1. Vision
 
-> Langfristige Vision, Ausbaustufen M1–M6 und die Architekturentscheidungen dazu: **`Docs/VISION.md`** (Nutzeranweisung 2026-10-26, hat Vorrang vor älteren Aussagen hier).
+> Langfristige Vision, Ausbaustufen M1–M7 und die Architekturentscheidungen dazu: **`Docs/VISION.md`** (Nutzeranweisung 2026-10-26, hat Vorrang vor älteren Aussagen hier).
 
 World Beyond ist ein eigenständiger God-Simulator und eine Echtzeit-Weltsimulation für Windows-PC, inspiriert vom Sandbox-Prinzip von WorldBox, erweitert um echte Zivilisationen, moderne Militärtechnik, dynamische Kriege und strategische Mechaniken. Der Spieler erschafft und verändert eine Welt, beobachtet Zivilisationen und beeinflusst ihre Geschichte. Die Welt lebt auch ohne Eingriffe des Spielers weiter.
 
