@@ -173,6 +173,7 @@ namespace WorldBeyond.Tests.Performance
                 var stages = new List<string>();
                 foreach (var (stage, ms) in service.LastLoadTimings) stages.Add($"{stage} {ms:0}");
                 TestContext.WriteLine("Ladeschritte (ms): " + string.Join(", ", stages));
+                if (current.Context.Get<IWorldQuery>() is WorldGrid grid) TestContext.WriteLine($"Welt beim Laden neu erzeugt: {grid.LastRestoreRegenerated}");
                 TestContext.WriteLine($"Speichern {saveMs:0} ms, Datei {bytes / 1024.0:0} KB; Laden {loadMs:0} ms (davon Weltneuaufbau ca. {regenMs:0} ms)");
                 GC.KeepAlive(fresh);
             }
