@@ -180,7 +180,7 @@ namespace WorldBeyond.Simulation.Civilizations
                 _s.Ctx.Units.Despawn(id);
                 return;
             }
-            var (hx, hz) = CivState.SettlementCenter(home);
+            var (hx, hz) = _s.ArrivalPoint(home, u.Type);
             _s.Ctx.Units.SetTask(id, new UnitTask { Kind = UnitTaskKind.MoveTo, TargetRef = home.Id, TargetX = hx, TargetZ = hz });
             _s.Ctx.Units.SetMoveTarget(id, hx, hz);
         }

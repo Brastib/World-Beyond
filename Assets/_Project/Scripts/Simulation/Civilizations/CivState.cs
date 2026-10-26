@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using WorldBeyond.Core;
+using WorldBeyond.Simulation.Units;
 using WorldBeyond.Simulation.World;
 
 namespace WorldBeyond.Simulation.Civilizations
@@ -85,6 +86,32 @@ namespace WorldBeyond.Simulation.Civilizations
         /// <summary>Mittelpunkt des 2×2-Ortskerns.</summary>
         internal static (float x, float z) SettlementCenter(Settlement s) =>
             ((s.X + 1) * WorldConstants.TileSize, (s.Y + 1) * WorldConstants.TileSize);
+
+        /// <summary>
+        /// Begehbarer Ankunfts- und Aufbruchspunkt einer Siedlung: erste freie Kachel in Ringen um den Ortskern
+        /// (Gebäudekacheln blockieren die Bewegung, der Ortskern selbst ist also nie erreichbar). Feste Suchreihenfolge,
+        /// damit das Ergebnis deterministisch ist. Rückfall: Mitte des Ortskerns.
+        /// </summary>
+        internal (float x, float z) ArrivalPoint(Settlement s, MovementClass mc)
+        {
+            int size = SettlementRegistry.CoreSize;
+            for (int r = 1; r <= 6; r++)
+            {
+                for (int y = s.Y - r; y < s.Y + size + r; y++)
+                {
+                    for (int x = s.X - r; x < s.X + size + r; x++)
+                    {
+                        bool onRing = x == s.X - r || x == s.X + size + r - 1 || y == s.Y - r || y == s.Y + size + r - 1;
+                        if (!onRing || !World.InBounds(x, y) || !World.IsWalkable(x, y, mc)) continue;
+                        return (WorldCoords.TileCenterX(x), WorldCoords.TileCenterZ(y));
+                    }
+                }
+            }
+            return SettlementCenter(s);
+        }
+
+        internal (float x, float z) ArrivalPoint(Settlement s, UnitTypeId type) =>
+            ArrivalPoint(s, Ctx.UnitTypes.TryGet(type, out var t) ? t.Movement : MovementClass.Foot);
 
         internal int TechSlots => Content.Techs.Count + 1;
     }

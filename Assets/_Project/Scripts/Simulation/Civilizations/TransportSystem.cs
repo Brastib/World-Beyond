@@ -130,7 +130,7 @@ namespace WorldBeyond.Simulation.Civilizations
             var c = new Caravan { Unit = unit, OriginSettlementId = origin.Id, TargetSettlementId = target.Id, Resource = o.CargoResource, Amount = amount };
             _caravans.Add(unit, c);
             _order.Add(unit);
-            var (x, z) = CivState.SettlementCenter(target);
+            var (x, z) = _s.ArrivalPoint(target, _s.Ctx.Units.Get(unit).Type);
             _s.Ctx.Units.SetTask(unit, new UnitTask { Kind = UnitTaskKind.MoveTo, TargetRef = target.Id, TargetX = x, TargetZ = z });
             _s.Ctx.Units.SetMoveTarget(unit, x, z);
         }
@@ -172,7 +172,7 @@ namespace WorldBeyond.Simulation.Civilizations
                 return;
             }
             c.TargetSettlementId = home.Id;
-            var (x, z) = CivState.SettlementCenter(home);
+            var (x, z) = _s.ArrivalPoint(home, u.Type);
             _s.Ctx.Units.SetTask(c.Unit, new UnitTask { Kind = UnitTaskKind.MoveTo, TargetRef = home.Id, TargetX = x, TargetZ = z });
             _s.Ctx.Units.SetMoveTarget(c.Unit, x, z);
         }

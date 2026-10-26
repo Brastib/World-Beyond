@@ -99,7 +99,7 @@ namespace WorldBeyond.Simulation.Civilizations
         private void Spawn(Settlement st, RecruitableUnitData data, RecruitOrder o)
         {
             if (!_s.Ctx.UnitTypes.TryGetByKey(data.UnitTypeKey, out var type)) return;
-            var (x, z) = CivState.SettlementCenter(st);
+            var (x, z) = _s.ArrivalPoint(st, type);
             var id = _s.Ctx.Units.Spawn(type, st.CivId, x, z);
             if (!id.IsValid) return;
             st.Adults = Math.Max(0, st.Adults - data.PopulationCost);
