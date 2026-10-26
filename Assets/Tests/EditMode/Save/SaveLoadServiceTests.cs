@@ -269,6 +269,17 @@ namespace WorldBeyond.Tests.EditMode.Save
         }
 
         [Test]
+        public void RemovedUnitType_IsMissingContent()
+        {
+            _current = Create(new GameStartSettings());
+            SpawnType(_current, "unit.rifleman", 1, 0, 0);
+            Assert.IsTrue(Service(s => Create(s)).Save("ut").Success);
+            var load = Service(s => Create(s, new[] { "unit.settler" })).Load("ut");
+            Assert.AreEqual(SaveLoadError.MissingContent, load.Error, load.Detail);
+            StringAssert.Contains("unit.rifleman", load.Detail);
+        }
+
+        [Test]
         public void SoftReferenceProblem_IsWarning_HardIsInvalidReferences()
         {
             _current = Create(new GameStartSettings(), extra: new ExtraSaveable());
