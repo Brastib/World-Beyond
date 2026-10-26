@@ -472,10 +472,28 @@ namespace WorldBeyond.Simulation.Diplomacy
             int otherWars = 0;
             foreach (var w in Wars) if (w != war && !w.Suspended && w.SideOf(receiver) != WarSide.None) otherWars++;
 
+            // Überlegenheit zählt nur, wenn der Empfänger nichts bekommt (weißer Frieden oder eigene Abgabe).
+            float dominance = cost >= 0f ? Dominance(war, receiver, exhaustionR) : 0f;
             float accept = Settings.PeaceBaseline - scoreR * Settings.PeaceScoreWeight + exhaustionR * Settings.PeaceExhaustionWeight
-                           - cost + otherWars * Settings.PeaceOtherWarBonus;
+                           - cost + otherWars * Settings.PeaceOtherWarBonus - dominance * Settings.DominancePeaceWeight;
+            if (accept <= 0f && dominance > 0.5f) { reason = "Der Empfänger ist klar überlegen und noch nicht kriegsmüde."; return accept; }
             if (accept <= 0f) reason = "Der Kriegsverlauf spricht aus Sicht des Empfängers gegen diesen Frieden.";
             return accept;
+        }
+
+        // 0..1: militärische Überlegenheit der Seite des Empfängers, abgeschwächt durch dessen Erschöpfung.
+        float Dominance(War war, int receiver, float exhaustionR)
+        {
+            var side = war.SideOf(receiver);
+            var other = side == WarSide.Attacker ? WarSide.Defender : WarSide.Attacker;
+            float own = 0f, enemy = 0f;
+            foreach (var c in war.MembersOf(side)) own += Math.Max(0f, _world.GetMilitaryStrength(c));
+            foreach (var c in war.MembersOf(other)) enemy += Math.Max(0f, _world.GetMilitaryStrength(c));
+            if (own <= 0f) return 0f;
+            float ratio = enemy <= 0f ? Settings.FullStrengthRatio : own / enemy;
+            float superiority = Clamp01((ratio - 1f) / Math.Max(0.01f, Settings.FullStrengthRatio - 1f));
+            float fresh = Clamp01(1f - exhaustionR / Math.Max(1f, Settings.DominanceExhaustionLimit));
+            return superiority * fresh;
         }
 
         // Wert einer Bedingung in warScore-Punkten.

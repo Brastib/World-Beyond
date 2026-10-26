@@ -43,6 +43,10 @@ namespace WorldBeyond.Simulation.Diplomacy
         public float PeaceScoreWeight = 0.6f;
         public float PeaceExhaustionWeight = 0.5f;
         public float PeaceOtherWarBonus = 10f;
+        // Ein klar überlegener, noch frischer Empfänger nimmt keinen weißen Frieden an (sonst Krieg/Frieden-Ping-Pong).
+        // Abzug = Gewicht × Überlegenheit (0 bei Gleichstand, 1 ab FullStrengthRatio) × (1 − Erschöpfung/Grenze).
+        public float DominancePeaceWeight = 30f;
+        public float DominanceExhaustionLimit = 60f;      // ab dieser Erschöpfung zählt Überlegenheit nicht mehr
 
         // KI
         public float WarThreshold = 0.25f;

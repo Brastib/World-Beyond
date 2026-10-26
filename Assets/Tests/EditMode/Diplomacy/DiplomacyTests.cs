@@ -274,6 +274,49 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.IsTrue(D.RecentDecisions.Any(x => x.Action == DiplomaticActionType.AcceptPeace));
         }
 
+        // Prüf-Befund (Sandbox, Seed 12345): Civ 2 war 10- bis 16-mal stärker und nahm trotzdem jeden weißen Frieden an.
+        [Test]
+        public void Peace_DominantFreshReceiver_RejectsWhitePeace_ButAcceptsConcession()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
+            D.DeclareWar(2, 1);
+            var white = D.ProposePeace(1, 2, PeaceTerm.White());
+            Assert.IsFalse(white.Accepted, "der klar Überlegene nimmt frisch im Krieg keinen weißen Frieden an");
+            Assert.IsNotNull(D.FindWar(1, 2));
+            var tribute = D.ProposePeace(1, 2, PeaceTerm.Tribute(1, 0.2f));
+            Assert.IsTrue(tribute.Accepted, "ein Zugeständnis beendet den Krieg");
+            Assert.IsNull(D.FindWar(1, 2));
+        }
+
+        [Test]
+        public void Peace_EqualStrength_WhitePeaceStillPossible()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 100);
+            D.DeclareWar(2, 1);
+            Assert.IsTrue(D.ProposePeace(1, 2, PeaceTerm.White()).Accepted);
+        }
+
+        // Stärke 10:1 ohne Eroberung: kein Ping-Pong mit weißem Frieden nach wenigen Minuten.
+        [Test]
+        public void Autonomy_TenToOne_WarLasts_AndEndsWithConcession()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
+            W.SetBorder(1, 2, 80);
+            D.DeclareWar(2, 1);
+            int seconds = 0;
+            while (D.FindWar(1, 2) != null && seconds < 180 * 60)
+            {
+                if (seconds % 30 == 0) D.ReportUnitLost(1, 2, 5f);
+                _rig.RunSeconds(1);
+                seconds++;
+            }
+            var peace = _rig.Bus.Of<PeaceSignedEvent>();
+            Assert.AreEqual(1, peace.Count, "Frieden entsteht ohne Eingriff");
+            Assert.AreNotEqual(PeaceTermType.WhitePeace, peace[0].Term, "der Unterlegene muss etwas abgeben");
+            Assert.GreaterOrEqual(seconds, 5 * 60, "Krieg dauert länger als das bisherige Ping-Pong (1–4 min)");
+            Assert.IsTrue(D.RecentDecisions.Any(x => x.Action == DiplomaticActionType.RejectPeace && x.CivId == 2));
+        }
+
         // Review-Befund: auch gleich starke Nachbarn geraten ohne Eingriff in Krieg (Grenzgroll wächst über die Zeit).
         [TestCase(100f, 100f, 0f, 0f, 0.5f)]
         [TestCase(110f, 100f, 0.5f, 0.5f, 0.5f)]

@@ -167,7 +167,7 @@ Events: WarDeclared, PeaceSigned, TruceSigned, AllianceFormed, TreatyBroken,
 | `.../DiplomacyCommands.cs` | DeclareWar (optional erzwungen), ProposePeace (optional erzwungen), SignTruce, FormAlliance, BreakTreaty, ModifyRelation |
 | `.../DiplomacySaveable.cs` | ISaveable "diplomacy" (SectionVersion 1, LoadOrder 800), Validierung, tiefe Kopien, Referenzprüfung mit Rückfall (`ISaveReferenceCheck`) |
 | `.../DiplomacyOverview.cs` | Lesemodell für die UI-Übersicht (Kriege, Bündnisse, Feindschaften) |
-| `Assets/Tests/EditMode/Diplomacy/DiplomacyTests.cs`, `DiplomacyTestDoubles.cs` | 44 EditMode-Tests, Testwelt für den Port |
+| `Assets/Tests/EditMode/Diplomacy/DiplomacyTests.cs`, `DiplomacyTestDoubles.cs` | 47 EditMode-Tests, Testwelt für den Port |
 
 ### 11.2 Anbindung an andere Phasen (über `IDiplomacyWorldPort`)
 
@@ -188,9 +188,15 @@ Neu ist der Grenzgroll (`RelationReason.BorderGrievance`). Er wächst an einer g
 - Die Utility ist jetzt (0,5 + 0,5 × Nähe) × (0,35 × Stärke + 0,65 × Motiv), die Schwelle liegt bei 0,25.
 - Probe mit der echten GameComposition (Branch integration/m1 plus diese Änderungen, 128², 2 Civs, ohne Eingabe): Seed 1 → Krieg nach 8,0 min, Seed 7 → 40,6 min, Seed 2026 → 97,5 min. Vorher gab es bei keinem Seed einen Krieg.
 
+### 11.2c Nachtrag nach Sandbox-Prüfung (2026-10-26)
+
+- Verluste zählen nur bei Tod durch einen Kriegsgegner (`KillerCivId > 0`, gegnerische Seite). Ziviler Despawn zählt nicht.
+- Wird eine Sammel-Rekrutierung abgelehnt, fragt die KI sofort 1 Einheit an.
+- Gegen Krieg/Frieden-Ping-Pong: Ein klar überlegener Empfänger nimmt weißen Frieden erst an, wenn er erschöpft ist. Abzug = `DominancePeaceWeight` (30) × Überlegenheit (0 bei Gleichstand, 1 ab `FullStrengthRatio`) × (1 − Erschöpfung/`DominanceExhaustionLimit` 60). Zugeständnisse (Tribut, Abtretung) nimmt er weiter an. Ohne Eroberung endet ein 10:1-Krieg deshalb mit einem Zugeständnis des Schwächeren statt nach 1–4 Minuten weiß.
+
 ### 11.3 Tests
 
-Ausgeführt am 2026-10-26 mit `dotnet test Tools/SimTests` (.NET 8, C# 9, Warnungen als Fehler) gegen das echte Fundament aus PR #2: 84 von 84 bestanden (40 Fundament, 44 Phase 4; abgelehnte Sammel-Rekrutierung fällt auf 1 Einheit zurück; ziviler Despawn mit KillerCivId 0 zählt nicht als Kriegsverlust). **Nicht im Unity Test Runner ausgeführt.**
+Ausgeführt am 2026-10-26 mit `dotnet test Tools/SimTests` (.NET 8, C# 9, Warnungen als Fehler) gegen das echte Fundament aus PR #2: 87 von 87 bestanden (40 Fundament, 47 Phase 4; überlegener Empfänger lehnt weißen Frieden ab; abgelehnte Sammel-Rekrutierung fällt auf 1 Einheit zurück; ziviler Despawn mit KillerCivId 0 zählt nicht als Kriegsverlust). **Nicht im Unity Test Runner ausgeführt.**
 Abgedeckt: T-4-01 Kriegserklärung und Bündnisruf, T-4-02 Frieden abhängig vom Kriegsstand inkl. Abtretung und Tribut, T-4-03 Bündnisse, T-4-04 Zielauswahl, T-4-05 kein Krieg ohne Grund (30 Spielminuten) und Krieg mit Grund samt Begründung, Autonomie mit symmetrischen Nachbarn (4 Fälle aus dem Review), UnitDiedEvent über echten SimEventBus und UnitStore, T-4-06 Verluste/Erschöpfung/Friedensangebot des Verlierers, T-4-07 Sandbox-Autonomie (Krieg und Frieden ohne Spielereingabe, INTEGRATION.md §0 Regel 4), T-4-07 Speichern/Laden während des Kriegs mit identischer Fortsetzung (DTO-Rundlauf; der JSON-Teil gehört dem SaveLoadService, Phase 7), Validierung beschädigter Daten, Referenzprüfung; außerdem Waffenstillstand, Zusammenbruch einer Civ, strategische Punkte, Rekrutierung, Grenzreibung, Befehle, Übersicht, nie wiederverwendete IDs.
 
 ### 11.4 Noch fehlend (ehrlich)
