@@ -22,9 +22,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         public List<CivAiMemory> Memory = new List<CivAiMemory>();
     }
 
-    // ISaveReferenceCheck/LoadReport (SYSTEM_INTERFACES §11) gibt es im Fundament noch nicht. Bis dahin liefert
-    // CheckReferences die Warnungen über einen Callback; der SaveLoadService (Phase 7) ruft es nach allen Sektionen auf.
-    public sealed class DiplomacySaveable : ISaveable
+    public sealed class DiplomacySaveable : ISaveable, ISaveReferenceCheck
     {
         public const int CurrentSectionVersion = 1;
         readonly DiplomacyService _d;
@@ -135,6 +133,9 @@ namespace WorldBeyond.Simulation.Diplomacy
         }
 
         // Weiche Fehler nach dem Laden aller Sektionen: Rückfall anwenden und melden (ARCHITECTURE §11.1 Regel 6).
+        public void CheckReferences(SimContext ctx, LoadReport report) => CheckReferences(report.Warn);
+
+        // Liefert die Anzahl der Warnungen; jede Warnung bedeutet einen bereits angewendeten Rückfall.
         public int CheckReferences(Action<string> warn)
         {
             int warnings = 0;

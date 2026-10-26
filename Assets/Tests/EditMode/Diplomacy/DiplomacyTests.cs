@@ -1,5 +1,6 @@
 using System.Linq;
 using NUnit.Framework;
+using WorldBeyond.Simulation;
 using WorldBeyond.Simulation.Diplomacy;
 
 namespace WorldBeyond.Tests.EditMode.Diplomacy
@@ -302,7 +303,9 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             CopyWorld(a.World, b.World);
             var saveB = new DiplomacySaveable(b.Service);
             Assert.IsTrue(saveB.TryRestoreState(dto, out string error), error);
-            Assert.AreEqual(0, saveB.CheckReferences(null));
+            var report = new LoadReport();
+            saveB.CheckReferences(null, report);
+            Assert.IsEmpty(report.Warnings);
             Assert.AreEqual(atSave, StateDump.Of(saveB.CaptureState()), "Wiederhergestellter Zustand gleicht dem gespeicherten");
 
             for (int i = 0; i < 10; i++) { a.Service.ReportUnitLost(2, 1, 3f); b.Service.ReportUnitLost(2, 1, 3f); }
@@ -355,9 +358,10 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             W.AddCiv(1, 0, 0); W.AddCiv(2, 40, 0);
             D.DeclareWar(1, 2);
             W.Kill(2);
-            var warnings = new System.Collections.Generic.List<string>();
-            Assert.Greater(new DiplomacySaveable(D).CheckReferences(warnings.Add), 0);
-            Assert.IsNotEmpty(warnings);
+            var report = new LoadReport();
+            new DiplomacySaveable(D).CheckReferences(null, report);
+            Assert.IsNotEmpty(report.Warnings);
+            Assert.IsFalse(report.HasErrors);
             Assert.AreEqual(0, D.ActiveWars.Count);
             Assert.AreEqual(WarEndReason.CivCollapsed, D.EndedWars.Last().EndReason);
         }

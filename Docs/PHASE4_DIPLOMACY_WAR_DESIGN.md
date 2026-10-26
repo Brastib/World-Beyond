@@ -165,7 +165,7 @@ Events: WarDeclared, PeaceSigned, TruceSigned, AllianceFormed, TreatyBroken,
 | `.../WarStrategyEvaluator.cs` | Utility-KI: Kriegserklärung, Frieden (Forderung/Zugeständnis/weißer Frieden), Bündnisse, Rekrutierungsanfragen; jede Entscheidung mit Faktoren protokolliert |
 | `.../DiplomacySystem.cs` | ISimulationSystem, Order 800, jede Spielsekunde |
 | `.../DiplomacyCommands.cs` | DeclareWar (optional erzwungen), ProposePeace (optional erzwungen), SignTruce, FormAlliance, BreakTreaty, ModifyRelation |
-| `.../DiplomacySaveable.cs` | ISaveable "diplomacy" (SectionVersion 1, LoadOrder 800), Validierung, tiefe Kopien, Referenzprüfung mit Rückfall |
+| `.../DiplomacySaveable.cs` | ISaveable "diplomacy" (SectionVersion 1, LoadOrder 800), Validierung, tiefe Kopien, Referenzprüfung mit Rückfall (`ISaveReferenceCheck`) |
 | `.../DiplomacyOverview.cs` | Lesemodell für die UI-Übersicht (Kriege, Bündnisse, Feindschaften) |
 | `Assets/Tests/EditMode/Diplomacy/DiplomacyTests.cs`, `DiplomacyTestDoubles.cs` | 31 EditMode-Tests, Testwelt für den Port |
 
@@ -177,14 +177,13 @@ Der Adapter abonniert außerdem UnitDiedEvent → `ReportUnitLost`, SettlementCa
 
 ### 11.3 Tests
 
-Ausgeführt am 2026-10-26 mit `dotnet test Tools/SimTests` (.NET 8, C# 9, Warnungen als Fehler) gegen das echte Fundament aus PR #2: 70 von 70 bestanden (39 Fundament, 31 Phase 4). **Nicht im Unity Test Runner ausgeführt.**
+Ausgeführt am 2026-10-26 mit `dotnet test Tools/SimTests` (.NET 8, C# 9, Warnungen als Fehler) gegen das echte Fundament aus PR #2: 71 von 71 bestanden (40 Fundament, 31 Phase 4). **Nicht im Unity Test Runner ausgeführt.**
 Abgedeckt: T-4-01 Kriegserklärung und Bündnisruf, T-4-02 Frieden abhängig vom Kriegsstand inkl. Abtretung und Tribut, T-4-03 Bündnisse, T-4-04 Zielauswahl, T-4-05 kein Krieg ohne Grund (30 Spielminuten) und Krieg mit Grund samt Begründung, T-4-06 Verluste/Erschöpfung/Friedensangebot des Verlierers, T-4-07 Speichern/Laden während des Kriegs mit identischer Fortsetzung (DTO-Rundlauf; der JSON-Teil gehört dem SaveLoadService, Phase 7), Validierung beschädigter Daten, Referenzprüfung; außerdem Waffenstillstand, Zusammenbruch einer Civ, strategische Punkte, Rekrutierung, Grenzreibung, Befehle, Übersicht, nie wiederverwendete IDs.
 
 ### 11.4 Noch fehlend (ehrlich)
 
 - Adapter für `IDiplomacyWorldPort` und Registrierung in `GameComposition`: wartet auf Phase 3 (Civ) und Phase 5 (Military). Bis dahin läuft Diplomatie im Spiel nicht.
 - Aufruf des Kriegsbewerters durch das CivAISystem (Phase 3).
-- `ISaveReferenceCheck`/`LoadReport` fehlen im Fundament; `DiplomacySaveable.CheckReferences` nutzt vorerst einen Callback.
 - UI-Panel (UI Toolkit) für Diplomatie und Armeebefehle: Phase 6; Lesemodell und Commands sind fertig.
 - Kampf, Armeen, Rückzug, Verteidigung, Versorgung: Phase 5 (nutzt `GetTargetPriorities` und die Events).
 - Handel als Beziehungsquelle und Status `Trade`: noch kein Handelssystem.
