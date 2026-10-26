@@ -4,6 +4,7 @@ using WorldBeyond.Application;
 using WorldBeyond.Core;
 using WorldBeyond.Simulation;
 using WorldBeyond.Simulation.Civilizations;
+using WorldBeyond.Simulation.World;
 
 namespace WorldBeyond.Tests.Civilizations
 {
@@ -51,6 +52,41 @@ namespace WorldBeyond.Tests.Civilizations
             int p = 0;
             foreach (int id in Civs.AllCivIds) p += Civs.Get(id).Population;
             return p;
+        }
+
+        /// <summary>Summe der Restmengen eines Rohstoffs auf allen Weltkacheln.</summary>
+        public long WorldResource(ResourceType r)
+        {
+            var w = Ctx.Get<WorldBeyond.Simulation.World.IWorldQuery>();
+            long sum = 0;
+            for (int y = 0; y < w.Height; y++)
+                for (int x = 0; x < w.Width; x++)
+                {
+                    ref readonly var t = ref w.Get(x, y);
+                    if (t.Resource == r) sum += t.ResourceAmount;
+                }
+            return sum;
+        }
+
+        /// <summary>Exakter Zustandsabdruck für Determinismus-Vergleiche (Doubles verlustfrei).</summary>
+        public string Fingerprint()
+        {
+            var sb = new StringBuilder();
+            sb.Append(Ctx.Clock.Tick).Append('|').Append(Ctx.Random.State).Append('|').Append(Ctx.Units.Count).Append('|');
+            foreach (int sid in State.SettlementIdsInOrder)
+            {
+                var st = State.FindSettlement(sid);
+                sb.Append(st.Id).Append(':').Append(st.CivId).Append(':')
+                  .Append(st.Children.ToString("R")).Append(',').Append(st.Adults.ToString("R")).Append(',').Append(st.Elders.ToString("R"));
+                foreach (var v in st.Stock) sb.Append(',').Append(v.ToString("R"));
+                sb.Append(',').Append(st.Buildings.Count).Append(';');
+            }
+            foreach (int cid in State.CivIdsInOrder)
+            {
+                var c = State.FindCiv(cid);
+                sb.Append('C').Append(cid).Append(':').Append(c.ResearchPoints.ToString("R")).Append(':').Append(c.CurrentResearch.Value).Append(';');
+            }
+            return sb.ToString();
         }
 
         public string Describe()
