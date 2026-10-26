@@ -55,7 +55,9 @@ namespace WorldBeyond.Simulation.Diplomacy
             float theirStrength = EffectiveStrength(target, 0.7f);
             if (_d.IsAtWar(target)) theirStrength *= 0.7f;     // Gegner ist schon gebunden
             float ratio = myStrength / Math.Max(1f, theirStrength);
-            float strength = DiplomacyService.Clamp01((ratio - 1.1f) / 1.4f);
+            if (ratio < S.MinStrengthRatio) return option;            // deutlich schwächer: nie angreifen
+            // Weicher Faktor: auch gleich starke Nachbarn können mit genug Motiv Krieg führen.
+            float strength = DiplomacyService.Clamp01((ratio - S.MinStrengthRatio) / (S.FullStrengthRatio - S.MinStrengthRatio));
 
             float opinion = _d.GetOpinion(civ, target);
             float hostility = DiplomacyService.Clamp01(-opinion / 100f);
@@ -75,7 +77,7 @@ namespace WorldBeyond.Simulation.Diplomacy
             float motive = hostilityPart + needPart + aggressionPart;
             float busy = _d.IsAtWar(civ) ? 0.4f : 1f;
 
-            option.Utility = proximity * strength * motive * busy;
+            option.Utility = proximity * (S.StrengthWeight * strength + (1f - S.StrengthWeight) * motive) * busy;
 
             if (hostilityPart >= needPart && hostilityPart >= aggressionPart)
                 option.CasusBelli = border > 0 ? CasusBelli.BorderDispute : CasusBelli.Hostility;

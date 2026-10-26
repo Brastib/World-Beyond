@@ -22,6 +22,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         AllianceFormed = 10,
         PlayerIntervention = 11,
         WarDamage = 12,            // Verluste durch den Gegner
+        BorderGrievance = 13,      // dauerhaft, wächst mit der Zeit, solange eine Grenze ohne Bündnis besteht
     }
 
     public enum TreatyType : byte { Alliance = 0, Truce = 1, PeaceCooldown = 2 }

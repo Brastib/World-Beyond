@@ -20,6 +20,10 @@ namespace WorldBeyond.Simulation.Diplomacy
         public float BorderFrictionMax = -25f;
         public float ResourceCompetitionMax = -30f;
         public float TensionThreshold = -30f;
+        // Groll an gemeinsamer Grenze wächst über die Zeit (Sandbox: auch gleich starke Nachbarn geraten irgendwann in Konflikt).
+        public float GrievancePerEdgePerSecond = -0.0005f;  // Grenze 80 → ≈ -0.04/s → Maximum nach ≈ 21 min
+        public float GrievanceMax = -50f;
+        public float GrievanceDecayPerSecond = 0.05f;       // ohne Grenze baut sich Groll ab
         public int FactorRefreshTicks = 50;               // Grenz-/Ressourcenfaktoren alle 5 s
 
         // Verträge
@@ -41,7 +45,10 @@ namespace WorldBeyond.Simulation.Diplomacy
         public float PeaceOtherWarBonus = 10f;
 
         // KI
-        public float WarThreshold = 0.35f;
+        public float WarThreshold = 0.3f;
+        public float StrengthWeight = 0.35f;              // Anteil der Stärke an der Kriegsbewertung, Rest = Motiv
+        public float MinStrengthRatio = 0.8f;             // darunter nie Angriff (deutlich schwächer)
+        public float FullStrengthRatio = 2.0f;            // ab hier voller Stärkefaktor
         public float AllianceThreshold = 0.5f;
         public float RecruitThreshold = 0.4f;
         public float MaxReachTiles = 60f;

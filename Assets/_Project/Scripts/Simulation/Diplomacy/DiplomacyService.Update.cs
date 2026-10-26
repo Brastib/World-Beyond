@@ -15,8 +15,11 @@ namespace WorldBeyond.Simulation.Diplomacy
             DecayModifiers(dt);
             if (now - LastFactorRefreshTick >= Settings.FactorRefreshTicks)
             {
+                // Erste Auffrischung zählt als ein Intervall; lange Pausen werden begrenzt.
+                long elapsed = LastFactorRefreshTick < 0 ? Settings.FactorRefreshTicks
+                             : Math.Min(now - LastFactorRefreshTick, Settings.FactorRefreshTicks * 4L);
                 LastFactorRefreshTick = now;
-                RefreshStandingFactors();
+                RefreshStandingFactors(elapsed / (float)SimClock.TicksPerSecond);
             }
             ExpireTreaties(now);
             UpdateStrategicPoints();
@@ -38,7 +41,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         }
 
         // Grenzreibung und Ressourcenkonkurrenz sind Zustände, keine Ereignisse: Wert wird ersetzt, nicht aufaddiert.
-        void RefreshStandingFactors()
+        void RefreshStandingFactors(float seconds)
         {
             var civs = _world.CivIds;
             for (int i = 0; i < civs.Count; i++)
@@ -56,8 +59,22 @@ namespace WorldBeyond.Simulation.Diplomacy
                     float need = Clamp01(_world.GetResourceNeed(a));
                     float competition = Settings.ResourceCompetitionMax * contestion * (0.5f + 0.5f * need);
                     SetPersistentModifier(a, b, RelationReason.ResourceCompetition, competition);
+
+                    UpdateGrievance(a, b, border, seconds);
                 }
             }
+        }
+
+        // Groll wächst an einer Grenze ohne Bündnis, ruht im Krieg und in der Friedensfrist, baut sich ohne Grenze ab.
+        void UpdateGrievance(int a, int b, int border, float seconds)
+        {
+            float current = GetPersistentValue(a, b, RelationReason.BorderGrievance);
+            float next = current;
+            if (border <= 0) next = Math.Min(0f, current + Settings.GrievanceDecayPerSecond * seconds);
+            else if (!AreAllied(a, b) && FindWar(a, b) == null && FindTreaty(a, b, TreatyType.PeaceCooldown) == null)
+                next = Math.Max(Settings.GrievanceMax, current + Settings.GrievancePerEdgePerSecond * border * seconds);
+            if (next > -0.01f) next = 0f;
+            if (next != current) SetPersistentModifier(a, b, RelationReason.BorderGrievance, next);
         }
 
         void ExpireTreaties(long now)

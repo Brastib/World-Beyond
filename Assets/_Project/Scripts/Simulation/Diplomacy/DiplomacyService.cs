@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using WorldBeyond.Core;
+using WorldBeyond.Simulation.Units;
 
 namespace WorldBeyond.Simulation.Diplomacy
 {
@@ -37,6 +38,14 @@ namespace WorldBeyond.Simulation.Diplomacy
             _events = events ?? throw new ArgumentNullException(nameof(events));
             _now = currentTick ?? throw new ArgumentNullException(nameof(currentTick));
             Settings = settings ?? new DiplomacySettings();
+            _events.Subscribe<UnitDiedEvent>(OnUnitDied);
+        }
+
+        // Verluste kommen direkt vom UnitStore (UnitDiedEvent enthält CivId, KillerCivId und UnitType).
+        void OnUnitDied(UnitDiedEvent e)
+        {
+            if (e.CivId <= 0) return;
+            ReportUnitLost(e.CivId, e.KillerCivId, _world.GetUnitCombatStrength(e.UnitType.Value));
         }
 
         public IDiplomacyWorldPort World => _world;
@@ -96,6 +105,20 @@ namespace WorldBeyond.Simulation.Diplomacy
                 }
             }
             if (value != 0f) AddModifier(from, to, reason, value, 0f);
+        }
+
+        internal float GetPersistentValue(int from, int to, RelationReason reason)
+        {
+            foreach (var m in Modifiers)
+                if (m.FromCiv == from && m.ToCiv == to && m.Reason == reason && m.DecayPerSecond == 0f) return m.Value;
+            return 0f;
+        }
+
+        // Nach einem Frieden ist der angestaute Grenzgroll zwischen den Parteien abgebaut.
+        void ClearGrievance(int a, int b)
+        {
+            SetPersistentModifier(a, b, RelationReason.BorderGrievance, 0f);
+            SetPersistentModifier(b, a, RelationReason.BorderGrievance, 0f);
         }
 
         // ================= Status =================
@@ -509,7 +532,10 @@ namespace WorldBeyond.Simulation.Diplomacy
             {
                 foreach (var a in war.Attackers)
                     foreach (var d in war.Defenders)
+                    {
                         AddTreaty(TreatyType.PeaceCooldown, a, d, Now + Settings.PeaceCooldownTicks, 0);
+                        ClearGrievance(a, d);
+                    }
                 EndWar(war, WarEndReason.Peace);
             }
             else
@@ -518,6 +544,7 @@ namespace WorldBeyond.Simulation.Diplomacy
                 if (civA != war.AttackerLeader && civA != war.DefenderLeader) LeaveWar(war, civA);
                 if (civB != war.AttackerLeader && civB != war.DefenderLeader) LeaveWar(war, civB);
                 AddTreaty(TreatyType.PeaceCooldown, civA, civB, Now + Settings.PeaceCooldownTicks, 0);
+                ClearGrievance(civA, civB);
             }
             AddModifier(civA, civB, RelationReason.PeaceSigned, Settings.PeaceSignedValue, Settings.DefaultEventDecay);
             AddModifier(civB, civA, RelationReason.PeaceSigned, Settings.PeaceSignedValue, Settings.DefaultEventDecay);
@@ -548,7 +575,7 @@ namespace WorldBeyond.Simulation.Diplomacy
 
         // ================= Meldungen aus anderen Systemen (über den Adapter im GameBootstrap) =================
 
-        // Aus UnitDiedEvent (Military/UnitStore). strength = Kampfstärke des Einheitentyps.
+        // Aus UnitDiedEvent (abonniert im Konstruktor) oder direkt gemeldet. strength = Kampfstärke des Einheitentyps.
         public void ReportUnitLost(int civId, int killerCivId, float strength)
         {
             foreach (var war in Wars)

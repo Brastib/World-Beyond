@@ -9,7 +9,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         public DiplomacySystem(DiplomacyService diplomacy) { _diplomacy = diplomacy; }
 
         public string Name => "Diplomacy";
-        public int Order => 800;
+        public int Order => SystemOrder.Diplomacy;
         public int TickInterval => SimClock.TicksPerSecond;
         public void Tick(SimContext ctx) => _diplomacy.Update();
     }

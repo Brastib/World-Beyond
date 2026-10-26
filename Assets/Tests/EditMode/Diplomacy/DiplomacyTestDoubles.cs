@@ -52,6 +52,8 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
         }
         public bool IsCivAlive(int civId) => Civs.TryGetValue(civId, out var c) && c.Alive;
         public float GetMilitaryStrength(int civId) => Civs.TryGetValue(civId, out var c) ? c.Strength : 0f;
+        public float UnitStrength = 5f;
+        public float GetUnitCombatStrength(int unitTypeId) => UnitStrength;
         public int GetPopulation(int civId) => Civs.TryGetValue(civId, out var c) ? c.Population : 0;
         public float GetAggression(int civId) => Civs.TryGetValue(civId, out var c) ? c.Aggression : 0f;
         public float GetResourceNeed(int civId) => Civs.TryGetValue(civId, out var c) ? c.ResourceNeed : 0f;

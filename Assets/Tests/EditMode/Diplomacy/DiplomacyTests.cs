@@ -274,6 +274,66 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.IsTrue(D.RecentDecisions.Any(x => x.Action == DiplomaticActionType.AcceptPeace));
         }
 
+        // Review-Befund: auch gleich starke Nachbarn geraten ohne Eingriff in Krieg (Grenzgroll wächst über die Zeit).
+        [TestCase(100f, 100f, 0f, 0f, 0.5f)]
+        [TestCase(110f, 100f, 0.5f, 0.5f, 0.5f)]
+        [TestCase(130f, 100f, 0.5f, 0.5f, 0.5f)]
+        [TestCase(100f, 100f, 1f, 1f, 1f)]
+        public void Autonomy_SymmetricNeighbours_EventuallyGoToWar(float s1, float s2, float need, float contestion, float aggression)
+        {
+            W.AddCiv(1, 0, 0, strength: s1); W.AddCiv(2, 20, 0, strength: s2);
+            W.SetBorder(1, 2, 80);
+            W.Contestion[(1, 2)] = contestion; W.Contestion[(2, 1)] = contestion;
+            W.Civs[1].ResourceNeed = need; W.Civs[2].ResourceNeed = need;
+            W.Civs[1].Aggression = aggression; W.Civs[2].Aggression = aggression;
+
+            int seconds = 0;
+            while (D.ActiveWars.Count == 0 && seconds < 60 * 60) { _rig.RunSeconds(1); seconds++; }
+            Assert.AreEqual(1, D.ActiveWars.Count, "Krieg innerhalb von 60 Spielminuten ohne Spielereingabe");
+            var decision = D.RecentDecisions.First(x => x.Action == DiplomaticActionType.DeclareWar);
+            Assert.GreaterOrEqual(decision.Utility, D.Settings.WarThreshold);
+        }
+
+        [Test]
+        public void Grievance_IsCleared_ByPeace()
+        {
+            W.AddCiv(1, 0, 0); W.AddCiv(2, 20, 0);
+            W.Civs[1].Aggression = 0f; W.Civs[2].Aggression = 0f;
+            W.SetBorder(1, 2, 80);
+            D.Settings.WarCooldownTicks = int.MaxValue / 2;   // nur Groll beobachten, keine KI-Kriege
+            _rig.Service.GetMemory(1).LastWarTick = 0; _rig.Service.GetMemory(2).LastWarTick = 0;
+            _rig.RunSeconds(600);
+            Assert.Less(D.GetModifiers(1, 2).Where(m => m.Reason == RelationReason.BorderGrievance).Sum(m => m.Value), -10f);
+            D.DeclareWar(1, 2);
+            D.MakePeace(1, 2);
+            Assert.IsFalse(D.GetModifiers(1, 2).Any(m => m.Reason == RelationReason.BorderGrievance));
+            Assert.IsFalse(D.GetModifiers(2, 1).Any(m => m.Reason == RelationReason.BorderGrievance));
+        }
+
+        // Review-Befund: Verluste kommen über den echten Event-Bus vom UnitStore an.
+        [Test]
+        public void UnitDiedEvent_FromRealUnitStore_CountsAsWarLoss()
+        {
+            var bus = new WorldBeyond.Core.SimEventBus();
+            var types = new WorldBeyond.Simulation.Units.UnitTypeRegistry(new WorldBeyond.Core.ContentRegistry());
+            var type = types.Register(new WorldBeyond.Simulation.Units.UnitTypeData { Key = "unit.test_soldier", DisplayName = "Test" });
+            var units = new WorldBeyond.Simulation.Units.UnitStore(types, bus);
+            var world = new FakeDiplomacyWorld { UnitStrength = 7f };
+            world.AddCiv(1, 0, 0); world.AddCiv(2, 40, 0);
+            var d = new DiplomacyService(world, bus, () => 0);
+            d.DeclareWar(1, 2);
+            bus.Flush();
+
+            var soldier = units.Spawn(type, 2, 5f, 5f);
+            Assert.IsTrue(units.Despawn(soldier, default, 1));
+            bus.Flush();
+
+            var war = d.FindWar(1, 2);
+            Assert.AreEqual(1, war.DefenderStats.UnitsLost);
+            Assert.AreEqual(7f, war.DefenderStats.StrengthLost, 0.001f);
+            Assert.AreEqual(0, war.AttackerStats.UnitsLost);
+        }
+
         // ---------- T-4-06 Verluste ----------
 
         [Test]
@@ -475,7 +535,7 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.AreEqual(DiplomaticStatus.Tension, D.GetStatus(1, 2));
             W.SetBorder(1, 2, 0); W.Contestion.Clear();
             _rig.RunSeconds(6);
-            Assert.AreEqual(0f, D.GetOpinion(1, 2), 0.01f, "Dauerhafte Faktoren werden ersetzt, nicht aufaddiert");
+            Assert.Greater(D.GetOpinion(1, 2), -1f, "Dauerhafte Faktoren werden ersetzt, nicht aufaddiert; Groll baut sich ab");
         }
 
         [Test]

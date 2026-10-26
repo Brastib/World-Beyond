@@ -167,18 +167,23 @@ Events: WarDeclared, PeaceSigned, TruceSigned, AllianceFormed, TreatyBroken,
 | `.../DiplomacyCommands.cs` | DeclareWar (optional erzwungen), ProposePeace (optional erzwungen), SignTruce, FormAlliance, BreakTreaty, ModifyRelation |
 | `.../DiplomacySaveable.cs` | ISaveable "diplomacy" (SectionVersion 1, LoadOrder 800), Validierung, tiefe Kopien, Referenzprüfung mit Rückfall (`ISaveReferenceCheck`) |
 | `.../DiplomacyOverview.cs` | Lesemodell für die UI-Übersicht (Kriege, Bündnisse, Feindschaften) |
-| `Assets/Tests/EditMode/Diplomacy/DiplomacyTests.cs`, `DiplomacyTestDoubles.cs` | 32 EditMode-Tests, Testwelt für den Port |
+| `Assets/Tests/EditMode/Diplomacy/DiplomacyTests.cs`, `DiplomacyTestDoubles.cs` | 38 EditMode-Tests, Testwelt für den Port |
 
 ### 11.2 Anbindung an andere Phasen (über `IDiplomacyWorldPort`)
 
 Phase 4 greift nicht direkt auf fremde Systeme zu. Ein Adapter in der Composition Root (`GameComposition.RegisterPhaseServices`, Besitzer Integration) implementiert den Port mit:
 ICivilizationQuery (Bevölkerung, Hauptstadt, Haltung, Alive), ITerritoryService.SharedBorderLength, IEconomy (Bedarf, Tribut über TrySpend/Add), ISettlementRegistry (GetByCiv, Get, TransferSettlement), IRecruitment.Request, Military GetCivCombatStrength und eine "dominante Civ in Radius"-Abfrage (ISpatialIndex/IUnitQuery).
-Der Adapter abonniert außerdem UnitDiedEvent → `ReportUnitLost`, SettlementCapturedEvent → `ReportSettlementCaptured`, CivilizationCollapsedEvent → `ReportCivilizationCollapsed`. Das CivAISystem (Civ) ruft `WarStrategyEvaluator.EvaluateAndAct(civId)` pro Civ auf.
+Der DiplomacyService abonniert UnitDiedEvent selbst (Stärke über `IDiplomacyWorldPort.GetUnitCombatStrength`). Der Adapter leitet SettlementCapturedEvent → `ReportSettlementCaptured`, CivilizationCollapsedEvent → `ReportCivilizationCollapsed`. Das CivAISystem (Civ) ruft `WarStrategyEvaluator.EvaluateAndAct(civId)` pro Civ auf.
+
+### 11.2a Kriegsbewertung nach Review (2026-10-26)
+
+Utility = Nähe × (0,35 × Stärkefaktor + 0,65 × Motiv) × (0,4, falls schon im Krieg). Der Stärkefaktor ist weich: 0 bei einem Verhältnis von 0,8 (darunter gibt es nie einen Angriff), 1 ab einem Verhältnis von 2. Das Motiv setzt sich zusammen aus 0,45 × Feindseligkeit, 0,30 × Bedarf und 0,25 × Aggressivität. Die Schwelle liegt bei 0,3.
+Neu ist der Grenzgroll (`RelationReason.BorderGrievance`). Er wächst an einer gemeinsamen Grenze ohne Bündnis um 0,0005 pro Kante und Sekunde bis −50. Im Krieg und in der Friedensfrist ruht er, ohne Grenze baut er sich ab, und mit einem Friedensschluss wird er gelöscht. So geraten auch gleich starke Nachbarn ohne Spielereingabe in Konflikt, und nach einem Frieden kehrt eine Ruhephase ein (Sandbox-Regel).
 
 ### 11.3 Tests
 
-Ausgeführt am 2026-10-26 mit `dotnet test Tools/SimTests` (.NET 8, C# 9, Warnungen als Fehler) gegen das echte Fundament aus PR #2: 72 von 72 bestanden (40 Fundament, 32 Phase 4). **Nicht im Unity Test Runner ausgeführt.**
-Abgedeckt: T-4-01 Kriegserklärung und Bündnisruf, T-4-02 Frieden abhängig vom Kriegsstand inkl. Abtretung und Tribut, T-4-03 Bündnisse, T-4-04 Zielauswahl, T-4-05 kein Krieg ohne Grund (30 Spielminuten) und Krieg mit Grund samt Begründung, T-4-06 Verluste/Erschöpfung/Friedensangebot des Verlierers, T-4-07 Sandbox-Autonomie (Krieg und Frieden ohne Spielereingabe, INTEGRATION.md §0 Regel 4), T-4-07 Speichern/Laden während des Kriegs mit identischer Fortsetzung (DTO-Rundlauf; der JSON-Teil gehört dem SaveLoadService, Phase 7), Validierung beschädigter Daten, Referenzprüfung; außerdem Waffenstillstand, Zusammenbruch einer Civ, strategische Punkte, Rekrutierung, Grenzreibung, Befehle, Übersicht, nie wiederverwendete IDs.
+Ausgeführt am 2026-10-26 mit `dotnet test Tools/SimTests` (.NET 8, C# 9, Warnungen als Fehler) gegen das echte Fundament aus PR #2: 78 von 78 bestanden (40 Fundament, 38 Phase 4). **Nicht im Unity Test Runner ausgeführt.**
+Abgedeckt: T-4-01 Kriegserklärung und Bündnisruf, T-4-02 Frieden abhängig vom Kriegsstand inkl. Abtretung und Tribut, T-4-03 Bündnisse, T-4-04 Zielauswahl, T-4-05 kein Krieg ohne Grund (30 Spielminuten) und Krieg mit Grund samt Begründung, Autonomie mit symmetrischen Nachbarn (4 Fälle aus dem Review), UnitDiedEvent über echten SimEventBus und UnitStore, T-4-06 Verluste/Erschöpfung/Friedensangebot des Verlierers, T-4-07 Sandbox-Autonomie (Krieg und Frieden ohne Spielereingabe, INTEGRATION.md §0 Regel 4), T-4-07 Speichern/Laden während des Kriegs mit identischer Fortsetzung (DTO-Rundlauf; der JSON-Teil gehört dem SaveLoadService, Phase 7), Validierung beschädigter Daten, Referenzprüfung; außerdem Waffenstillstand, Zusammenbruch einer Civ, strategische Punkte, Rekrutierung, Grenzreibung, Befehle, Übersicht, nie wiederverwendete IDs.
 
 ### 11.4 Noch fehlend (ehrlich)
 

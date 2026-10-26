@@ -113,6 +113,12 @@ namespace WorldBeyond.Simulation.Diplomacy
                 foreach (var c in w.Attackers) if (w.Defenders.Contains(c)) { error = $"diplomacy: Krieg {w.Id}: Civ {c} auf beiden Seiten."; return false; }
                 if (!w.Active) { error = $"diplomacy: Krieg {w.Id} ist beendet, aber in der Aktiv-Liste."; return false; }
             }
+            var memoryCivs = new HashSet<int>();
+            foreach (var m in dto.Memory)
+            {
+                if (m == null || m.CivId <= 0) { error = "diplomacy: ungültiger KI-Gedächtnis-Eintrag."; return false; }
+                if (!memoryCivs.Add(m.CivId)) { error = $"diplomacy: KI-Gedächtnis für Civ {m.CivId} doppelt."; return false; }
+            }
             foreach (var m in dto.Modifiers)
                 if (!Enum.IsDefined(typeof(RelationReason), m.Reason)) { error = $"diplomacy: Modifikator {m.Id} hat unbekannten Grund {(int)m.Reason}."; return false; }
             return true;
