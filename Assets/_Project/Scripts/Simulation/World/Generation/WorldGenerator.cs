@@ -10,7 +10,8 @@ namespace WorldBeyond.Simulation.World.Generation
         // Seeds der einzelnen Schritte (DeriveSeed). Nicht umnummerieren, sonst ändern sich alle Welten.
         internal const uint StepContinent = 1, StepMountainMask = 2, StepRidges = 3, StepHills = 4, StepDetail = 5,
             StepTemperature = 6, StepMoisture = 7, StepForest = 8, StepForestJitter = 9, StepResources = 10,
-            StepOre = 11, StepOil = 12, StepGold = 13, StepWildFood = 14, StepAmounts = 15;
+            StepOre = 11, StepOil = 12, StepGold = 13, StepWildFood = 14, StepAmounts = 15,
+            StepWarp = 16, StepFlatDrainage = 17;
 
         public WorldGrid Generate(WorldGenSettings settings)
         {
@@ -63,23 +64,34 @@ namespace WorldBeyond.Simulation.World.Generation
             ulong seedD = HashNoise.DeriveSeed(s.Seed, StepDetail);
 
             // Wellenlängen in Kacheln. Feste Werte statt Kartenbruchteile: größere Karten haben mehr Landmassen statt gedehnter.
-            const float continentScale = 1f / 150f;
+            const float continentScale = 1f / 110f;
             const float mountainMaskScale = 1f / 190f;
             const float ridgeScale = 1f / 64f;
             const float hillScale = 1f / 22f;
             const float detailScale = 1f / 7f;
 
-            float edgeBand = Math.Min(w, h) * 0.16f;
+            ulong seedW = HashNoise.DeriveSeed(s.Seed, StepWarp);
+            const float warpScale = 1f / 70f;
+            const float warpStrength = 28f;   // Kacheln
+            float cxm = (w - 1) * 0.5f, cym = (h - 1) * 0.5f;
+            const float falloffStart = 0.3f;
             for (int y = 0; y < h; y++)
             {
                 for (int x = 0; x < w; x++)
                 {
-                    float c = HashNoise.Fbm(seedC, x * continentScale, y * continentScale, 4) * 0.5f + 0.5f;
+                    // Verzerrte Koordinaten (Domain Warp) für unregelmäßige Küsten, Buchten und Halbinseln.
+                    float wx = x + HashNoise.Fbm(seedW, x * warpScale, y * warpScale, 3) * warpStrength;
+                    float wy = y + HashNoise.Fbm(seedW ^ 0x9E3779B97F4A7C15UL, x * warpScale, y * warpScale, 3) * warpStrength;
+                    float c = HashNoise.Fbm(seedC, wx * continentScale, wy * continentScale, 5) * 0.5f + 0.5f;
 
-                    // Zum Kartenrand hin absinken, damit Küsten statt abgeschnittener Kontinente entstehen.
-                    float edge = Math.Min(Math.Min(x, w - 1 - x), Math.Min(y, h - 1 - y)) / edgeBand;
-                    float falloff = HashNoise.SmoothStep(0f, 1f, edge);
-                    float e = c * falloff - (1f - falloff) * 0.35f;
+                    // Zum Kartenrand hin absinken: abgerundetes Rechteck (Superellipse) mit verzerrtem Rand statt
+                    // achsenparalleler Bänder, damit keine geraden Küsten entlang des Kartenrands entstehen.
+                    float nx = Math.Abs(wx - cxm) / (cxm + 1f), ny = Math.Abs(wy - cym) / (cym + 1f);
+                    float nx2 = nx * nx, ny2 = ny * ny;
+                    float d = MathF.Sqrt(MathF.Sqrt(nx2 * nx2 + ny2 * ny2));   // p = 4, nur Sqrt (IEEE-exakt, plattformgleich)
+                    float falloff = 1f - HashNoise.SmoothStep(falloffStart, 1f, d);
+                    // Nur abziehen statt multiplizieren: das Innere bleibt reines Rauschen (keine Kuppel mit Bergen in der Mitte).
+                    float e = c - (1f - falloff) * 0.65f;
 
                     // Gebirgsketten nur in Teilregionen und nur auf Land.
                     float mask = HashNoise.SmoothStep(0.05f, 0.45f, HashNoise.Fbm(seedM, x * mountainMaskScale, y * mountainMaskScale, 3));
@@ -110,7 +122,9 @@ namespace WorldBeyond.Simulation.World.Generation
             float below = Math.Max(threshold - minE, 1e-6f);
             float above = Math.Max(maxE - threshold, 1e-6f);
 
-            float landRange = s.MaxHeight - s.SeaLevel;
+            // Kleine Karten flacher: dieselbe Höhenspanne auf wenigen Kacheln ergäbe nur Steilhänge (Felsring statt Küste).
+            float sizeFactor = Math.Min(1f, Math.Max(0.35f, Math.Min(w, h) / 200f));
+            float landRange = (s.MaxHeight - s.SeaLevel) * sizeFactor;
             for (int y = 0; y < h; y++)
             {
                 for (int x = 0; x < w; x++)

@@ -46,6 +46,11 @@ namespace WorldBeyond.Simulation.World.Navigation
         int _activeNavVersion;
         int _activeExpansions;
 
+        // Kosten-Cache je MovementClass: Wert gilt, solange der Stempel der aktuellen NavigationVersion entspricht.
+        // MoveCost (Gelände + Hangneigung) ist teuer; A* fragt jede Kachel bis zu 8-mal ab.
+        readonly float[][] _costCache = new float[3][];
+        readonly int[][] _costStamp = new int[3][];
+
         public int PendingCount => _pending.Count + (_active != null ? 1 : 0);
 
         // Gesamtzahl der Knotenexpansionen seit Erzeugung (Diagnose, Performance-Tests).
@@ -280,6 +285,27 @@ namespace WorldBeyond.Simulation.World.Navigation
             _openStamp = new int[n];
             _closedStamp = new int[n];
             _stamp = 0;
+            for (int m = 0; m < _costCache.Length; m++)
+            {
+                _costCache[m] = new float[n];
+                _costStamp[m] = new int[n];
+            }
+        }
+
+        float CachedCost(int x, int y, MovementClass mc)
+        {
+            int i = y * _world.Width + x;
+            int m = (int)mc;
+            // Stempel 0 = leer; NavigationVersion + 1, damit Version 0 gültig gecacht wird.
+            int stamp = _world.NavigationVersion + 1;
+            if (stamp == 0)
+                stamp = 1;
+            if (_costStamp[m][i] != stamp)
+            {
+                _costCache[m][i] = _world.MoveCost(x, y, mc);
+                _costStamp[m][i] = stamp;
+            }
+            return _costCache[m][i];
         }
 
         void Begin(Request r)
@@ -346,11 +372,11 @@ namespace WorldBeyond.Simulation.World.Navigation
                     int ni = ny * w + nx;
                     if (_closedStamp[ni] == _stamp)
                         continue;
-                    float nCost = _world.MoveCost(nx, ny, mc);
+                    float nCost = CachedCost(nx, ny, mc);
                     if (float.IsInfinity(nCost))
                         continue;
                     bool diagonal = dx != 0 && dy != 0;
-                    if (diagonal && (!_world.IsWalkable(cx + dx, cy, mc) || !_world.IsWalkable(cx, cy + dy, mc)))
+                    if (diagonal && (float.IsInfinity(CachedCost(cx + dx, cy, mc)) || float.IsInfinity(CachedCost(cx, cy + dy, mc))))
                         continue;
                     float step = (curCost + nCost) * 0.5f * (diagonal ? Sqrt2 : 1f);
                     float g = _g[cur] + step;
@@ -368,7 +394,7 @@ namespace WorldBeyond.Simulation.World.Navigation
         // Startkachel darf blockiert sein (Einheit steht z. B. auf einer gerade bebauten Kachel); dann normale Kosten.
         float Cost(int x, int y, MovementClass mc, bool isStart)
         {
-            float c = _world.MoveCost(x, y, mc);
+            float c = CachedCost(x, y, mc);
             if (float.IsInfinity(c))
                 return isStart ? 1f : c;
             return c;
@@ -404,7 +430,7 @@ namespace WorldBeyond.Simulation.World.Navigation
                     float maxCost = 0f;
                     for (int k = i + 1; k <= j; k++)
                     {
-                        float c = _world.MoveCost(raw[k].x, raw[k].y, mc);
+                        float c = CachedCost(raw[k].x, raw[k].y, mc);
                         if (c > maxCost) maxCost = c;
                     }
                     if (LineWalkable(raw[i].x, raw[i].y, raw[j].x, raw[j].y, mc, maxCost))
@@ -456,7 +482,9 @@ namespace WorldBeyond.Simulation.World.Navigation
 
             bool Ok(int tx, int ty)
             {
-                float c = _world.MoveCost(tx, ty, mc);
+                if (!_world.InBounds(tx, ty))
+                    return false;
+                float c = CachedCost(tx, ty, mc);
                 return !float.IsInfinity(c) && c <= maxCost + 1e-4f;
             }
         }
