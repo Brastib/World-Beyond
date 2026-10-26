@@ -401,3 +401,22 @@ namespace WorldBeyond.Tests
         }
     }
 }
+
+namespace WorldBeyond.Tests
+{
+    public class LoadReportTests
+    {
+        [Test]
+        public void WarnAndFail_AreCollectedSeparately()
+        {
+            var r = new WorldBeyond.Simulation.LoadReport();
+            Assert.IsFalse(r.HasErrors);
+            r.Warn("Auftrag zurückgesetzt");
+            Assert.IsFalse(r.HasErrors);
+            r.Fail("doppelte ID");
+            Assert.IsTrue(r.HasErrors);
+            CollectionAssert.AreEqual(new[] { "Auftrag zurückgesetzt" }, r.Warnings);
+            CollectionAssert.AreEqual(new[] { "doppelte ID" }, r.Errors);
+        }
+    }
+}

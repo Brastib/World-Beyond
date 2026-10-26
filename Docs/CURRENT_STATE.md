@@ -21,7 +21,7 @@ Regel: Nur Tatsachen. Jede Phase aktualisiert diese Datei am Ende. Nicht im Unit
 |---|---|---|
 | `Docs/` | alle Kerndokumente auf `main` | – |
 | Unity-Projekt (`ProjectSettings/`, `Packages/manifest.json`) | **fehlt** – Unity-Version des Nutzers unbekannt | – |
-| Fundament 1b (`Assets/_Project/Scripts/Core`, `Simulation`, `Application`, asmdefs) | Code geschrieben, Branch `claude/phase1b-fundament` | `dotnet test Tools/SimTests`: **39/39 bestanden** (net8.0, C# 9, Warnungen als Fehler). **Nicht im Unity-Editor kompiliert**, Unity Test Runner nicht ausgeführt |
+| Fundament 1b (`Assets/_Project/Scripts/Core`, `Simulation`, `Application`, asmdefs) | Code geschrieben, Branch `claude/phase1b-fundament` | `dotnet test Tools/SimTests`: **40/40 bestanden** (net8.0, C# 9, Warnungen als Fehler). **Nicht im Unity-Editor kompiliert**, Unity Test Runner nicht ausgeführt |
 | `GameBootstrap` (MonoBehaviour) | geschrieben | **nicht kompiliert** (braucht UnityEngine) |
 | Szenen, Kamera, Rendering, UI, Assets | fehlen | – |
 | `Assets/ThirdParty/ASSET_CREDITS.md` | leere Import-Tabelle | – |
@@ -36,14 +36,14 @@ Siehe SYSTEM_INTERFACES §0 (Status je Schnittstelle). Implementiert (1b, ungeme
 
 | Datum | Was | Umgebung | Ergebnis |
 |---|---|---|---|
-| 2026-10-26 | Fundament 1b, EditMode-Testdateien `Assets/Tests/EditMode/*.cs` | dotnet 8 in der Cloud (`Tools/SimTests`), ohne Unity | 39/39 bestanden. Zwei Fehler im ersten Lauf gefunden und behoben: Events aus Handlern kamen im selben Flush an; Runner verlor durch float-Rundung einen Tick pro Sekunde |
+| 2026-10-26 | Fundament 1b, EditMode-Testdateien `Assets/Tests/EditMode/*.cs` | dotnet 8 in der Cloud (`Tools/SimTests`), ohne Unity | 40/40 bestanden. Zwei Fehler im ersten Lauf gefunden und behoben: Events aus Handlern kamen im selben Flush an; Runner verlor durch float-Rundung einen Tick pro Sekunde |
 | – | Unity Test Runner (EditMode) | PC des Nutzers | **nicht ausgeführt** |
 
 ## 5. Bekannte Probleme / Widersprüche
 
 | # | Problem | Status |
 |---|---|---|
-| K1 | `UI_STYLE_GUIDE.md` Teil A2 und `PHASE5_MILITARY_ASSETS.md` nennen noch 1 Kachel ≈ 10 m; gültig ist D13 (4 m, 1 Einheit = 1 m) | an Phase 6 und 5 gemeldet, offen |
+| K1 | UI_STYLE_GUIDE A2 auf D13 korrigiert (1 Einheit = 1 m, 1 Kachel = 4 m, Modelle in Originalgröße). PHASE5_MILITARY_ASSETS.md prüfen, ob dort noch alte Werte stehen. | Phase 6 erledigt, Phase 5 offen |
 | K2 | Stilrichtung nur Arbeitshypothese; Style Lock braucht Unity und Nutzerbestätigung | offen |
 | K3 | Asset-Downloads aus der Cloud laut Phase 5 vom Proxy blockiert (403); Import realistisch nur auf dem PC | nicht selbst geprüft |
 | K4 | Ob `Newtonsoft.Json.dll` aus `com.unity.nuget.newtonsoft-json` in `WorldBeyond.Application` automatisch referenziert wird, ist ungeprüft | prüfen beim ersten Unity-Import |
