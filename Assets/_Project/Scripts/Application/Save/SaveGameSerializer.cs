@@ -31,7 +31,8 @@ namespace WorldBeyond.Application.Save
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
             var root = JObject.FromObject(data, CreateJsonSerializer());
-            var checksum = ComputeChecksum(root["sections"]);
+            root.Remove("checksum");
+            var checksum = ComputeFileChecksum(root);
             root["checksum"] = checksum;
             data.Checksum = checksum;
             return root.ToString(Formatting.None);
@@ -89,7 +90,7 @@ namespace WorldBeyond.Application.Save
             var checksumToken = root["checksum"];
             if (checksumToken == null || checksumToken.Type != JTokenType.String)
                 return Fail(SaveLoadError.Corrupted, "Prüfsumme fehlt.", out error, out detail);
-            if (!string.Equals((string)checksumToken, ComputeChecksum(sections), StringComparison.Ordinal))
+            if (!string.Equals((string)checksumToken, ComputeFileChecksum(root), StringComparison.Ordinal))
                 return Fail(SaveLoadError.Corrupted, "Prüfsumme stimmt nicht. Die Datei wurde verändert oder ist beschädigt.", out error, out detail);
 
             error = SaveLoadError.None;
@@ -103,7 +104,11 @@ namespace WorldBeyond.Application.Save
             data = null;
             if (root == null) return Fail(SaveLoadError.Corrupted, "Kein Rahmen.", out error, out detail);
 
-            foreach (var property in ((JObject)root["sections"]).Properties())
+            // Eine fehlerhafte Rahmen-Migration darf hier nicht zu einer Exception führen.
+            if (!(root["sections"] is JObject sections))
+                return Fail(SaveLoadError.Corrupted, "Feld 'sections' fehlt oder ist kein Objekt.", out error, out detail);
+
+            foreach (var property in sections.Properties())
             {
                 if (string.IsNullOrEmpty(property.Name))
                     return Fail(SaveLoadError.Corrupted, "Sektion ohne Namen.", out error, out detail);
@@ -133,10 +138,19 @@ namespace WorldBeyond.Application.Save
         public static string ComputeChecksum(SaveGameData data)
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
-            return ComputeChecksum(JObject.FromObject(data, CreateJsonSerializer())["sections"]);
+            return ComputeFileChecksum(JObject.FromObject(data, CreateJsonSerializer()));
         }
 
-        // SHA-256 über die kanonische Form (Objekteigenschaften rekursiv nach Ordinal sortiert, ohne Leerraum).
+        // Prüfsumme der ganzen Datei ohne das Feld "checksum" selbst: schützt auch header, start und settings.
+        public static string ComputeFileChecksum(JObject root)
+        {
+            if (root == null) throw new ArgumentNullException(nameof(root));
+            var copy = (JObject)root.DeepClone();
+            copy.Remove("checksum");
+            return ComputeChecksum(copy);
+        }
+
+        // SHA-256 über die kanonische Form eines beliebigen JSON-Werts (Objekteigenschaften rekursiv nach Ordinal sortiert, ohne Leerraum).
         public static string ComputeChecksum(JToken sections)
         {
             var canonical = Canonicalize(sections ?? JValue.CreateNull()).ToString(Formatting.None);

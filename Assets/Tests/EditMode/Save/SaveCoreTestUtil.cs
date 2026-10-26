@@ -36,7 +36,7 @@ namespace WorldBeyond.Tests.EditMode.Save
         // Ändert ein Feld im JSON und berechnet die Prüfsumme neu (für Tests, die gezielt eine Prüfung erreichen wollen).
         public static string Resign(JObject root)
         {
-            root["checksum"] = SaveGameSerializer.ComputeChecksum(root["sections"]);
+            root["checksum"] = SaveGameSerializer.ComputeFileChecksum(root);
             return root.ToString(Newtonsoft.Json.Formatting.None);
         }
 
