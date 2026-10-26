@@ -317,6 +317,79 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.IsTrue(D.RecentDecisions.Any(x => x.Action == DiplomaticActionType.RejectPeace && x.CivId == 2));
         }
 
+        // Nutzervorgabe: Krieg nur, wenn die KI ihn wirklich für nötig hält. Stärke allein ist kein Grund.
+        [Test]
+        public void War_StrengthAlone_WithoutMotive_IsNoReason()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
+            W.SetBorder(1, 2, 80);
+            W.Civs[2].Aggression = 0f; W.Civs[2].ResourceNeed = 0f;
+            var o = _rig.Ai.ScoreWar(2, 1);
+            Assert.AreEqual(0f, o.Utility, 1e-6f);
+        }
+
+        // Prüf-Befund (Sandbox, 240 min): nach jedem Frieden genau nach 5 Minuten neuer Krieg, 10 Kriege in 175 min.
+        [Test]
+        public void War_AfterPeace_WearinessLowersUtility_AndDecays()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 300);
+            W.SetBorder(1, 2, 80);
+            W.Civs[2].Aggression = 1f; W.Civs[2].ResourceNeed = 1f; W.Contestion[(2, 1)] = 1f;
+            float before = _rig.Ai.ScoreWar(2, 1).Utility;
+            Assert.Greater(before, 0f);
+            D.DeclareWar(2, 1);
+            Assert.IsTrue(D.ProposePeace(1, 2, PeaceTerm.Tribute(1, 0.2f)).Accepted);
+            float full = D.Settings.WarWearinessPerWar;
+            Assert.AreEqual(full, D.WarWeariness(2, 1), 1e-4f);
+            Assert.AreEqual(full, D.WarWeariness(1, 2), 1e-4f);
+            Assert.Less(_rig.Ai.ScoreWar(2, 1).Utility, before * 0.5f, "direkt nach dem Frieden kaum Kriegsnutzen");
+            _rig.Tick += D.Settings.WarWearinessTicks / 2;
+            Assert.AreEqual(full / 2f, D.WarWeariness(2, 1), 1e-3f);
+            _rig.Tick += D.Settings.WarWearinessTicks;
+            Assert.AreEqual(0f, D.WarWeariness(2, 1), 1e-6f);
+        }
+
+        // Integration/QA: nach einem Frieden kein neuer Krieg ohne neuen Anlass.
+        [Test]
+        public void AfterPeace_NoNewReason_NoNewWar()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
+            W.SetBorder(1, 2, 80);
+            W.Civs[2].Aggression = 1f;                       // aggressiv, aber ohne Bedarf
+            D.Settings.GrievancePerEdgePerSecond = 0f;        // kein neuer Groll
+            D.DeclareWar(2, 1);
+            Assert.IsTrue(D.ProposePeace(1, 2, PeaceTerm.Tribute(1, 0.2f)).Accepted);
+            _rig.RunSeconds(120 * 60);
+            Assert.AreEqual(0, D.ActiveWars.Count, "ohne neuen Anlass kein neuer Krieg (Stärke 10:1 und Aggressivität allein reichen nicht)");
+        }
+
+        // QA-Befund (Sandbox, 175 min): 10 Kriege, jeder genau 5 Minuten (PeaceCooldown) nach dem letzten Frieden.
+        [Test]
+        public void Autonomy_AfterPeace_NoWarPingPong()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
+            W.SetBorder(1, 2, 80);
+            W.Civs[1].Aggression = 0.5f; W.Civs[2].Aggression = 0.5f;
+            W.Civs[1].ResourceNeed = 0.5f; W.Civs[2].ResourceNeed = 0.5f;
+            int wars = 0;
+            bool wasAtWar = false;
+            for (int seconds = 0; seconds < 175 * 60; seconds++)
+            {
+                bool atWar = D.FindWar(1, 2) != null;
+                if (atWar && !wasAtWar) wars++;
+                wasAtWar = atWar;
+                if (atWar && seconds % 30 == 0) D.ReportUnitLost(1, 2, 5f);
+                _rig.RunSeconds(1);
+            }
+            Assert.GreaterOrEqual(wars, 1, "Krieg entsteht weiterhin von selbst");
+            var ended = D.EndedWars;
+            for (int i = 1; i < ended.Count; i++)
+                Assert.GreaterOrEqual(ended[i].StartTick - ended[i - 1].EndTick, 20 * 60 * 10L,
+                    "zwischen Frieden und neuem Krieg liegen mindestens 20 Minuten (vorher 5)");
+            Assert.IsTrue(D.RecentDecisions.Where(x => x.Action == DiplomaticActionType.DeclareWar).Skip(1)
+                .All(x => x.Factors.First(f => f.Name == "Kriegsmüdigkeit").Value > 0f), "Folgekriege tragen Kriegsmüdigkeit");
+        }
+
         // Review-Befund: auch gleich starke Nachbarn geraten ohne Eingriff in Krieg (Grenzgroll wächst über die Zeit).
         [TestCase(100f, 100f, 0f, 0f, 0.5f)]
         [TestCase(110f, 100f, 0.5f, 0.5f, 0.5f)]

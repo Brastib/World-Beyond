@@ -74,7 +74,11 @@ namespace WorldBeyond.Simulation.Diplomacy
             float edges = border > 0 ? border : Settings.RivalryEquivalentEdges * proximity;
             if (edges <= 0f) next = Math.Min(0f, current + Settings.GrievanceDecayPerSecond * seconds);
             else if (!AreAllied(a, b) && FindWar(a, b) == null && FindTreaty(a, b, TreatyType.PeaceCooldown) == null)
-                next = Math.Max(Settings.GrievanceMax, current + Settings.GrievancePerEdgePerSecond * edges * seconds);
+            {
+                // Nach einem Frieden wächst neuer Groll erst langsam wieder (Kriegsmüdigkeit beider Seiten).
+                float calm = 1f - Math.Max(WarWeariness(a, b), WarWeariness(b, a));
+                next = Math.Max(Settings.GrievanceMax, current + Settings.GrievancePerEdgePerSecond * edges * seconds * calm);
+            }
             if (next > -0.01f) next = 0f;
             if (next != current) SetPersistentModifier(a, b, RelationReason.BorderGrievance, next);
         }

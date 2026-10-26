@@ -74,9 +74,12 @@ namespace WorldBeyond.Simulation.Diplomacy
 
             float hostilityPart = 0.45f * hostility, needPart = 0.30f * need, aggressionPart = 0.25f * aggression;
             float motive = hostilityPart + needPart + aggressionPart;
+            if (hostilityPart + needPart < S.MinWarReason) return option;   // kein Kriegsgrund: Stärke/Haltung allein reichen nicht
             float busy = _d.IsAtWar(civ) ? 0.4f : 1f;
+            float motiveScale = DiplomacyService.Clamp01(motive / Math.Max(0.01f, S.MotiveForFullStrength));
+            float weariness = _d.WarWeariness(civ, target);
 
-            option.Utility = reach * (S.StrengthWeight * strength + (1f - S.StrengthWeight) * motive) * busy;
+            option.Utility = reach * (S.StrengthWeight * strength * motiveScale + (1f - S.StrengthWeight) * motive) * busy * (1f - weariness);
 
             if (hostilityPart >= needPart && hostilityPart >= aggressionPart)
                 option.CasusBelli = border > 0 ? CasusBelli.BorderDispute : CasusBelli.Hostility;
@@ -92,6 +95,7 @@ namespace WorldBeyond.Simulation.Diplomacy
                 new DecisionFactor("Ressourcenbedarf", need),
                 new DecisionFactor("Aggressivität", aggression),
                 new DecisionFactor("Bereits im Krieg", busy < 1f ? 1f : 0f),
+                new DecisionFactor("Kriegsmüdigkeit", weariness),
             };
             return option;
         }
