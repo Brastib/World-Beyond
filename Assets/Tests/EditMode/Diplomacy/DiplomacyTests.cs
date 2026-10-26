@@ -243,6 +243,37 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.IsNotEmpty(decision.Factors);
         }
 
+        // Sandbox-Regel (INTEGRATION.md §0 Regel 4): Krieg und Frieden entstehen ohne Spielereingabe.
+        // Kein Command, keine erzwungene Meinung: nur Weltzustand (Grenze, Ressourcen, Stärke) und gemeldete Kampfverluste.
+        [Test]
+        public void Autonomy_WarAndPeace_EmergeWithoutPlayerInput()
+        {
+            W.AddCiv(1, 0, 0, strength: 300); W.AddCiv(2, 20, 0, strength: 100);
+            W.AddSettlement(2, 30, 5, 200);
+            W.SetBorder(1, 2, 80);
+            W.Contestion[(1, 2)] = 1f;
+            W.Civs[1].ResourceNeed = 1f;
+
+            int seconds = 0;
+            while (D.ActiveWars.Count == 0 && seconds < 30 * 60) { _rig.RunSeconds(1); seconds++; }
+            var war = D.FindWar(1, 2);
+            Assert.IsNotNull(war, "Krieg muss ohne Eingriff innerhalb von 30 Spielminuten entstehen");
+            Assert.AreEqual(1, war.AttackerLeader);
+            Assert.IsTrue(D.RecentDecisions.Any(x => x.Action == DiplomaticActionType.DeclareWar && x.CivId == 1));
+
+            // Kampf läuft (in Phase 5 meldet das der UnitStore): der Verteidiger verliert Einheiten.
+            seconds = 0;
+            while (D.FindWar(1, 2) != null && seconds < 30 * 60)
+            {
+                if (seconds % 5 == 0) D.ReportUnitLost(2, 1, 4f);
+                _rig.RunSeconds(1);
+                seconds++;
+            }
+            Assert.IsNull(D.FindWar(1, 2), "Frieden muss ohne Eingriff aus dem Kriegsverlauf entstehen");
+            Assert.AreEqual(1, _rig.Bus.Of<PeaceSignedEvent>().Count);
+            Assert.IsTrue(D.RecentDecisions.Any(x => x.Action == DiplomaticActionType.AcceptPeace));
+        }
+
         // ---------- T-4-06 Verluste ----------
 
         [Test]
