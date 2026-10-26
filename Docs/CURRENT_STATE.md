@@ -21,7 +21,7 @@ Regel: Nur Tatsachen. Jede Phase aktualisiert diese Datei am Ende. Nicht im Unit
 | Fundament 1b | PR #2 (`claude/phase1b-fundament` @04b14fb), Merge nach main wartet auf Nutzerfreigabe | **Unity 6000.6.0f1: 0 Fehler, 0 Warnungen, EditMode 44/44** (DevOps, Scratch-Kopie mit Newtonsoft 3.2.1); dotnet 44/44 |
 | Phasen-PRs | #1 Save-Kern, #5 SaveLoadService, #3 Diplomatie/Krieg, #4 Militär, #6 UI-Styleguide, #7 Civ; World auf `phase2-world-engine` | je Phase headless grün (Angaben der Phasen); Civ @503ae48 in Unity: 102 bestanden, 3 übersprungen (DevOps) |
 | `integration/m1` | alle Phasen zusammengeführt (ohne Konflikte), War + Military in `RegisterPhaseServices` verdrahtet, Adapter `Application/Integration/PhaseAdapters.cs` | dotnet **293/293** (@73750c1), UnityApiCheck grün; **nicht in Unity** |
-| Autonomer Krieg im Gesamtspiel | **funktioniert noch nicht**: beide Civs ohne Armee → Stärkeverhältnis 0 → kein Krieg (M1SandboxProbe, 3 Seeds, 2 Spielstunden) | an War gemeldet |
+| Autonomer Krieg im Gesamtspiel | funktioniert headless: Krieg + Kampftote ohne Befehl bei Seeds 1/7/2026 in ≤ 4 Spielstunden; Save/Load in Frieden und Krieg bitgenau | dotnet 317/317 (M1SandboxTests); nicht in Unity |
 | `GameBootstrap`, Szenen, Kamera, Rendering, UI, Assets | Bootstrap geschrieben, Rest fehlt | Bootstrap in Unity kompiliert (Teil von 1b) |
 
 ## 3. Implementierte Schnittstellen
@@ -46,7 +46,8 @@ Siehe SYSTEM_INTERFACES §0 (Status je Schnittstelle). Implementiert (1b, ungeme
 | K3 | Asset-Downloads aus der Cloud laut Phase 5 vom Proxy blockiert (403); Import realistisch nur auf dem PC | nicht selbst geprüft |
 | K4 | Newtonsoft in `WorldBeyond.Application` | erledigt: kompiliert in Unity mit Paket 3.2.1 |
 | K5 | Zeitmaßstab: Civ rechnet 1 Spieljahr = 60 s bei 1× (`CivTime.TicksPerYear`), Einheiten laufen in Echtzeit. Widerspricht VISION V7 (1× = Echtzeit). | bewusst bis M2, dann `GameCalendar` als einzige Zeitbasis |
-| K6 | Kein autonomer Krieg im Gesamtspiel (siehe §2) | War, offen |
+| K6 | Kein autonomer Krieg im Gesamtspiel | erledigt (War c028f20), M1SandboxTests grün |
+| K7 | Save/Load mitten im Krieg wich ab (ArmyAISystem-Zustand ungespeichert) | erledigt (Military 41073d0, Sektion "armyai") |
 
 ## 6. Fehlende Abhängigkeiten
 

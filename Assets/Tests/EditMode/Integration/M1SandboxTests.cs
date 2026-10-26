@@ -48,7 +48,7 @@ namespace WorldBeyond.Tests.Integration
             Assert.AreEqual(0, comp.Runner.FaultCount, "Systemfehler im Lauf");
         }
 
-        [Test, Ignore("K7: ArmyAISystem speichert _lastRecruit/_issued nicht, Lauf weicht nach Laden im Krieg ab – Military behebt, dann Ignore entfernen")]
+        [Test]
         public void SaveLoad_MidWar_ContinuesExactlyLikeUninterruptedRun() => SaveLoadRoundtrip(1, 12700, 3000, expectWar: true);   // Seed 1: Krieg bei Tick 12651, erster Kampftoter bei 13796
 
         private static void SaveLoadRoundtrip(ulong seed, int before, int after, bool expectWar)
@@ -61,6 +61,7 @@ namespace WorldBeyond.Tests.Integration
 
                 GameComposition current = GameComposition.Create(Settings(seed));
                 for (int i = 0; i < before; i++) current.Runner.StepOnce();
+                if (expectWar) Assert.IsTrue(current.Context.Get<IWarQuery>().ActiveWars.Count > 0, "Kein Krieg zum Speicherzeitpunkt – Testannahme prüfen");
                 var service = new SaveLoadService(new SaveFileStore(dir), s => GameComposition.Create(s), () => current, c => current = c,
                                                   null, "m1-test", () => new DateTime(2026, 10, 26, 0, 0, 0, DateTimeKind.Utc));
                 var saved = service.Save("m1");
@@ -73,7 +74,6 @@ namespace WorldBeyond.Tests.Integration
                 for (int i = 0; i < after; i++) current.Runner.StepOnce();
 
                 Assert.AreEqual(Fingerprint(reference), Fingerprint(current));
-                if (expectWar) Assert.IsTrue(reference.Context.Get<IWarQuery>().ActiveWars.Count > 0, "Referenzlauf ohne Krieg – Testannahme prüfen");
             }
             finally
             {
