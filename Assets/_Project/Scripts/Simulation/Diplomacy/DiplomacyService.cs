@@ -107,6 +107,18 @@ namespace WorldBeyond.Simulation.Diplomacy
             if (value != 0f) AddModifier(from, to, reason, value, 0f);
         }
 
+        // Nähe zweier Civs 0 … 1: mit Grenze 0,5 + Grenzlänge/80; sonst bis 0,7 nach Abstand der Gebietsränder
+        // (Hauptstadtabstand minus geschätzte Gebietsradien), 0 ab ContactReachTiles.
+        public float ContactProximity(int a, int b, int border)
+        {
+            if (border > 0) return Clamp01(0.5f + border / 80f);
+            if (!_world.TryGetCapitalPosition(a, out int ax, out int ay) || !_world.TryGetCapitalPosition(b, out int bx, out int by)) return 0f;
+            float gap = Distance(ax, ay, bx, by) - TerritoryRadius(a) - TerritoryRadius(b);
+            return 0.7f * Clamp01(1f - Math.Max(0f, gap) / Settings.ContactReachTiles);
+        }
+
+        float TerritoryRadius(int civ) => (float)Math.Sqrt(Math.Max(0, _world.GetTerritoryTiles(civ)) / Math.PI);
+
         internal float GetPersistentValue(int from, int to, RelationReason reason)
         {
             foreach (var m in Modifiers)
