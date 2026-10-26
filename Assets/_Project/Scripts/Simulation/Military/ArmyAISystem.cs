@@ -40,9 +40,9 @@ namespace WorldBeyond.Simulation.Military
         private readonly SortedSet<int> _civs = new SortedSet<int>();
         private readonly Dictionary<int, long> _lastRecruit = new Dictionary<int, long>();
         private readonly List<Army> _scratchArmies = new List<Army>();
-        // Zuletzt von der Armee-KI gesetztes Bewegungsziel je Einheit. Flüchtig: nach dem Laden gilt ein
-        // vorhandenes Ziel als fremd, bis die Einheit es erreicht hat (kein Überschreiben fremder Befehle).
-        private readonly Dictionary<EntityId, (float x, float z)> _issued = new Dictionary<EntityId, (float x, float z)>();
+        // Zuletzt von der Armee-KI gesetztes Bewegungsziel je Einheit. Liegt im ArmyRegistry und wird mit "armies" gespeichert,
+        // sonst gälte ein KI-Ziel nach dem Laden als fremd und die Simulation liefe anders weiter als ohne Laden.
+        private Dictionary<EntityId, (float x, float z)> _issued => _registry.IssuedMoveTargets;
 
         private static bool SameSpot(float ax, float az, float bx, float bz) => MathF.Abs(ax - bx) <= 1f && MathF.Abs(az - bz) <= 1f;
 

@@ -54,8 +54,11 @@ namespace WorldBeyond.Simulation.Civilizations
 
         internal void MarkReleased(Settlement st) => MarkArea(st.X, st.Y, MaxRadius + 1);
 
-        internal TerritoryDirtyDto CaptureDirty() =>
-            new TerritoryDirtyDto { Dirty = _dirty, MinX = _minX, MinY = _minY, MaxX = _maxX, MaxY = _maxY };
+        // Ohne offene Neuberechnung ist das Rechteck bedeutungslos (MarkArea setzt es neu) und wird als 0 gespeichert,
+        // damit Speichern → Laden → Speichern denselben Zustand liefert.
+        internal TerritoryDirtyDto CaptureDirty() => _dirty
+            ? new TerritoryDirtyDto { Dirty = true, MinX = _minX, MinY = _minY, MaxX = _maxX, MaxY = _maxY }
+            : new TerritoryDirtyDto();
 
         /// <summary>Nach dem Laden: Besitz steht bereits in der Welt (Sektion world); nur offene Neuberechnung und Statistik herstellen.</summary>
         internal void RestoreDirty(TerritoryDirtyDto d, int width, int height)
