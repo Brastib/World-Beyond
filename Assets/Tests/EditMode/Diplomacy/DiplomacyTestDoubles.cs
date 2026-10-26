@@ -17,6 +17,7 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             public int CapitalX, CapitalY;
             public bool Alive = true;
             public float Stock = 1000f;
+            public int TerritoryTiles;
         }
 
         public readonly SortedDictionary<int, Civ> Civs = new SortedDictionary<int, Civ>();
@@ -55,6 +56,7 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
         public float UnitStrength = 5f;
         public float GetUnitCombatStrength(int unitTypeId) => UnitStrength;
         public int GetPopulation(int civId) => Civs.TryGetValue(civId, out var c) ? c.Population : 0;
+        public int GetTerritoryTiles(int civId) => Civs.TryGetValue(civId, out var c) ? c.TerritoryTiles : 0;
         public float GetAggression(int civId) => Civs.TryGetValue(civId, out var c) ? c.Aggression : 0f;
         public float GetResourceNeed(int civId) => Civs.TryGetValue(civId, out var c) ? c.ResourceNeed : 0f;
         public int GetSharedBorderLength(int a, int b) => Borders.TryGetValue((a, b), out var v) ? v : 0;

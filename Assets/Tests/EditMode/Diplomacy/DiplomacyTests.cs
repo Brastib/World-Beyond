@@ -294,6 +294,52 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.GreaterOrEqual(decision.Utility, D.Settings.WarThreshold);
         }
 
+        // Integrationsbefund: Spielstart ohne Armeen darf Krieg nicht dauerhaft verhindern.
+        [Test]
+        public void Autonomy_NoArmiesAtStart_RecruitInPeace_AndWarStillPossible()
+        {
+            W.AddCiv(1, 0, 0, strength: 0f); W.AddCiv(2, 20, 0, strength: 0f);
+            W.SetBorder(1, 2, 80);
+            _rig.RunSeconds(5);
+            Assert.IsTrue(W.RecruitRequests.Any(r => r.civ == 1) && W.RecruitRequests.Any(r => r.civ == 2), "Grundarmee wird im Frieden angefordert");
+
+            int seconds = 0;
+            while (D.ActiveWars.Count == 0 && seconds < 60 * 60) { _rig.RunSeconds(1); seconds++; }
+            Assert.AreEqual(1, D.ActiveWars.Count, "Auch ohne Armeen (0:0) entsteht aus Grenzdruck ein Krieg");
+        }
+
+        // Integrationsbefund (Seed 7): große Gebiete, Hauptstädte 76 Kacheln auseinander, keine gemeinsame Grenze.
+        [Test]
+        public void Autonomy_NearbyRivals_WithoutBorder_EventuallyGoToWar()
+        {
+            W.AddCiv(1, 0, 0, strength: 80f); W.AddCiv(2, 76, 0, strength: 63f);
+            W.Civs[1].TerritoryTiles = 2300; W.Civs[2].TerritoryTiles = 2300;   // Radius ≈ 27 → Randabstand ≈ 22
+            W.Civs[1].Aggression = 0.55f; W.Civs[2].Aggression = 0.55f;
+            int seconds = 0;
+            while (D.ActiveWars.Count == 0 && seconds < 60 * 60) { _rig.RunSeconds(1); seconds++; }
+            Assert.AreEqual(1, D.ActiveWars.Count, "Rivalität naher Gebiete führt ohne Eingriff zum Krieg");
+        }
+
+        [Test]
+        public void FarApart_SmallTerritories_NoWar()
+        {
+            W.AddCiv(1, 0, 0, strength: 300f); W.AddCiv(2, 76, 0, strength: 50f);
+            W.Civs[1].TerritoryTiles = 80; W.Civs[2].TerritoryTiles = 80;      // Randabstand ≈ 66 > Reichweite
+            W.Civs[1].Aggression = 1f;
+            _rig.RunSeconds(60 * 60);
+            Assert.AreEqual(0, D.ActiveWars.Count);
+        }
+
+        [Test]
+        public void NoArmy_DoesNotAttack_ArmedNeighbour()
+        {
+            W.AddCiv(1, 0, 0, strength: 0f); W.AddCiv(2, 20, 0, strength: 100f);
+            W.SetBorder(1, 2, 80);
+            W.Civs[1].Aggression = 1f;
+            _rig.RunSeconds(60 * 60);
+            Assert.IsFalse(D.ActiveWars.Any(w => w.AttackerLeader == 1));
+        }
+
         [Test]
         public void Grievance_IsCleared_ByPeace()
         {
@@ -530,6 +576,7 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             W.AddCiv(1, 0, 0); W.AddCiv(2, 20, 0);
             W.SetBorder(1, 2, 100);
             W.Contestion[(1, 2)] = 1f; W.Contestion[(2, 1)] = 1f;
+            W.Civs[1].Aggression = 0f; W.Civs[2].Aggression = 0f;   // nur Spannung beobachten, kein Krieg
             _rig.RunSeconds(6);
             Assert.Less(D.GetOpinion(1, 2), -30f);
             Assert.AreEqual(DiplomaticStatus.Tension, D.GetStatus(1, 2));

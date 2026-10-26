@@ -54,7 +54,8 @@ namespace WorldBeyond.Simulation.Diplomacy
             float myStrength = EffectiveStrength(civ, 0.5f);
             float theirStrength = EffectiveStrength(target, 0.7f);
             if (_d.IsAtWar(target)) theirStrength *= 0.7f;     // Gegner ist schon gebunden
-            float ratio = myStrength / Math.Max(1f, theirStrength);
+            // Beide ohne Armee (Spielstart): gleich stark, nicht "unendlich schwach".
+            float ratio = (myStrength < 1f && theirStrength < 1f) ? 1f : myStrength / Math.Max(1f, theirStrength);
             if (ratio < S.MinStrengthRatio) return option;            // deutlich schwächer: nie angreifen
             // Weicher Faktor: auch gleich starke Nachbarn können mit genug Motiv Krieg führen.
             float strength = DiplomacyService.Clamp01((ratio - S.MinStrengthRatio) / (S.FullStrengthRatio - S.MinStrengthRatio));
@@ -63,11 +64,9 @@ namespace WorldBeyond.Simulation.Diplomacy
             float hostility = DiplomacyService.Clamp01(-opinion / 100f);
 
             int border = W.GetSharedBorderLength(civ, target);
-            float proximity;
-            if (border > 0) proximity = DiplomacyService.Clamp01(0.5f + border / 80f);
-            else if (W.TryGetCapitalPosition(civ, out int ax, out int ay) && W.TryGetCapitalPosition(target, out int bx, out int by))
-                proximity = 0.6f * DiplomacyService.Clamp01(1f - DiplomacyService.Distance(ax, ay, bx, by) / S.MaxReachTiles);
-            else proximity = 0f;
+            float proximity = _d.ContactProximity(civ, target, border);
+            if (proximity <= 0f) return option;                       // außer Reichweite: kein Krieg
+            float reach = 0.5f + 0.5f * proximity;
 
             float contestion = DiplomacyService.Clamp01(W.GetResourceContestion(civ, target));
             float need = DiplomacyService.Clamp01(W.GetResourceNeed(civ)) * Math.Max(contestion, border > 0 ? 0.3f : 0f);
@@ -77,7 +76,7 @@ namespace WorldBeyond.Simulation.Diplomacy
             float motive = hostilityPart + needPart + aggressionPart;
             float busy = _d.IsAtWar(civ) ? 0.4f : 1f;
 
-            option.Utility = proximity * (S.StrengthWeight * strength + (1f - S.StrengthWeight) * motive) * busy;
+            option.Utility = reach * (S.StrengthWeight * strength + (1f - S.StrengthWeight) * motive) * busy;
 
             if (hostilityPart >= needPart && hostilityPart >= aggressionPart)
                 option.CasusBelli = border > 0 ? CasusBelli.BorderDispute : CasusBelli.Hostility;
@@ -255,16 +254,26 @@ namespace WorldBeyond.Simulation.Diplomacy
             return worst;
         }
 
+        // Grundarmee im Frieden: Stärke, die eine Civ nach Bevölkerung und Haltung unterhalten will.
+        public float PeacetimeArmyTarget(int civ)
+        {
+            return W.GetPopulation(civ) * S.PeaceArmyStrengthPerPop * (0.5f + DiplomacyService.Clamp01(W.GetAggression(civ)));
+        }
+
         bool TryRecruit(int civ)
         {
             float threat = Threat(civ);
             bool atWar = _d.IsAtWar(civ);
-            float utility = DiplomacyService.Clamp01(threat - 0.8f) + (atWar ? 0.3f : 0f);
+            float strength = W.GetMilitaryStrength(civ);
+            float deficit = Math.Max(0f, PeacetimeArmyTarget(civ) - strength);
+            float utility = DiplomacyService.Clamp01(threat - 0.8f) + (atWar ? 0.3f : 0f) + (deficit > 0f ? 0.45f : 0f);
             if (utility < S.RecruitThreshold) return false;
-            int count = Math.Max(1, Math.Min(10, (int)Math.Ceiling(threat * 3f)));
+            int byThreat = (int)Math.Ceiling(threat * 3f);
+            int byDeficit = (int)Math.Ceiling(deficit / Math.Max(0.1f, S.AssumedUnitStrength));
+            int count = Math.Max(1, Math.Min(S.MaxRecruitPerRequest, Math.Max(byThreat, byDeficit)));
             bool ok = W.RequestMilitaryBuildup(civ, count, out string reason);
             _d.LogDecision(civ, 0, DiplomaticActionType.Recruit, utility,
-                new DecisionFactor("Bedrohung", threat), new DecisionFactor("Im Krieg", atWar ? 1f : 0f),
+                new DecisionFactor("Bedrohung", threat), new DecisionFactor("Im Krieg", atWar ? 1f : 0f), new DecisionFactor("Fehlende Grundarmee", deficit),
                 new DecisionFactor("Anzahl", count), new DecisionFactor("Angenommen", ok ? 1f : 0f));
             return true;   // auch bei Ablehnung (z. B. zu wenig Ressourcen) Abklingzeit, um nicht jeden Takt neu anzufragen
         }

@@ -45,17 +45,22 @@ namespace WorldBeyond.Simulation.Diplomacy
         public float PeaceOtherWarBonus = 10f;
 
         // KI
-        public float WarThreshold = 0.3f;
+        public float WarThreshold = 0.25f;
         public float StrengthWeight = 0.35f;              // Anteil der Stärke an der Kriegsbewertung, Rest = Motiv
         public float MinStrengthRatio = 0.8f;             // darunter nie Angriff (deutlich schwächer)
         public float FullStrengthRatio = 2.0f;            // ab hier voller Stärkefaktor
         public float AllianceThreshold = 0.5f;
         public float RecruitThreshold = 0.4f;
-        public float MaxReachTiles = 60f;
+        public float MaxReachTiles = 60f;                 // Reichweite für Kriegsziele und Zielprioritäten
+        public float ContactReachTiles = 48f;             // Abstand der Gebietsränder, ab dem Nachbarn sich als Rivalen sehen
+        public float RivalryEquivalentEdges = 160f;       // Groll ohne Grenze wächst wie an einer Grenze dieser Länge × Nähe
         public int WarCooldownTicks = 3000;
         public int PeaceProposalCooldownTicks = 300;
         public int AllianceCooldownTicks = 1200;
         public int RecruitCooldownTicks = 600;
+        public float PeaceArmyStrengthPerPop = 0.05f;     // Grundarmee: Bevölkerung 1000, Haltung 0,5 → Stärke 50
+        public float AssumedUnitStrength = 5f;            // Schätzwert pro Einheit für die Anzahl einer Anfrage
+        public int MaxRecruitPerRequest = 5;
         public int MaxAlliancesPerCiv = 2;
         public float TargetDistanceScale = 64f;
         public int StrategicPointRadius = 4;
