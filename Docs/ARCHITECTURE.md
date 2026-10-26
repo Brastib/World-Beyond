@@ -153,8 +153,9 @@ JSON (Newtonsoft), Datei `<slot>.wbsave` in `Application.persistentDataPath/Save
 ### 11.5 Laden (Reihenfolge verbindlich)
 
 1. **Datei und Metadaten validieren:** lesbar, JSON gültig, `format` korrekt, Pflichtfelder vorhanden, Prüfsumme stimmt → sonst `Corrupted` (bzw. `NotFound`, `IoError`).
+   *Präzisierung (Phase 7, 2026-10-26):* `TooNew` wird **vor** der Prüfsummenprüfung gemeldet, weil eine neuere Formatversion die Prüfsumme anders bilden könnte.
 2. **Formatversion feststellen:** `formatVersion` und jede Sektionsversion. Neuer als unterstützt → `TooNew`. Älter, aber keine lückenlose Migrationskette → `Unsupported`. Eine nicht unterstützte Version wird **nie** als aktuelle Version interpretiert.
-3. **Migrieren:** `SaveGameMigrator` arbeitet auf einer Kopie im Speicher, Schritt für Schritt (v → v+1), Rahmen zuerst, dann Sektionen.
+3. **Migrieren:** `SaveGameMigrator` arbeitet auf einer Kopie im Speicher, Schritt für Schritt (v → v+1), Rahmen zuerst, dann Sektionen. Die Rahmen-Migration (Schlüssel `"$frame"`) läuft zwischen `SaveGameSerializer.TryParseFrame` und `TryMap`.
 4. **Inhaltsschlüssel und Referenzen validieren:** alle Schlüssel in der `ContentRegistry` vorhanden → sonst `MissingContent` mit Liste der Schlüssel. Pflichtsektionen vorhanden → sonst `Corrupted`. Querverweise werden nach dem Einspielen geprüft (11.6).
 5. **In eine neue, leere Simulationsinstanz einspielen** (`LoadOrder` aufsteigend), danach Referenzprüfung. Harte Inkonsistenz (z. B. doppelte IDs, Generationstabelle widersprüchlich) → `Corrupted`. Weiche Inkonsistenz (Verweis auf nicht existierende Einheit) → Rückfall nach Regel 6 + Warnung im Ladebericht.
 6. **Erst nach erfolgreicher Validierung** wird die neue Instanz übernommen und die Presentation neu aufgebaut. Bei jedem Fehler bleibt der bisherige Spielzustand unverändert.

@@ -10,13 +10,13 @@ Namensraum-Präfix: `WorldBeyond.`
 
 | Schnittstelle | Schicht | Phase | Besitzer | Status |
 |---|---|---|---|---|
-| `EntityId`, `ISimEventBus`, `SimRandom`, `SimClock` | Core/Sim | 1b | Integration | geplant |
-| `EntityStore`, `SequentialIdAllocator`, `ContentRegistry` | Core | 1b | Integration | geplant (Nutzervorgabe Speicherformat, ARCHITECTURE §11) |
-| `ISimulationSystem`, `SimContext`, `SimulationRunner` | Sim/App | 1b | Integration | geplant |
-| `IWorldCommand`, `ICommandQueue` | Sim/App | 1b | Integration (Queue), Fachsysteme (Commands) | geplant |
-| `ISaveable` | Sim | 1b | Integration (Definition), jedes System (Implementierung) | geplant |
+| `EntityId`, `ISimEventBus`, `SimRandom`, `SimClock` | Core/Sim | 1b | Integration | implementiert (Branch `claude/phase1b-fundament`), dotnet-Tests grün, nicht in Unity kompiliert |
+| `EntityStore`, `SequentialIdAllocator`, `ContentRegistry` | Core | 1b | Integration | implementiert (1b), dotnet-Tests grün, nicht in Unity kompiliert |
+| `ISimulationSystem`, `SimContext`, `SimulationRunner`, `GameComposition`, `GameBootstrap` | Sim/App | 1b | Integration | implementiert (1b), dotnet-Tests grün außer `GameBootstrap` (braucht Unity), nicht in Unity kompiliert |
+| `IWorldCommand`, `ICommandQueue`, `CommandProcessingSystem` | Sim | 1b | Integration (Queue), Fachsysteme (Commands) | implementiert (1b), dotnet-Tests grün |
+| `ISaveable`, `SaveableRegistry`, `SimCoreSaveable` | Sim | 1b | Integration (Definition), jedes System (Implementierung) | implementiert (1b), dotnet-Tests grün |
 | `ISaveLoadService`, `SaveGameData`, `SaveGameSerializer`, `SaveGameMigrator`, `ISaveMigration`, `ISaveReferenceCheck`, `LoadReport` | App/Sim | 1b Gerüst, 7 vollständig | Save (Phase 7); Migrationsschritte und `ISaveReferenceCheck` implementiert das jeweilige Fachsystem | geplant |
-| `IUnitStore`, `IUnitQuery`, `UnitTypeData` | Sim | 1b | Integration (Store); Civ/Military tragen Typen ein | geplant |
+| `IUnitStore`, `IUnitQuery`, `UnitStore`, `UnitTypeData`, `UnitTypeRegistry` | Sim | 1b | Integration (Store); Civ/Military tragen Typen ein | implementiert (1b), dotnet-Tests grün |
 | `IWorldGrid`, `IWorldQuery`, `IWorldGenerator`, Koordinaten | Sim | 2 | World | Signaturen präzisiert (§4), kein Code |
 | `ISpatialIndex`, `IPathfinder`, `MovementSystem` | Core/Sim | 2 | World | Signaturen präzisiert (§5), kein Code |
 | `ICivilizationRegistry`/`Query`, `ISettlementRegistry`/`Query`, `ITerritoryService`/`Query` | Sim | 3 | Civ | geplant |
@@ -110,6 +110,8 @@ namespace WorldBeyond.Core
 
 ## 2. Simulationstakt
 
+Verbindlich ist der Code; hier die öffentliche Oberfläche. Dateien: `Simulation/SimClock.cs`, `Simulation/ISimulationSystem.cs`, `Simulation/SimContext.cs`, `Application/SimulationRunner.cs`, `Application/GameComposition.cs`, `Application/Unity/GameBootstrap.cs`.
+
 ```csharp
 namespace WorldBeyond.Simulation
 {
@@ -117,25 +119,36 @@ namespace WorldBeyond.Simulation
     {
         public const int TicksPerSecond = 10;
         public long Tick { get; }
-        public float DeltaSeconds => 1f / TicksPerSecond;
+        public float DeltaSeconds { get; }        // 0.1
+        public double ElapsedSeconds { get; }
+        public void Advance();                    // nur SimulationRunner
+        public void Restore(long tick);           // nur SimCoreSaveable
     }
 
     public interface ISimulationSystem
     {
         string Name { get; }
-        int Order { get; }                 // feste Reihenfolge, siehe Tabelle unten
-        int TickInterval { get; }          // 1 = jeden Tick, 50 = alle 5 s
+        int Order { get; }                 // Konstanten in SystemOrder (Tabelle unten)
+        int TickInterval { get; }          // läuft, wenn Tick % TickInterval == 0
         void Tick(SimContext ctx);
     }
 
-    public sealed class SimContext         // Zugriff für Systeme, keine globale Statik
+    public sealed class SimContext         // keine globale Statik
     {
-        public SimClock Clock;
-        public SimRandom Random;
-        public ISimEventBus Events;
-        public IWorldGrid World;
-        public IUnitStore Units;
-        // weitere Registries werden in ihren Phasen ergänzt
+        // Fundament, immer vorhanden:
+        public readonly SimClock Clock;
+        public readonly SimRandom Random;
+        public readonly ISimEventBus Events;
+        public readonly ICommandQueue Commands;
+        public readonly ContentRegistry Content;
+        public readonly UnitTypeRegistry UnitTypes;
+        public readonly IUnitStore Units;
+        public readonly SaveableRegistry Saveables;
+        // Fachdienste (IWorldGrid, ICivilizationRegistry, IEconomy, IDiplomacyService, ICombatService …):
+        public void Register<T>(T service) where T : class;   // nur in GameComposition; zweite Registrierung → Exception
+        public T Get<T>() where T : class;                      // fehlt → Exception mit Namen (Konfigurationsfehler)
+        public bool TryGet<T>(out T service) where T : class;
+        public bool IsSealed { get; }                            // nach GameComposition.Create true
     }
 }
 
@@ -146,45 +159,72 @@ namespace WorldBeyond.Application
     public interface ISimulationRunner
     {
         GameSpeed Speed { get; set; }
-        float InterpolationAlpha { get; }  // für flüssige Darstellung zwischen Ticks
+        float InterpolationAlpha { get; }  // 0..1 zwischen Ticks
+        bool IsTicking { get; }            // Speichern nur bei false
         void Register(ISimulationSystem system);
+        int Advance(float realDeltaSeconds);   // höchstens MaxTicksPerAdvance (20) Ticks; Rückstand wird verworfen
+        void StepOnce();                       // ein Tick, auch bei Pause
+        event System.Action<long> TickCompleted;
+    }
+
+    public sealed class GameComposition    // Composition Root, reines C#
+    {
+        public SimContext Context { get; }
+        public SimulationRunner Runner { get; }
+        public GameStartSettings Settings { get; }   // Seed, WorldWidth, WorldHeight, CivilizationCount
+        public static GameComposition Create(GameStartSettings settings, System.Action<SimContext> contentSetup = null);
+        // Fachphasen tragen sich in RegisterPhaseServices ein (per PR, INTEGRATION §0).
+    }
+
+    public sealed class GameBootstrap : UnityEngine.MonoBehaviour   // einziges zentrales MonoBehaviour
+    {
+        public GameComposition Composition { get; }
+        public event System.Action<GameComposition> CompositionChanged;
+        public void Replace(GameComposition composition);   // nach erfolgreichem Laden
     }
 }
 ```
 
-Geplante Tick-Reihenfolge (`Order`):
+Ablauf eines Ticks (`SimulationRunner`): Systeme nach `Order` (bei Gleichstand Registrierungsreihenfolge) → `Events.Flush()` → `Clock.Advance()` → `TickCompleted`.
 
-| Order | System |
+| Order (`SystemOrder`) | System |
 |---|---|
-| 0 | CommandQueue (Spieler/God-Befehle einspielen) |
-| 100 | AI (strategisch/operativ/taktisch, je nach Intervall) |
-| 200 | Economy & Production |
-| 300 | Movement & Pathfinding |
-| 400 | Combat (Zielwahl, Feuern) |
-| 500 | Projectiles & Damage |
-| 600 | Death/Destruction & Cleanup |
-| 700 | Settlements, Territory, Population |
-| 800 | Diplomacy |
-| 900 | EventBus.Flush |
+| 0 `Commands` | CommandProcessingSystem (Spieler/God-Befehle einspielen) |
+| 100 `AI` | AI (strategisch/operativ/taktisch, je nach Intervall) |
+| 200 `Economy` | Economy & Production |
+| 300 `Movement` | Movement & Pathfinding |
+| 400 `Combat` | Combat (Zielwahl, Feuern) |
+| 500 `Projectiles` | Projectiles & Damage |
+| 600 `Cleanup` | Death/Destruction & Cleanup |
+| 700 `Settlements` | Settlements, Territory, Population |
+| 800 `Diplomacy` | Diplomacy |
+| 900 | EventBus.Flush (macht der Runner selbst) |
 
 ## 3. Befehle
 
+Datei: `Simulation/Commands/Commands.cs`.
+
 ```csharp
-namespace WorldBeyond.Simulation
+namespace WorldBeyond.Simulation.Commands
 {
     public interface IWorldCommand
     {
-        // Prüft gegen aktuellen Zustand; false = abgelehnt mit Grund (für UI-Fehlermeldung).
-        bool Validate(SimContext ctx, out string reason);
-        void Execute(SimContext ctx);
+        bool Validate(SimContext ctx, out string reason);   // false → CommandRejectedEvent mit Grund
+        void Execute(SimContext ctx);                       // Exception → CommandRejectedEvent, Simulation läuft weiter
     }
 
     public interface ICommandQueue
     {
-        void Enqueue(IWorldCommand command);   // threadsicher nicht nötig: nur Main Thread
+        void Enqueue(IWorldCommand command);   // nur Main Thread; wirkt im nächsten Tick (Order 0)
+        int PendingCount { get; }
     }
+
+    public struct CommandRejectedEvent : ISimEvent { public string CommandName; public string Reason; }
+    public struct CommandExecutedEvent : ISimEvent { public string CommandName; }
 }
 ```
+
+Während der Ausführung eingereihte Commands laufen im nächsten Tick.
 
 ## 4. Welt
 
@@ -199,7 +239,8 @@ namespace WorldBeyond.Simulation.World
     // Explizite Werte, nur anhängen (SAVE_FORMAT_PROPOSAL §A.4).
     public enum TerrainType : byte { DeepWater = 0, ShallowWater = 1, Beach = 2, Grass = 3, Forest = 4, Rock = 5, Mountain = 6, Snow = 7, Desert = 8, Swamp = 9, River = 10 }
     public enum BiomeType   : byte { Ocean = 0, Coast = 1, Temperate = 2, Boreal = 3, Tundra = 4, Desert = 5, Savanna = 6, Wetland = 7, Alpine = 8 }
-    public enum ResourceType: byte { None = 0, Food = 1, Wood = 2, Stone = 3, Ore = 4, Oil = 5, Gold = 6 }
+    // Metal/Tools: nur Lagergüter, nie Kachelvorkommen (INTEGRATION §5). Im Spielstand als Enum-Name gespeichert.
+    public enum ResourceType: byte { None = 0, Food = 1, Wood = 2, Stone = 3, Ore = 4, Oil = 5, Gold = 6, Metal = 7, Tools = 8 }
     [System.Flags] public enum TileFlags : ushort { None = 0, Burning = 1, Scorched = 2, Road = 4, Crater = 8, RiverBank = 16, Lake = 32, Wreck = 64 }
     public enum TileChangeKind : byte { Height = 0, Terrain = 1, Resource = 2, Building = 3, Flags = 4, Full = 5 }
 
@@ -380,32 +421,75 @@ Implementierung: A* auf dem Kachelraster, 8-Nachbarschaft ohne Eckenschneiden, K
 
 ## 6. Einheiten
 
+Dateien: `Simulation/Units/UnitTypes.cs`, `UnitModel.cs`, `IUnitStore.cs`, `UnitStore.cs`.
+
 ```csharp
 namespace WorldBeyond.Simulation.Units
 {
-    // MovementClass liegt in WorldBeyond.Core (siehe §1), da Welt, Pfadfindung und Einheiten sie brauchen.
-    public enum UnitRole : byte { Civilian, Worker, Settler, Infantry, Vehicle, Artillery, RocketArtillery }
-    public enum UnitState : byte { Idle, Moving, Working, Fighting, Fleeing, Dead }
+    // Explizite Werte, nur anhängen.
+    public enum UnitRole : byte { Civilian = 0, Worker = 1, Settler = 2, Infantry = 3, Vehicle = 4, Artillery = 5, RocketArtillery = 6, Trader = 7 }
+    public enum UnitState : byte { Idle = 0, Moving = 1, Working = 2, Fighting = 3, Fleeing = 4, Dead = 5 }
+    public enum UnitTaskKind : byte { None = 0, MoveTo = 1, Gather = 2, Build = 3, Attack = 4, Settle = 5, Garrison = 6, Flee = 7 }
 
-    public readonly struct UnitTypeId { public readonly int Value; }
+    public readonly struct UnitTypeId { public readonly int Value; public bool IsValid { get; } }  // Laufzeit, nie speichern
+
+    public sealed class UnitTypeData    // Civ trägt Zivil-, Military Militär-Typen ein; neue Felder nur über Integration
+    {
+        public string Key;              // "unit.settler", "unit.humvee_mg"
+        public string DisplayName;
+        public UnitRole Role;
+        public byte MilitaryRole;       // Wert aus Military-Enum MilitaryRole; 0 = keine
+        public MovementClass Movement;
+        public float MaxHp, MaxSpeed, TurnRateDeg, Acceleration, Radius;
+    }
+
+    public sealed class UnitTypeRegistry
+    {
+        public UnitTypeId Register(UnitTypeData data);       // nur beim Start (contentSetup)
+        public bool TryGet(UnitTypeId id, out UnitTypeData data);
+        public UnitTypeData Get(UnitTypeId id);
+        public bool TryGetByKey(string key, out UnitTypeId id);
+        public string KeyOf(UnitTypeId id);
+    }
+
+    [System.Serializable] public struct UnitTask
+    {
+        public UnitTaskKind Kind;
+        public EntityId TargetEntity;   // vor Nutzung Exists prüfen
+        public int TargetRef;           // fachliche ID (Siedlung, Armee) oder 0
+        public float TargetX, TargetZ;
+    }
+
+    public readonly struct UnitView { Id, Type, CivId, X, Z, Heading, Speed, Hp, MaxHp, State, Task, HasMoveTarget, MoveTargetX, MoveTargetZ }
 
     public interface IUnitQuery
     {
         int Count { get; }
         bool Exists(EntityId id);
-        UnitView Get(EntityId id);                  // Snapshot-Struct für UI/Presentation
-        void ForEachAlive(System.Action<EntityId> visitor); // für Renderer; alternativ Span-Zugriff
+        bool TryGet(EntityId id, out UnitView view);
+        UnitView Get(EntityId id);                      // ungültig → default
+        void ForEachAlive(System.Action<EntityId> visitor);
+        void CopyAliveIds(System.Collections.Generic.List<EntityId> results);
     }
 
+    // Einziger Speicher für alle Einheiten. Ungültige IDs → false, keine Exception.
     public interface IUnitStore : IUnitQuery
     {
-        EntityId Spawn(UnitTypeId type, int civId, float x, float z);
-        void Despawn(EntityId id);                  // löst UnitDiedEvent aus
-        void SetMoveTarget(EntityId id, float x, float z);
-        void SetTask(EntityId id, UnitTask task);
+        EntityId Spawn(UnitTypeId type, int civId, float x, float z);   // UnitSpawnedEvent; unbekannter Typ → None
+        bool Despawn(EntityId id, EntityId killer = default, int killerCivId = 0);   // UnitDiedEvent
+        bool SetMoveTarget(EntityId id, float x, float z);
+        bool ClearMoveTarget(EntityId id);
+        bool SetTask(EntityId id, UnitTask task);
+        bool SetState(EntityId id, UnitState state);     // Dead nur über Despawn
+        bool SetPosition(EntityId id, float x, float z, float heading, float speed);   // nur MovementSystem (World)
+        bool SetHp(EntityId id, float hp);               // nur ICombatService (Military); auf 0..MaxHp begrenzt
     }
 
-    public struct UnitDiedEvent : WorldBeyond.Core.ISimEvent { public EntityId Unit; public EntityId Killer; }
+    public struct UnitSpawnedEvent : ISimEvent { public EntityId Unit; public UnitTypeId UnitType; public int CivId; public float X, Z; }
+    public struct UnitDiedEvent    : ISimEvent { public EntityId Unit; public EntityId Killer; public int CivId; public int KillerCivId; public UnitTypeId UnitType; public float X, Z; }
+
+    // UnitStore : IUnitStore, ISaveable — SaveKey "units", LoadOrder 10, SectionVersion 1, StateType UnitStoreState
+    // (EntityStoreState + UnitRecord[] mit TypeKey als String).
 }
 ```
 
