@@ -59,7 +59,7 @@ namespace WorldBeyond.Tests.EditMode.Save
 
         public void Tick(SimContext ctx)
         {
-            ctx.UnitTypes.TryGetByKey("unit.settler", out var settler);
+            ctx.UnitTypes.TryGetByKey("test.settler", out var settler);
             int roll = ctx.Random.Range(0, 100);
             if (roll < 40) ctx.Units.Spawn(settler, 1 + roll % 2, ctx.Random.Range(0f, 256f), ctx.Random.Range(0f, 256f));
             ctx.Units.CopyAliveIds(_ids);
@@ -93,7 +93,7 @@ namespace WorldBeyond.Tests.EditMode.Save
             if (Directory.Exists(_dir)) Directory.Delete(_dir, true);
         }
 
-        private static readonly string[] DefaultTypes = { "unit.settler", "unit.rifleman" };
+        private static readonly string[] DefaultTypes = { "test.settler", "test.rifleman" };
 
         private static GameComposition Create(GameStartSettings s, string[] types = null, ExtraSaveable extra = null, bool churn = false)
         {
@@ -148,14 +148,14 @@ namespace WorldBeyond.Tests.EditMode.Save
             _current = Create(settings);
             // Ticks vor dem Aufstellen: Fachsysteme im Tick (z. B. MovementSystem) dürfen die geprüften Felder nicht verändern.
             for (int i = 0; i < 7; i++) _current.Runner.StepOnce();
-            var a = SpawnType(_current, "unit.settler", 1, 10.5f, 20.25f);
-            var b = SpawnType(_current, "unit.rifleman", 2, -3f, 4f);
-            var c = SpawnType(_current, "unit.rifleman", 2, 7f, 8f);
+            var a = SpawnType(_current, "test.settler", 1, 10.5f, 20.25f);
+            var b = SpawnType(_current, "test.rifleman", 2, -3f, 4f);
+            var c = SpawnType(_current, "test.rifleman", 2, 7f, 8f);
             _current.Context.Units.SetMoveTarget(b, 100f, 200f);
             _current.Context.Units.SetTask(b, new UnitTask { Kind = UnitTaskKind.Attack, TargetEntity = c, TargetX = 7f, TargetZ = 8f });
             _current.Context.Units.SetHp(b, 42.5f);
             _current.Context.Units.Despawn(a);
-            var reused = SpawnType(_current, "unit.settler", 1, 0f, 0f);     // nutzt Index von a mit neuer Generation
+            var reused = SpawnType(_current, "test.settler", 1, 0f, 0f);     // nutzt Index von a mit neuer Generation
             Assert.AreEqual(a.Index, reused.Index, "Testannahme: Index wird wiederverwendet");
             _current.Context.Random.Range(0, 1000);
             _current.Runner.Speed = GameSpeed.x5;
@@ -194,11 +194,11 @@ namespace WorldBeyond.Tests.EditMode.Save
             Assert.AreEqual(100f, vb.MoveTargetX); Assert.AreEqual(200f, vb.MoveTargetZ);
             Assert.AreEqual(UnitTaskKind.Attack, vb.Task.Kind);
             Assert.AreEqual(c, vb.Task.TargetEntity, "EntityId im Auftrag muss erhalten bleiben");
-            Assert.AreEqual("unit.rifleman", KeyOf(loaded, b));
+            Assert.AreEqual("test.rifleman", KeyOf(loaded, b));
 
             // Nächste vergebene ID ist identisch wie ohne Unterbrechung (Freiliste + Generationen exakt).
-            var nextOriginal = SpawnType(original, "unit.settler", 1, 0f, 0f);
-            var nextLoaded = SpawnType(loaded, "unit.settler", 1, 0f, 0f);
+            var nextOriginal = SpawnType(original, "test.settler", 1, 0f, 0f);
+            var nextLoaded = SpawnType(loaded, "test.settler", 1, 0f, 0f);
             Assert.AreEqual(nextOriginal, nextLoaded);
         }
 
@@ -240,22 +240,22 @@ namespace WorldBeyond.Tests.EditMode.Save
         [Test]
         public void ContentOrderChanged_UnitsKeepTheirTypes()
         {
-            _current = Create(new GameStartSettings(), new[] { "unit.settler", "unit.rifleman" });
-            var s1 = SpawnType(_current, "unit.settler", 1, 0, 0);
-            var r1 = SpawnType(_current, "unit.rifleman", 1, 1, 1);
+            _current = Create(new GameStartSettings(), new[] { "test.settler", "test.rifleman" });
+            var s1 = SpawnType(_current, "test.settler", 1, 0, 0);
+            var r1 = SpawnType(_current, "test.rifleman", 1, 1, 1);
             Assert.IsTrue(Service(s => Create(s)).Save("order").Success);
 
-            var reordered = new[] { "unit.medic", "unit.rifleman", "unit.tank", "unit.settler" };
+            var reordered = new[] { "unit.medic", "test.rifleman", "unit.tank", "test.settler" };
             var load = Service(s => Create(s, reordered)).Load("order");
             Assert.IsTrue(load.Success, load.Detail);
-            Assert.AreEqual("unit.settler", KeyOf(_current, s1));
-            Assert.AreEqual("unit.rifleman", KeyOf(_current, r1));
+            Assert.AreEqual("test.settler", KeyOf(_current, s1));
+            Assert.AreEqual("test.rifleman", KeyOf(_current, r1));
         }
 
         [Test]
         public void MissingContentKey_IsMissingContent_AndKeepsCurrentState()
         {
-            var extra = new ExtraSaveable { State = new ExtraState { Value = 1, UnitKeys = new[] { "unit.settler", "unit.removed" } } };
+            var extra = new ExtraSaveable { State = new ExtraState { Value = 1, UnitKeys = new[] { "test.settler", "unit.removed" } } };
             _current = Create(new GameStartSettings(), extra: extra);
             Assert.IsTrue(Service(s => Create(s, extra: new ExtraSaveable())).Save("mc").Success);
             var before = _current;
@@ -263,7 +263,7 @@ namespace WorldBeyond.Tests.EditMode.Save
             var load = Service(s => Create(s, extra: new ExtraSaveable())).Load("mc");
             Assert.AreEqual(SaveLoadError.MissingContent, load.Error);
             StringAssert.Contains("unit.removed", load.Detail);
-            StringAssert.DoesNotContain("unit.settler", load.Detail);
+            StringAssert.DoesNotContain("test.settler", load.Detail);
             Assert.IsFalse(string.IsNullOrEmpty(load.UserMessage));
             Assert.AreSame(before, _current);
             Assert.AreEqual(0, _replaceCount);
@@ -273,11 +273,11 @@ namespace WorldBeyond.Tests.EditMode.Save
         public void RemovedUnitType_IsMissingContent()
         {
             _current = Create(new GameStartSettings());
-            SpawnType(_current, "unit.rifleman", 1, 0, 0);
+            SpawnType(_current, "test.rifleman", 1, 0, 0);
             Assert.IsTrue(Service(s => Create(s)).Save("ut").Success);
-            var load = Service(s => Create(s, new[] { "unit.settler" })).Load("ut");
+            var load = Service(s => Create(s, new[] { "test.settler" })).Load("ut");
             Assert.AreEqual(SaveLoadError.MissingContent, load.Error, load.Detail);
-            StringAssert.Contains("unit.rifleman", load.Detail);
+            StringAssert.Contains("test.rifleman", load.Detail);
         }
 
         [Test]
@@ -357,8 +357,8 @@ namespace WorldBeyond.Tests.EditMode.Save
         public void InconsistentUnitData_IsCorrupted_AndKeepsCurrentState()
         {
             _current = Create(new GameStartSettings());
-            SpawnType(_current, "unit.settler", 1, 0, 0);
-            SpawnType(_current, "unit.settler", 1, 0, 0);
+            SpawnType(_current, "test.settler", 1, 0, 0);
+            SpawnType(_current, "test.settler", 1, 0, 0);
             Service(s => Create(s)).Save("x");
             var before = _current;
             // Zweiter Datensatz zeigt auf denselben Index wie der erste.
