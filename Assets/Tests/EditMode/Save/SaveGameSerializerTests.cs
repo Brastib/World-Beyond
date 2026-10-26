@@ -89,6 +89,40 @@ namespace WorldBeyond.Tests.EditMode.Save
             StringAssert.Contains("Prüfsumme", detail);
         }
 
+        [TestCase("header", "worldSeed", 999)]
+        [TestCase("header", "simTick", 1)]
+        [TestCase("settings", "gameSpeed", 10)]
+        [TestCase("settings", "paused", false)]
+        public void TamperedFrameField_FailsChecksum(string obj, string field, object value)
+        {
+            var root = JObject.Parse(SampleJson());
+            root[obj][field] = JToken.FromObject(value);
+            Assert.IsFalse(_serializer.TryDeserialize(root.ToString(), out _, out var error, out var detail));
+            Assert.AreEqual(SaveLoadError.Corrupted, error, detail);
+        }
+
+        [TestCase("null", TestName = "Map_SectionsNull")]
+        [TestCase("[]", TestName = "Map_SectionsArray")]
+        [TestCase("5", TestName = "Map_SectionsNumber")]
+        public void TryMap_BrokenSectionsAfterFrameMigration_IsCorrupted(string sectionsJson)
+        {
+            // Simuliert eine fehlerhafte $frame-Migration: TryMap bekommt einen ungültigen Rahmen.
+            var root = JObject.Parse(SampleJson());
+            root["sections"] = JToken.Parse(sectionsJson);
+            Assert.IsFalse(_serializer.TryMap(root, out var data, out var error, out _));
+            Assert.AreEqual(SaveLoadError.Corrupted, error);
+            Assert.IsNull(data);
+        }
+
+        [Test]
+        public void TryMap_MissingSections_IsCorrupted()
+        {
+            var root = JObject.Parse(SampleJson());
+            root.Remove("sections");
+            Assert.IsFalse(_serializer.TryMap(root, out _, out var error, out _));
+            Assert.AreEqual(SaveLoadError.Corrupted, error);
+        }
+
         [Test]
         public void MissingChecksum_IsCorrupted()
         {
