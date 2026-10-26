@@ -86,3 +86,28 @@ namespace WorldBeyond.Simulation.Military
 ## 7. Abnahmetest (Plan, nur auf dem PC ausführbar)
 
 PlayMode-Szene auf generierter Karte: Civ A (Infanterie, Humvee mit 4 Infanterie, Humvee-MG, Panzer, Raketenwerfer) gegen Civ B (Infanterie, Panzer). Prüfungen: Humvee fährt Pfad über Hügel/um Wasser; Infanterie steigt ein/aus; MG tötet Infanterie; Panzergranate trifft und senkt HP mit Panzerung; Rakete fliegt, trifft, Flächenschaden; zerstörte Einheit verschwindet, `UnitDiedEvent` mit Civ; IArmyAI greift nach `WarDeclaredEvent` an. Zusätzlich EditMode-Tests für Schaden, Ballistik, Raketenlenkung, Rekrutierungskosten.
+
+## 8. Übergabestatus M1 (Branch `claude/phase5-military`, 2026-10-26)
+
+**Geliefert (eigene Ordner, keine gemeinsamen Dateien geändert):**
+
+| Datei | Inhalt |
+|---|---|
+| `Simulation/Combat/CombatTypes.cs` | `DamageType`, `ProjectileKind` (feste Werte), `ArmorProfile`, `DamageModel` |
+| `Simulation/Combat/WeaponState.cs` | `WeaponData`, `WeaponState` (Feuerrate, Magazin, Nachladen, Reserve, Versorgung, Reichweiten) |
+| `Simulation/Combat/Ballistics.cs`, `Missile.cs` | Ballistik und Raketenflug, getestet, **in M1 noch nicht benutzt** (kommen mit ProjectileStore nach M1) |
+| `Simulation/Combat/Targeting.cs` | Sichtlinie über Höhenfunktion, Zielbewertung |
+| `Simulation/Combat/CombatService.cs` | `ICombatService` (einziger Schadensweg: `SetHp`, Tod über `Despawn(id, killer, killerCivId)`), Events `UnitDamagedEvent`, `WeaponFiredEvent`, `ExplosionEvent`, `CombatEnvironment` |
+| `Simulation/Combat/CombatSystem.cs` | taktischer Kampf (Order 400): Zielwahl gestaffelt, Sichtlinie, Hitscan mit Trefferwurf über `SimRandom`, Verfolgung, Haltungen, befohlene Ziele; `ISaveable` Sektion `combat` (LoadOrder 20) |
+| `Simulation/Combat/CombatCommands.cs` | `AttackUnitCommand`, `SetStanceCommand` |
+| `Simulation/Military/MilitaryCatalog.cs` | `MilitaryRole` (Enum für `UnitTypeData.MilitaryRole`), `MilitaryUnitData`, `IMilitaryQuery` (Kampfstärke), M1-Inhalt `unit.rifleman` + `weapon.rifle` |
+| `Simulation/Military/MilitaryModule.cs` | erzeugt und registriert alles; ein Aufruf aus `RegisterPhaseServices` |
+| `Tests/EditMode/Combat/*` | 34 Mathe-Tests + 14 Kampf-Tests |
+
+**Geprüft:** `dotnet test Tools/SimTests` → 87/87 bestanden (39 Fundament + 48 Phase 5). Gegenprobe: Feindschaftsprüfung absichtlich entfernt → 4 Kampf-Tests rot. **Nicht geprüft:** Unity-Editor-Kompilierung, Unity Test Runner.
+
+**Bitte an Integration (gemeinsame Dateien):**
+1. In `GameComposition.RegisterPhaseServices`: `var env = new CombatEnvironment(); MilitaryModule.Register(ctx, runner.Register, env);` und nach World/War: `env.AreHostile = diplomacy.AreAtWar; env.HeightAt = world.SampleHeight; env.QueryRadius = spatialIndex.QueryRadius` (Signatur ggf. anpassen).
+2. SYSTEM_INTERFACES §9: Events `UnitDamagedEvent`, `WeaponFiredEvent`, `ExplosionEvent` (jetzt in `CombatService.cs`), `IMilitaryQuery`, `CombatStance` aufnehmen.
+
+**Offen nach M1:** `IArmyRegistry`/`IArmyAI`, `ProjectileStore` (Ballistik, Raketen), Fahrzeugtypen, Versorgung, Transport, VFX/Modelle.
