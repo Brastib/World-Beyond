@@ -49,6 +49,18 @@ Damit gibt es unbegrenzt viele Kombinationen. Ehrliche Grenze: Jedes Bauteil mus
 
 Jedes von NPCs hergestellte Objekt trägt in der Simulation Hersteller, Qualität und Parameter. Der Katalog zählt nur Archetypen und Bauteil-Sätze. Wie NPCs entwerfen, bauen und handeln, gehört nicht in diesen Katalog, sondern zu den zuständigen Systemen (weitergegeben).
 
+### 0.7 Keine Quatsch-Objekte, Physik muss passen (Nutzer, 2026-10-26 16:57 UTC, verbindlich)
+
+Jede Variante, die ein Generator oder ein NPC aus einem Archetyp erzeugt, muss diese Prüfungen bestehen, sonst wird sie verworfen und nicht angezeigt:
+1. **Funktion:** Das Objekt erfüllt seinen Zweck für einen Menschen von 1,5–2 m. Sitzhöhe ca. 40–50 cm, Tischhöhe ca. 70–80 cm, Bett mindestens Körperlänge, Türen mindestens ca. 2 m hoch, Treppenstufen ca. 15–20 cm hoch und ca. 25–30 cm tief. Werte je Epoche und Kultur nur in plausiblen Grenzen.
+2. **Statik:** Der Schwerpunkt liegt über der Standfläche. Lastende Teile ruhen auf tragenden Teilen (Tischplatte auf Beinen, Dach auf Wänden, Obergeschoss auf Wand oder Stütze). Nichts schwebt, nichts steckt im Boden oder in einem anderen Objekt.
+3. **Material:** Querschnitte passen zum Material und zur Last (keine Bleistift-Beine unter einer Steinplatte, keine Glasbrücke im Mittelalter). Gewicht wird aus Volumen × Materialdichte berechnet und für Physik und Transport mitgegeben.
+4. **Epoche:** Nur Materialien und Techniken, die die Civ zu dieser Zeit kennt (Technologien aus `CivContent`). Keine Anachronismen.
+5. **Platz:** Das Objekt passt durch Tür und Treppe in den Raum, in dem es steht. Möbel stehen mit Abstand so, dass man daran vorbeigehen kann.
+6. **Optik:** R1/R2-Qualität (Konzept §3); keine verzerrten Texturen bei Größenänderung (Texeldichte bleibt gleich).
+
+Die Prüfung läuft automatisch im Generator. Zusätzlich wird für jeden Archetyp eine Stichprobe von Varianten im Spiel-Licht gerendert und vom Nutzer geprüft, bevor der Archetyp auf „abgenommen“ steht. Wie sich Objekte im laufenden Spiel physikalisch verhalten (Umfallen, Einsturz, Trümmer), gehört zum zuständigen Systembereich und wurde weitergegeben. Der Katalog liefert dafür je Objekt Gewicht, Schwerpunkt, Standfläche und Kollisionsform.
+
 ## 1. Zähler (Stand 2026-10-26)
 
 | Bereich | Einträge | geplant | Platzhalter | in Arbeit | implementiert | abgenommen |
