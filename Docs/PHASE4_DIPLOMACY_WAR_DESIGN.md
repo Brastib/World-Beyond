@@ -1,6 +1,6 @@
 # World Beyond – Phase 4: Diplomatie und Kriegs-KI (Entwurf)
 
-Stand: 2026-10-25 (Abgrenzung angepasst an INTEGRATION.md §3). Status: **Entwurf, kein Code, nichts getestet.**
+Stand: 2026-10-26. Status: **Simulationskern implementiert (Branch `phase4/diplomacy-war`), mit dotnet getestet, nicht im Unity-Editor geprüft.** Umsetzungsstand: §11.
 Grundlage: PROJECT_MASTER.md, ARCHITECTURE.md (§1, §6, §7, §8, §11). Bei Widerspruch gelten diese und SYSTEM_INTERFACES.md (sobald vorhanden). Dieses Dokument wird bei der Umsetzung an die tatsächlichen Schnittstellen aus Phase 0/2/3 angepasst.
 
 ## 1. Abhängigkeiten und Blockaden
@@ -130,7 +130,7 @@ Events: WarDeclared, PeaceSigned, TruceSigned, AllianceFormed, TreatyBroken,
         SettlementCaptured, StrategicPointCaptured, UnitDiedEvent (Integration, erweitert um CivId/KillerCivId/UnitType)
 ```
 
-## 9. Tests (EditMode, Unity Test Framework) – geplant, noch nicht ausgeführt
+## 9. Tests (EditMode, Unity Test Framework) – umgesetzt, siehe §11.3
 
 1. Kriegserklärung setzt Status `War` für beide Seiten und ruft Verbündete.
 2. Friedensangebot wird abgelehnt bei schlechtem, angenommen bei gutem warScore; abgetretene Siedlung wechselt Besitzer.
@@ -150,3 +150,43 @@ Events: WarDeclared, PeaceSigned, TruceSigned, AllianceFormed, TreatyBroken,
 - Handel als Beziehungsquelle (Phase Wirtschaft, später).
 - Feinabstimmung der Gewichte erst mit laufender Simulation möglich.
 - Tests können nur auf dem PC des Nutzers im Unity Test Runner laufen.
+
+## 11. Umsetzungsstand (2026-10-26)
+
+### 11.1 Dateien (nur Phase 4, keine gemeinsamen Dateien geändert)
+
+| Datei | Inhalt |
+|---|---|
+| `Assets/_Project/Scripts/Simulation/Diplomacy/DiplomacyTypes.cs` | Enums (feste Werte), Datenklassen: OpinionModifier, Treaty, War, WarGoal, WarSideStats, StrategicPoint, PeaceTerm, DiplomaticDecision, TargetPriority, SettlementInfo, CivAiMemory |
+| `.../DiplomacyEvents.cs` | WarDeclared, WarJoined, WarLeft, WarEnded, PeaceSigned, PeaceRejected, TruceSigned, WarResumed, AllianceFormed, TreatyBroken, StrategicPointCaptured, DiplomaticDecision |
+| `.../DiplomacyInterfaces.cs` | IDiplomacyService, IDiplomacyQuery, IWarQuery (inkl. GetTargetPriorities für Military), IDiplomacyWorldPort |
+| `.../DiplomacySettings.cs` | alle Stellschrauben |
+| `.../DiplomacyService.cs`, `.../DiplomacyService.Update.cs` | Beziehungsmatrix, Verträge, Kriege, Bündnispflichten, Frieden, War Score, Erschöpfung, strategische Punkte, Zielprioritäten, Meldungen aus anderen Systemen |
+| `.../WarStrategyEvaluator.cs` | Utility-KI: Kriegserklärung, Frieden (Forderung/Zugeständnis/weißer Frieden), Bündnisse, Rekrutierungsanfragen; jede Entscheidung mit Faktoren protokolliert |
+| `.../DiplomacySystem.cs` | ISimulationSystem, Order 800, jede Spielsekunde |
+| `.../DiplomacyCommands.cs` | DeclareWar (optional erzwungen), ProposePeace (optional erzwungen), SignTruce, FormAlliance, BreakTreaty, ModifyRelation |
+| `.../DiplomacySaveable.cs` | ISaveable "diplomacy" (SectionVersion 1, LoadOrder 800), Validierung, tiefe Kopien, Referenzprüfung mit Rückfall |
+| `.../DiplomacyOverview.cs` | Lesemodell für die UI-Übersicht (Kriege, Bündnisse, Feindschaften) |
+| `Assets/Tests/EditMode/Diplomacy/DiplomacyTests.cs`, `DiplomacyTestDoubles.cs` | 31 EditMode-Tests, Testwelt für den Port |
+
+### 11.2 Anbindung an andere Phasen (über `IDiplomacyWorldPort`)
+
+Phase 4 greift nicht direkt auf fremde Systeme zu. Ein Adapter in der Composition Root (`GameComposition.RegisterPhaseServices`, Besitzer Integration) implementiert den Port mit:
+ICivilizationQuery (Bevölkerung, Hauptstadt, Haltung, Alive), ITerritoryService.SharedBorderLength, IEconomy (Bedarf, Tribut über TrySpend/Add), ISettlementRegistry (GetByCiv, Get, TransferSettlement), IRecruitment.Request, Military GetCivCombatStrength und eine "dominante Civ in Radius"-Abfrage (ISpatialIndex/IUnitQuery).
+Der Adapter abonniert außerdem UnitDiedEvent → `ReportUnitLost`, SettlementCapturedEvent → `ReportSettlementCaptured`, CivilizationCollapsedEvent → `ReportCivilizationCollapsed`. Das CivAISystem (Civ) ruft `WarStrategyEvaluator.EvaluateAndAct(civId)` pro Civ auf.
+
+### 11.3 Tests
+
+Ausgeführt am 2026-10-26 mit `dotnet test Tools/SimTests` (.NET 8, C# 9, Warnungen als Fehler) gegen das echte Fundament aus PR #2: 70 von 70 bestanden (39 Fundament, 31 Phase 4). **Nicht im Unity Test Runner ausgeführt.**
+Abgedeckt: T-4-01 Kriegserklärung und Bündnisruf, T-4-02 Frieden abhängig vom Kriegsstand inkl. Abtretung und Tribut, T-4-03 Bündnisse, T-4-04 Zielauswahl, T-4-05 kein Krieg ohne Grund (30 Spielminuten) und Krieg mit Grund samt Begründung, T-4-06 Verluste/Erschöpfung/Friedensangebot des Verlierers, T-4-07 Speichern/Laden während des Kriegs mit identischer Fortsetzung (DTO-Rundlauf; der JSON-Teil gehört dem SaveLoadService, Phase 7), Validierung beschädigter Daten, Referenzprüfung; außerdem Waffenstillstand, Zusammenbruch einer Civ, strategische Punkte, Rekrutierung, Grenzreibung, Befehle, Übersicht, nie wiederverwendete IDs.
+
+### 11.4 Noch fehlend (ehrlich)
+
+- Adapter für `IDiplomacyWorldPort` und Registrierung in `GameComposition`: wartet auf Phase 3 (Civ) und Phase 5 (Military). Bis dahin läuft Diplomatie im Spiel nicht.
+- Aufruf des Kriegsbewerters durch das CivAISystem (Phase 3).
+- `ISaveReferenceCheck`/`LoadReport` fehlen im Fundament; `DiplomacySaveable.CheckReferences` nutzt vorerst einen Callback.
+- UI-Panel (UI Toolkit) für Diplomatie und Armeebefehle: Phase 6; Lesemodell und Commands sind fertig.
+- Kampf, Armeen, Rückzug, Verteidigung, Versorgung: Phase 5 (nutzt `GetTargetPriorities` und die Events).
+- Handel als Beziehungsquelle und Status `Trade`: noch kein Handelssystem.
+- Gewichte sind Startwerte; Abstimmung erst mit laufender Simulation.
+- Prüfung im Unity-Editor (Kompilierung mit Unity-Compiler, Test Runner).
