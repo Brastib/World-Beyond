@@ -41,7 +41,7 @@ Die Ersatzmodelle sind genau das, was der Nutzer als „Vierecke/Minecraft“ be
 |---|---|---|---|
 | KA1 | PROJECT_MASTER §8.1 (Nutzerregel 2026-10-25): „echte Internet-Assets aktiv importieren“. Nutzer 2026-10-26: „Internet-Assets passen nicht zusammen, wir machen eigene.“ | Neuere Nutzeraussage gilt. Neue Regel: **Geometrie (Modelle) machen wir selbst**, prozedural oder modular. Aus dem Internet kommen nur **stilneutrale Rohstoffe**: CC0-Fototexturen (Rinde, Blätter, Boden, Fels), HDRI-Himmel, Geräusche; außerdem Einzelteile, die nach Umarbeitung in den Stil passen. Lizenzprüfung und ASSET_CREDITS bleiben Pflicht. | Nutzer hat es gesagt; Integration trägt es in PROJECT_MASTER §8.1 ein |
 | KA2 | UI_STYLE_GUIDE A1 „gemalter stilisierter Realismus, Low-/Mid-Poly“ und Kommentar in `ProceduralMeshes.cs` („Low-Poly-Ersatz“) widersprechen VISION V5 („realistisch, nicht Low-Poly“) und der Nutzernachricht („aufwendig, runde 3D-Bäume“). | Stil **„Naturrealismus mit warmer Farbgebung“** (§3): realistische Formen und Materialien, aber die kräftige, warme Farbigkeit der Forge-of-Empires-Referenz und die Fernlesbarkeit von WorldBox bleiben. | Integration/Phase 6 passen A1 an; Nutzer bestätigt am Style-Lock-Bild |
-| KA3 | Polygon-Budgets: Bäume ≤ 1 500 (UI_STYLE_GUIDE A3) bzw. ≤ 2 000 (ARCHITECTURE §16). Für runde, detailreiche Bäume in der Nahsicht zu knapp. | LOD-Kette statt Einzelwert (§4.4): LOD0 bis 6 000 Dreiecke (nur nahe Kamera), LOD1 ≈ 1 500, LOD2 ≈ 300, ab mittlerer Entfernung Impostor (Bild-Ersatz). Endwerte erst nach Messung in Unity. | Integration, nach Messung |
+| KA3 | Polygon-Budgets: Bäume ≤ 1 500 (UI_STYLE_GUIDE A3) bzw. ≤ 2 000 (ARCHITECTURE §16). Für runde, detailreiche Bäume in der Nahsicht zu knapp. | LOD-Kette statt Einzelwert (§4.4): LOD0 bis 6 000 Dreiecke (nur nahe Kamera; *Nachtrag 2026-10-26 nach Referenzbild R1, §3.1: Ziel für die wenigen Bäume direkt an der Kamera ca. 15 000–30 000*), LOD1 ≈ 1 500, LOD2 ≈ 300, ab mittlerer Entfernung Impostor (Bild-Ersatz). Endwerte erst nach Messung in Unity. | Integration, nach Messung |
 | KA4 | Vegetation nur als Kacheltyp `Forest`. Sterben, Brand, Nachwachsen brauchen einen Vegetationszustand je Kachel. | Eigenes Datenfeld des neuen Umwelt-Bereichs (§6.2), **ohne** `TileData` zu ändern. | Integration (neuer Besitzer), World (Abstimmung) |
 
 ## 3. Stilregeln „Naturrealismus mit warmer Farbgebung“ (Vorschlag)
@@ -62,6 +62,27 @@ Die Ersatzmodelle sind genau das, was der Nutzer als „Vierecke/Minecraft“ be
 - Comic-Proportionen neben realistischen Objekten.
 
 **Abnahme:** wie UI_STYLE_GUIDE A7, zusätzlich: Vergleichsbild Nah/Mittel/Fern im echten Licht, mit Wind in Bewegung, und in jedem Zustand (gesund, trocken, tot, brennend, verkohlt).
+
+### 3.1 Referenzbild R1 (vom Nutzer am 2026-10-26 16:34 UTC geschickt)
+
+Datei: `/mnt/project-files/WorldBeyond/references/R1_baum_laub_nutzer_2026-10-26.jpg` (Projektordner, **nicht** im Repo). Urheber und Lizenz unbekannt: nur Qualitätsmaßstab, wird weder ins Spiel noch ins Repo übernommen und nicht nachgebaut.
+
+Zu sehen: einzelner Laubbaum (ahornähnlich, passt zu `plant.acer`, W01/W02), fotorealistisch, freigestellt auf Weiß.
+
+**Was wir daraus als Pflicht-Merkmale für Bäume ableiten (Abnahme A1/A2):**
+1. **Lockere, ovale Krone mit Lücken**, durch die man Himmel und Äste sieht, kein geschlossener Klumpen.
+2. **Sichtbares Astgerüst**: gerader Stamm, gabelt sich etwa im unteren Drittel in 2–3 Leittriebe, viele feine Zweige auch innerhalb der Krone.
+3. **Einzelne Blätter in der Nahsicht erkennbar** (gelappte Blattform), in Büscheln an den Zweigenden; Blätter aus Fotoscans, nicht einfarbig.
+4. **Licht in der Krone**: helle, durchscheinende Blätter auf der Sonnenseite, dunkle im Inneren (Durchscheinen + Selbstschattierung + Ambient Occlusion).
+5. **Rinde** fein strukturiert, grau-braun, mit Normal-Map; Stammfuß mit Kontaktschatten.
+6. Jedes Exemplar anders (Seed), aber als dieselbe Gattung erkennbar.
+
+**Ehrliche Grenzen:**
+- R1 ist sehr wahrscheinlich ein Offline-Render (Raytracing, sehr viele Polygone; nicht geprüft). Ein Spiel muss Tausende Bäume mit flüssiger Bildrate zeigen.
+- Erreichbar: Bäume **nah an der Kamera** kommen R1 nahe (hohe LOD0-Dichte, Fotoscan-Blätter, Durchscheinen, gute Schatten/SSAO). Wälder in der Ferne sehen aus der Entfernung ähnlich aus, haben aber über Impostor (vorgerenderte Bilder) weniger Einzeldetails.
+- Der größte verbleibende Unterschied ist das Licht: URP hat kein Raytracing-GI. HDRP käme R1 näher, wäre aber eine große Architekturänderung (gesamtes Projekt läuft auf URP) mit höheren Hardwareanforderungen. Vorschlag: bei URP bleiben und beim Style Lock einen Nahvergleich „unser Baum neben R1“ machen. Erst wenn der Abstand zu groß ist, HDRP als Entscheidung des Nutzers vorlegen.
+
+**Abnahme-Zusatz:** Für jeden Baum in A1/A2 gibt es einen Screenshot aus Unity im gleichen Blickwinkel und vor hellem Hintergrund, neben R1 gestellt.
 
 ## 4. Produktionsweg (wie wir die Assets selbst herstellen)
 
