@@ -272,6 +272,13 @@ namespace WorldBeyond.Simulation.Diplomacy
             int byDeficit = (int)Math.Ceiling(deficit / Math.Max(0.1f, S.AssumedUnitStrength));
             int count = Math.Max(1, Math.Min(S.MaxRecruitPerRequest, Math.Max(byThreat, byDeficit)));
             bool ok = W.RequestMilitaryBuildup(civ, count, out string reason);
+            if (!ok && count > 1)
+            {
+                // Größere Anforderung abgelehnt (z. B. Ressourcen reichen nur für eine Einheit): einzeln versuchen,
+                // damit eine schwache Civ im Krieg nicht dauerhaft ohne Nachschub bleibt.
+                count = 1;
+                ok = W.RequestMilitaryBuildup(civ, count, out reason);
+            }
             _d.LogDecision(civ, 0, DiplomaticActionType.Recruit, utility,
                 new DecisionFactor("Bedrohung", threat), new DecisionFactor("Im Krieg", atWar ? 1f : 0f), new DecisionFactor("Fehlende Grundarmee", deficit),
                 new DecisionFactor("Anzahl", count), new DecisionFactor("Angenommen", ok ? 1f : 0f));

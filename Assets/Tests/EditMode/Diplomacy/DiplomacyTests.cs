@@ -274,6 +274,49 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.IsTrue(D.RecentDecisions.Any(x => x.Action == DiplomaticActionType.AcceptPeace));
         }
 
+        // Prüf-Befund (Sandbox, Seed 12345): Civ 2 war 10- bis 16-mal stärker und nahm trotzdem jeden weißen Frieden an.
+        [Test]
+        public void Peace_DominantFreshReceiver_RejectsWhitePeace_ButAcceptsConcession()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
+            D.DeclareWar(2, 1);
+            var white = D.ProposePeace(1, 2, PeaceTerm.White());
+            Assert.IsFalse(white.Accepted, "der klar Überlegene nimmt frisch im Krieg keinen weißen Frieden an");
+            Assert.IsNotNull(D.FindWar(1, 2));
+            var tribute = D.ProposePeace(1, 2, PeaceTerm.Tribute(1, 0.2f));
+            Assert.IsTrue(tribute.Accepted, "ein Zugeständnis beendet den Krieg");
+            Assert.IsNull(D.FindWar(1, 2));
+        }
+
+        [Test]
+        public void Peace_EqualStrength_WhitePeaceStillPossible()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 100);
+            D.DeclareWar(2, 1);
+            Assert.IsTrue(D.ProposePeace(1, 2, PeaceTerm.White()).Accepted);
+        }
+
+        // Stärke 10:1 ohne Eroberung: kein Ping-Pong mit weißem Frieden nach wenigen Minuten.
+        [Test]
+        public void Autonomy_TenToOne_WarLasts_AndEndsWithConcession()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
+            W.SetBorder(1, 2, 80);
+            D.DeclareWar(2, 1);
+            int seconds = 0;
+            while (D.FindWar(1, 2) != null && seconds < 180 * 60)
+            {
+                if (seconds % 30 == 0) D.ReportUnitLost(1, 2, 5f);
+                _rig.RunSeconds(1);
+                seconds++;
+            }
+            var peace = _rig.Bus.Of<PeaceSignedEvent>();
+            Assert.AreEqual(1, peace.Count, "Frieden entsteht ohne Eingriff");
+            Assert.AreNotEqual(PeaceTermType.WhitePeace, peace[0].Term, "der Unterlegene muss etwas abgeben");
+            Assert.GreaterOrEqual(seconds, 5 * 60, "Krieg dauert länger als das bisherige Ping-Pong (1–4 min)");
+            Assert.IsTrue(D.RecentDecisions.Any(x => x.Action == DiplomaticActionType.RejectPeace && x.CivId == 2));
+        }
+
         // Review-Befund: auch gleich starke Nachbarn geraten ohne Eingriff in Krieg (Grenzgroll wächst über die Zeit).
         [TestCase(100f, 100f, 0f, 0f, 0.5f)]
         [TestCase(110f, 100f, 0.5f, 0.5f, 0.5f)]
@@ -377,6 +420,34 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             var war = d.FindWar(1, 2);
             Assert.AreEqual(1, war.DefenderStats.UnitsLost);
             Assert.AreEqual(7f, war.DefenderStats.StrengthLost, 0.001f);
+            Assert.AreEqual(0, war.AttackerStats.UnitsLost);
+        }
+
+        // Prüf-Befund: ziviler Despawn (Siedler gründet, Karawane kommt an, KillerCivId 0) ist kein Kriegsverlust.
+        [Test]
+        public void UnitDiedEvent_CivilianDespawn_IsNotWarLoss()
+        {
+            var bus = new WorldBeyond.Core.SimEventBus();
+            var types = new WorldBeyond.Simulation.Units.UnitTypeRegistry(new WorldBeyond.Core.ContentRegistry());
+            var type = types.Register(new WorldBeyond.Simulation.Units.UnitTypeData { Key = "unit.test_settler", DisplayName = "Test" });
+            var units = new WorldBeyond.Simulation.Units.UnitStore(types, bus);
+            var world = new FakeDiplomacyWorld { UnitStrength = 7f };
+            world.AddCiv(1, 0, 0); world.AddCiv(2, 40, 0);
+            var d = new DiplomacyService(world, bus, () => 0);
+            d.DeclareWar(1, 2);
+            bus.Flush();
+
+            for (int i = 0; i < 5; i++)
+            {
+                var settler = units.Spawn(type, 2, 5f, 5f);
+                Assert.IsTrue(units.Despawn(settler, default, 0));
+            }
+            bus.Flush();
+            d.ReportUnitLost(2, 2, 7f); // Eigenverlust zählt ebenfalls nicht
+
+            var war = d.FindWar(1, 2);
+            Assert.AreEqual(0, war.DefenderStats.UnitsLost);
+            Assert.AreEqual(0f, war.DefenderStats.StrengthLost, 0.001f);
             Assert.AreEqual(0, war.AttackerStats.UnitsLost);
         }
 
@@ -568,6 +639,21 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             D.DeclareWar(2, 1);
             _rig.RunSeconds(5);
             Assert.IsTrue(W.RecruitRequests.Any(r => r.civ == 1));
+        }
+
+        // Prüf-Befund (PR #10): 5 Einheiten auf einmal scheiterten an Ressourcen, die Civ bekam nie Nachschub.
+        [Test]
+        public void Ai_Recruitment_FallsBackToSingleUnit_WhenBatchRejected()
+        {
+            W.AddCiv(1, 0, 0, strength: 50); W.AddCiv(2, 20, 0, strength: 300);
+            W.MaxRecruitBatch = 1;
+            D.DeclareWar(2, 1);
+            _rig.RunSeconds(5);
+            var mine = W.RecruitRequests.Where(r => r.civ == 1).ToList();
+            Assert.IsTrue(mine.Any(r => r.count > 1), "zuerst wird die volle Menge angefragt");
+            Assert.IsTrue(mine.Any(r => r.count == 1), "nach Ablehnung wird eine einzelne Einheit angefragt");
+            Assert.IsTrue(D.RecentDecisions.Any(d => d.CivId == 1 && d.Action == DiplomaticActionType.Recruit
+                && d.Factors.Any(f => f.Name == "Angenommen" && f.Value == 1f)));
         }
 
         [Test]

@@ -27,6 +27,7 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
         public readonly Dictionary<(int, int), int> DominantAt = new Dictionary<(int, int), int>();
         public readonly List<(int civ, int count)> RecruitRequests = new List<(int, int)>();
         public bool RecruitSucceeds = true;
+        public int MaxRecruitBatch = int.MaxValue;   // größere Anforderungen werden abgelehnt (wie zu wenig Ressourcen)
         int _nextSettlement = 1;
 
         public Civ AddCiv(int id, int capitalX, int capitalY, float strength = 100f, int population = 1000)
@@ -96,8 +97,9 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
         public bool RequestMilitaryBuildup(int civId, int count, out string reason)
         {
             RecruitRequests.Add((civId, count));
-            reason = RecruitSucceeds ? null : "NotEnoughResources";
-            return RecruitSucceeds;
+            bool ok = RecruitSucceeds && count <= MaxRecruitBatch;
+            reason = ok ? null : "NotEnoughResources";
+            return ok;
         }
 
         public int GetDominantCivNear(int x, int y, int radius) => DominantAt.TryGetValue((x, y), out var c) ? c : 0;
