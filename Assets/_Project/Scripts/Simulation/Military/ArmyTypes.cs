@@ -104,5 +104,11 @@ namespace WorldBeyond.Simulation.Military
         public Func<int, (bool ok, float x, float z)> SettlementPosition;   // Siedlungsmittelpunkt
         public Func<int, MilitaryRole, int, int> Recruit;                    // IRecruitment.Request → Anzahl eingereiht
         public int DesiredArmySize = 8;
+
+        // Besetzung von Siedlungen (SettlementCaptureSystem)
+        public Func<int, int, bool> CaptureSettlement;                       // (settlementId, newCivId) → ISettlementRegistry.TransferSettlement
+        public Func<IReadOnlyList<ArmyObjective>> Settlements;              // alle Siedlungen (Id, Besitzer, Mitte); null = Siedlungsziele aus Objectives
+        public float CaptureRadius = 30f;                                    // Ortskern-Radius in m
+        public float CaptureHoldSeconds = 30f;                               // so lange halten, ohne lebenden Verteidiger
     }
 }
