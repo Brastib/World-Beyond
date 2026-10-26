@@ -10,7 +10,8 @@ namespace WorldBeyond.Application.Save
         TooNew = 4,
         Unsupported = 5,
         MissingContent = 6,
-        InvalidReferences = 7
+        InvalidReferences = 7,
+        CaptureFailed = 8       // Speichern: ein System lieferte keinen gültigen Zustand oder es lief gerade ein Tick
     }
 
     // Verständliche Meldungen für den Spieler. Technische Details stehen separat im Ergebnis bzw. im Log.
@@ -38,6 +39,7 @@ namespace WorldBeyond.Application.Save
             {
                 case SaveLoadError.None: return "Spiel gespeichert.";
                 case SaveLoadError.IoError: return "Das Spiel konnte nicht gespeichert werden. Bitte prüfe freien Speicherplatz und Schreibrechte.";
+                case SaveLoadError.CaptureFailed: return "Das Spiel konnte gerade nicht gespeichert werden. Bitte versuche es gleich noch einmal.";
                 default: return "Das Spiel konnte nicht gespeichert werden.";
             }
         }
