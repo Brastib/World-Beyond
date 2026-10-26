@@ -97,10 +97,24 @@ namespace WorldBeyond.Simulation.Civilizations
                 if (!CanResearch(c, t)) continue;
                 var d = _s.Content.Techs.Get(t);
                 float score = (int)d.Epoch * 10000f + d.Cost;
+                // Fischfang nützt nur mit Wasser im eigenen Gebiet: dann zuletzt in seiner Epoche.
+                if (d.Key == "tech.fishing" && !CivHasWater(c)) score += 5000f;
                 if (score < bestScore) { bestScore = score; best = t; }
             }
             c.CurrentResearch = best;
             c.ResearchPoints = 0;
+        }
+
+        private bool CivHasWater(Civilization c)
+        {
+            foreach (int sid in _s.SettlementListOf(c.Id))
+            {
+                var st = _s.Settlements[sid];
+                for (int y = st.Y - 6; y <= st.Y + 7; y++)
+                    for (int x = st.X - 6; x <= st.X + 7; x++)
+                        if (_s.World.InBounds(x, y) && _s.World.IsWater(x, y)) return true;
+            }
+            return false;
         }
 
         /// <summary>Summierter Bonus aller erforschten Technologien.</summary>

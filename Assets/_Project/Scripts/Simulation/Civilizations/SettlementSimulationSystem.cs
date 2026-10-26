@@ -21,7 +21,7 @@ namespace WorldBeyond.Simulation.Civilizations
         public const double ChildDeathRate = 0.01, AdultDeathRate = 0.008, ElderDeathRate = 0.15;
         public const double StarvationRate = 0.4;      // Anteil der Hungernden, die pro Jahr sterben
         public const double ToolWearPerWorker = 0.03;
-        public const double BaseResearchPerPerson = 0.02;
+        public const double BaseResearchPerPerson = 0.05;
         public const int BuildersPerSite = 3;
 
         private readonly CivState _s;
@@ -113,7 +113,11 @@ namespace WorldBeyond.Simulation.Civilizations
                 r.Workers = 0;
                 if (!r.Completed) { sites++; continue; }
                 var d = _s.Content.Buildings.Get(r.Type);
-                if (d.Job != JobKind.None && !r.Idle) _slots[(int)d.Job] += d.JobSlots;
+                if (d.Job == JobKind.None || r.Idle) continue;
+                // Rohstoffbetriebe ruhen, solange der Zielvorrat erreicht ist (kein Horten bis zur Lagergrenze).
+                if (d.Produces != ResourceType.Food && Resources.IsStockable(d.Produces)
+                    && st.Stock[(int)d.Produces] >= Math.Min(StockTarget(st, d.Produces), st.StorageCapacity * 0.95)) continue;
+                _slots[(int)d.Job] += d.JobSlots;
             }
             _slots[(int)JobKind.Builder] = sites * BuildersPerSite;
 
@@ -151,6 +155,25 @@ namespace WorldBeyond.Simulation.Civilizations
             int n = Math.Max(0, Math.Min(wanted, free));
             st.Workers[(int)job] += n;
             return free - n;
+        }
+
+        /// <summary>
+        /// Vorrat, den eine Siedlung von einem Gut anstrebt. Darüber arbeiten die erzeugenden Betriebe nicht weiter;
+        /// die KI baut Lager nur, wenn dieses Ziel die Lagergrenze übersteigt.
+        /// </summary>
+        internal static double StockTarget(Settlement st, ResourceType r)
+        {
+            double pop = st.Population;
+            switch (r)
+            {
+                case ResourceType.Food: return FoodNeedPerYear(st) * 2.0 + 50;
+                case ResourceType.Wood: return 80 + pop * 3;
+                case ResourceType.Stone: return 60 + pop * 2;
+                case ResourceType.Ore: return 40 + pop;
+                case ResourceType.Metal: return 30 + pop;
+                case ResourceType.Tools: return 20 + pop * 0.5;
+                default: return 50 + pop;
+            }
         }
 
         internal static double FoodNeedPerYear(Settlement st) =>

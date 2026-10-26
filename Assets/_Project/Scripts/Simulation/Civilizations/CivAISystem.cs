@@ -109,7 +109,7 @@ namespace WorldBeyond.Simulation.Civilizations
                 if (TryBuild(civ, st, BestAvailable(civ, st, "building.apartment", "building.house", "building.hut"), "Wohnraum fast voll")) return;
             // 3. Lager
             foreach (var r in Resources.Stockable)
-                if (st.Stock[(int)r] >= st.StorageCapacity * 0.9)
+                if (st.Stock[(int)r] >= st.StorageCapacity * 0.9 && SettlementSimulationSystem.StockTarget(st, r) > st.StorageCapacity * 0.9)
                 {
                     if (TryBuild(civ, st, BestAvailable(civ, st, "building.warehouse", "building.storehouse"), $"Lager für {r} voll")) return;
                     break;

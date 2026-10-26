@@ -43,13 +43,31 @@ namespace WorldBeyond.Simulation.Civilizations
                 return v;
             }, 8, _results);
 
+            // Erreichbarkeit vom begehbaren Rand der Herkunft aus prüfen: Ortskern und Nachbargebäude blockieren die Bewegung.
+            int px = fromX, py = fromY;
+            int origin = FindAtCore(fromX, fromY);
+            if (origin != 0)
+            {
+                var (wx, wz) = _s.ArrivalPoint(_s.Settlements[origin], MovementClass.Foot);
+                (px, py) = WorldCoords.WorldToTile(wx, wz);
+            }
             foreach (var c in _results)
             {
-                if (pathfinder != null && !pathfinder.AreConnected(fromX, fromY, c.X, c.Y, MovementClass.Foot)) continue;
+                if (pathfinder != null && !pathfinder.AreConnected(px, py, c.X, c.Y, MovementClass.Foot)) continue;
                 x = c.X; y = c.Y; score = c.Score;
                 return true;
             }
             return false;
+        }
+
+        private int FindAtCore(int x, int y)
+        {
+            foreach (int id in _s.SettlementOrder)
+            {
+                var st = _s.Settlements[id];
+                if (st.X == x && st.Y == y) return id;
+            }
+            return 0;
         }
 
         /// <summary>Wert eines Standorts aus der Umgebung (Radius 5): Nahrung, Holz, Stein, Erz, Wasser.</summary>

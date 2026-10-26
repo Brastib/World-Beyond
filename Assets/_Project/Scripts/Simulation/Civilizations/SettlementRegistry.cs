@@ -191,7 +191,7 @@ namespace WorldBeyond.Simulation.Civilizations
                     // Wald roden: Holz an die Siedlung (SYSTEM_INTERFACES §4.3).
                     ref readonly var t = ref _s.World.Get(xx, yy);
                     if (t.Resource == ResourceType.Wood && t.ResourceAmount > 0 && _s.World.TryHarvest(xx, yy, t.ResourceAmount, out int wood))
-                        st.Stock[(int)ResourceType.Wood] += wood;
+                        Economy.Deposit(st, ResourceType.Wood, wood);   // Rodungsholz bis zur Lagergrenze, Rest verrottet
                     if (!_s.World.SetBuilding(xx, yy, id))
                     {
                         // Rückbau der bereits belegten Kacheln
