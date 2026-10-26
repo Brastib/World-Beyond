@@ -51,12 +51,12 @@ Wer ein Asset anlegt, ändert, ersetzt oder entfernt, aktualisiert hier sofort d
 | Wasserpflanzen (§2.6) | 6 | 6 | 0 | 0 | 0 | 0 |
 | Nutzpflanzen (§2.7) | 17 | 17 | 0 | 0 | 0 | 0 |
 | Fels, Gelände, Wasser (§3) | 26 | 13 | 13 (über P-003, P-004, P-005) | 0 | 0 | 0 |
-| Gebäude (§4) | 23 | 23 | 0 | 0 | 0 | 0 |
+| Gebäude (§4) | 29 | 29 | 0 | 0 | 0 | 0 |
 | Personen, Einheiten, Fahrzeuge (§5) | 21 | 21 | 0 | 0 | 0 | 0 |
 | Tiere (§6) | 10 | 10 | 0 | 0 | 0 | 0 |
 | Effekte, Decals (§7) | 26 | 26 | 0 | 0 | 0 | 0 |
 | Requisiten (§8) | 14 | 14 | 0 | 0 | 0 | 0 |
-| **Summe** | **251** | **236** | **15** (5 Platzhalter-Dateien P-001–P-005) | **0** | **0** | **0** |
+| **Summe** | **257** | **242** | **15** (5 Platzhalter-Dateien P-001–P-005) | **0** | **0** | **0** |
 
 Pflanzen-Gattungen gesamt (§2.2–2.7): **104** (Etappe P2). Ziel P3: 250–400 Gattungen, P4: Arten als Datensätze.
 
@@ -265,7 +265,7 @@ Hinweis: Alle Terrain-Zeilen mit „Platzhalter“ teilen sich P-004, alle Wasse
 
 ## 4. Gebäude (Sim-Schlüssel aus `CivContent.cs`, `integration/m1`)
 
-Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude gibt es **ab seiner Epoche in jeder späteren Epoche** in eigener Ausführung (Spalte „ab Epoche“, aus der benötigten Technologie in `CivContent.cs`; Frühzeit F, Antike A, Mittelalter M, Industrie I, Moderne Mo), außerdem je Kultur-Stilfamilie. Alle Gebäude sind auf Bauteil-Ebene an jeder Stelle zerstörbar und haben die Zustände aus §0.4 sowie nass, Schnee und Brand (`ASSETS_STYLE_ENVIRONMENT.md` §4.4, §5.1). Epochen-Ausführungen: 75 für die 19 vorhandenen Gebäude, 95 mit den 4 neuen.
+Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude gibt es **ab seiner Epoche in jeder späteren Epoche** in eigener Ausführung (Spalte „ab Epoche“, aus der benötigten Technologie in `CivContent.cs`; Frühzeit F, Antike A, Mittelalter M, Industrie I, Moderne Mo), außerdem je Kultur-Stilfamilie. Alle Gebäude sind auf Bauteil-Ebene an jeder Stelle zerstörbar (Beschuss, Brand, Naturgewalt, aber auch Einsturz wegen schlechter Bauqualität) und haben die Zustände aus §0.4 sowie nass, Schnee und Brand (`ASSETS_STYLE_ENVIRONMENT.md` §4.4, §5.1). Epochen-Ausführungen: 75 für die 19 vorhandenen Gebäude, 95 mit den 4 neuen.
 
 | ID | Name | Sim-Schlüssel | Größe (Kacheln) | ab Epoche | Etappe | Status | Bemerkung |
 |---|---|---|---|---|---|---|---|
@@ -292,6 +292,17 @@ Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude
 | bld.watchtower | Wachturm / Feuerturm | – (neu, Civ) | – | F | A4 | geplant | erhöht Sichtung |
 | bld.well | Brunnen / Löschteich | – (neu, Civ) | – | F | A4 | geplant | Löschwasser |
 | bld.construction_site | Baustelle (generisch) | – | – | F | A7 | geplant | |
+
+**Wohnhaus-Klassen nach Vermögen und Bedürfnis** (Grundriss-Generator, `ASSETS_STYLE_ENVIRONMENT.md` §4.4; braucht individuelle NPCs aus M4). Jede Klasse gibt es in jeder Epoche und Kultur, jedes Haus wird aus dem Bauwunsch des Bauherrn erzeugt und ist dadurch einzigartig.
+
+| ID | Klasse | Bauherr | Beispiele je Epoche | ab Epoche | Etappe | Status |
+|---|---|---|---|---|---|---|
+| bld.home.shack | Notunterkunft, Elendshütte | sehr arm | Laubhütte, Bretterbude, Wellblechhütte | F | A7 / M4 | geplant |
+| bld.home.cottage | einfaches Haus, Kate | arm | Lehmhaus, Kate, Arbeiterhäuschen | F | A7 / M4 | geplant |
+| bld.home.townhouse | Bürgerhaus | Mittelschicht | Fachwerkhaus, Bürgerhaus, Einfamilienhaus | A | A7 / M4 | geplant |
+| bld.home.rowhouse | Reihen-, Miets-, Hochhaus | Stadtbevölkerung | Insula, Mietskaserne, Hochhaus | A | A7 / M4 | geplant |
+| bld.home.villa | Villa | reich | Römische Villa, Stadtpalais, moderne Villa | A | A7 / M4 | geplant |
+| bld.home.manor | Herrenhaus, Palast, Anwesen | sehr reich, Herrscher | Gutshof, Burg/Schloss, Anwesen | A | A7 / M4 | geplant |
 
 ## 5. Personen, Einheiten, Fahrzeuge
 

@@ -145,6 +145,20 @@ CC0-Fotoscans für Rinde, Blätter, Boden, Fels, Sand, Schnee (Kandidaten: Poly 
 
 **Ehrliche Grenzen:** Ein Gebäude-Mesh wird nicht in Echtzeit beliebig zerschnitten, weil das zu teuer und zu fehleranfällig wäre. „An jeder Stelle“ heißt deshalb: auf Bauteil-Auflösung (1–2 m) plus vorberechnete Bruchstücke. Das ist fein genug, dass jeder Einschlag ein eigenes Loch an der getroffenen Stelle reißt. Volle Detailstufe gibt es nur für Gebäude nahe der Kamera.
 
+**Häuser nach Bedürfnis und Vermögen (Nutzer, 2026-10-26 16:38 UTC):** Wer baut, bestimmt das Haus. Die Simulation liefert für jeden Bauauftrag einen **Bauwunsch**: Vermögen, Haushaltsgröße, Beruf/Stand, Bedürfnisse (Platz, Sicherheit, Ansehen, Nähe zur Arbeit), Geschmack der Kultur, Epoche, verfügbare Baustoffe und Bauplatz. Daraus erzeugt ein Grundriss-Generator ein eigenes Haus:
+- Arm: kleine Hütte oder Kate, ein Raum, einfache Baustoffe (Lehm, Holz, Wellblech je nach Epoche), oft selbst gebaut, Anbauten nach und nach.
+- Mittel: Bürgerhaus, 2–3 Zimmer, ein Stockwerk mehr, kleiner Garten oder Werkstatt.
+- Reich: Villa, mehrere Flügel und Stockwerke, teure Baustoffe (Naturstein, Glas), Garten, Mauer, Brunnen oder Pool, Verzierungen.
+- Sehr reich oder mächtig: Herrenhaus, Palast, Anwesen mit Nebengebäuden.
+- Stadt: Reihenhaus, Mietshaus, Hochhaus (je Epoche); Armut zeigt sich als Überbelegung und Verfall, Reichtum als Penthouse oder Stadtvilla.
+Häuser verändern sich mit ihren Bewohnern: Anbau bei Familienzuwachs, Renovierung bei Aufstieg, Verfall bei Armut oder Leerstand. Gleicher Bauwunsch + Seed = gleiches Haus, also deterministisch und speicherbar (gespeichert wird der Bauwunsch, nicht das Mesh). Ehrlich: Das braucht individuelle NPCs mit Vermögen und Bedürfnissen (VISION M4). Bis dahin baut die Civ ihre heutigen Typen (Hütte, Steinhaus, Mietshaus), die der Generator schon mit Varianten zeigen kann.
+
+**Bauqualität und Bauschäden („der Architekt hat es versaut“):** Jedes Bauteil bekommt beim Bau einen Qualitätswert. Er ergibt sich aus Können und Sorgfalt von Architekt und Bauleuten (NPC-Attribute, M4), Baustoffqualität, Zeitdruck und Geld (Pfusch beim Sparen) sowie dem Baugrund (Hang, Sumpf, Erdbebengebiet). Schlechte Qualität senkt die Tragfähigkeit in der Statik (Punkt 4 oben). Folgen zeigen sich mit der Zeit:
+- sichtbare Risse, durchhängende Decken, schiefe Wände, undichte Dächer (Wasserflecken, Pfützen im Haus);
+- Einsturz bei Belastung: Schneelast auf dem Dach, Starkregen und unterspülter Boden, Sturm, Erdbeben, Überfüllung, Alter;
+- Ereignis in der Chronik mit Ursache (zum Beispiel „Dach eingestürzt, Ursache: Pfusch von Architekt X“), Opfer, Folgen wie Ermittlung, Gericht oder Rufschaden des Architekten (VISION: Straftaten mit Folgen).
+Die Darstellung nutzt dafür denselben Bruch-Baukasten wie bei Artillerie, nur langsam (Risse, Absacken) oder plötzlich (Einsturz).
+
 **Zuständigkeit und Stufe:** Gebäudedaten und Bauteil-Schaden liegen bei Civ, Schadensereignisse bei Military (`ICombatService`), Baukasten und Bruch-Werkzeug bei Art/Assets, der Zusammenbau in der Darstellung bei Presentation. Die bleibende Zerstörung gehört laut VISION zu V10/M7, Epochen-Gebäude setzen das Zeitalter-Modell aus M3 voraus. Den Baukasten mit Bruchstücken kann Art/Assets nach dem Style Lock (A7) vorbereiten.
 
 ### 4.5 Menschen und Einheiten
@@ -184,6 +198,8 @@ Alle Materialien im Spiel (Pflanzen, Gebäude, Felsen, Gelände, Fahrzeuge, Mens
 | Brennend | Flammen an Ästen, Dachbalken und Fenstern, Glühen der Oberfläche, Rauch | Brand-Wert pro Objekt: Glüh-Maske im Shader + Partikel an im Asset hinterlegten Brandpunkten |
 | Verkohlt, glimmend | schwarz, rissig, Glutnester, Asche | Verkohlungs-Wert, Ruß-Detailtextur |
 | Staub, Ruß, Schlamm | nach Explosionen, Bränden, Fluten | Schmutz-Werte nach Art |
+
+Boden und Gebäude ausdrücklich eingeschlossen: geschlossene Schneedecke auf dem Gelände mit Fußspuren und Fahrspuren, Schneewehen an Hauswänden, Schnee auf Dächern, Mauern, Zäunen und Fensterbänken, Eiszapfen an Traufen; bei Nässe Pfützen auf Wegen, Plätzen und in Senken, die sich mit Regen füllen und wieder austrocknen, nasse Fassaden mit Wasserlaufspuren, Matsch auf unbefestigten Wegen. Schneelast und Nässe wirken zurück auf die Bau-Statik (§4.4, Bauqualität).
 
 Woher die Werte kommen: Bis M5 setzen Jahreszeit und Testregler die Werte, damit die Zustände im Style Board geprüft werden können. Ab M5 liefert die Wetter- und Umweltsimulation die Werte (Regen, Schneehöhe, Temperatur, Brand). Brand und Schaden pro Objekt kommen aus dem Brand- und Schadenssystem.
 
