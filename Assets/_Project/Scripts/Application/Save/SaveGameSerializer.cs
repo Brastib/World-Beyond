@@ -145,37 +145,52 @@ namespace WorldBeyond.Application.Save
         public static string ComputeFileChecksum(JObject root)
         {
             if (root == null) throw new ArgumentNullException(nameof(root));
-            var copy = (JObject)root.DeepClone();
-            copy.Remove("checksum");
-            return ComputeChecksum(copy);
+            return Hash(root, "checksum");
         }
 
         // SHA-256 über die kanonische Form eines beliebigen JSON-Werts (Objekteigenschaften rekursiv nach Ordinal sortiert, ohne Leerraum).
-        public static string ComputeChecksum(JToken sections)
+        public static string ComputeChecksum(JToken sections) => Hash(sections ?? JValue.CreateNull(), null);
+
+        // Schreibt die kanonische Form direkt, ohne den Baum zu kopieren (Laden großer Spielstände).
+        // Ergebnis ist zeichengleich mit einem sortierten Klon und ToString(Formatting.None).
+        private static string Hash(JToken token, string skipRootProperty)
         {
-            var canonical = Canonicalize(sections ?? JValue.CreateNull()).ToString(Formatting.None);
+            var text = new StringWriter(System.Globalization.CultureInfo.InvariantCulture);
+            using (var writer = new JsonTextWriter(text) { Formatting = Formatting.None })
+            {
+                WriteCanonical(writer, token, skipRootProperty);
+            }
             using (var sha = SHA256.Create())
             {
-                var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(canonical));
+                var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(text.ToString()));
                 var sb = new StringBuilder(hash.Length * 2);
                 foreach (var b in hash) sb.Append(b.ToString("x2"));
                 return sb.ToString();
             }
         }
 
-        private static JToken Canonicalize(JToken token)
+        private static void WriteCanonical(JsonWriter writer, JToken token, string skipProperty)
         {
             switch (token)
             {
                 case JObject obj:
-                    var sorted = new JObject();
+                    writer.WriteStartObject();
                     foreach (var p in obj.Properties().OrderBy(p => p.Name, StringComparer.Ordinal))
-                        sorted.Add(p.Name, Canonicalize(p.Value));
-                    return sorted;
+                    {
+                        if (skipProperty != null && p.Name == skipProperty) continue;
+                        writer.WritePropertyName(p.Name);
+                        WriteCanonical(writer, p.Value, null);
+                    }
+                    writer.WriteEndObject();
+                    break;
                 case JArray arr:
-                    return new JArray(arr.Select(Canonicalize));
+                    writer.WriteStartArray();
+                    foreach (var item in arr) WriteCanonical(writer, item, null);
+                    writer.WriteEndArray();
+                    break;
                 default:
-                    return token.DeepClone();
+                    token.WriteTo(writer);
+                    break;
             }
         }
 
