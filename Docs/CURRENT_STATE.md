@@ -21,7 +21,7 @@ Regel: Nur Tatsachen. Jede Phase aktualisiert diese Datei am Ende. Nicht im Unit
 |---|---|---|
 | `Docs/` | alle Kerndokumente auf `main` | – |
 | Unity-Projekt (`ProjectSettings/`, `Packages/manifest.json`) | **fehlt** – Unity-Version des Nutzers unbekannt | – |
-| Fundament 1b (`Assets/_Project/Scripts/Core`, `Simulation`, `Application`, asmdefs) | Code geschrieben, Branch `claude/phase1b-fundament` | `dotnet test Tools/SimTests`: **41/41 bestanden** (net8.0, C# 9, Warnungen als Fehler). **Nicht im Unity-Editor kompiliert**, Unity Test Runner nicht ausgeführt |
+| Fundament 1b (`Assets/_Project/Scripts/Core`, `Simulation`, `Application`, asmdefs) | Code geschrieben, Branch `claude/phase1b-fundament` | `dotnet test Tools/SimTests`: **44/44 bestanden** (net8.0, C# 9, Warnungen als Fehler). **Nicht im Unity-Editor kompiliert**, Unity Test Runner nicht ausgeführt |
 | `GameBootstrap` (MonoBehaviour) | geschrieben | **nicht kompiliert** (braucht UnityEngine) |
 | Szenen, Kamera, Rendering, UI, Assets | fehlen | – |
 | `Assets/ThirdParty/ASSET_CREDITS.md` | leere Import-Tabelle | – |
@@ -36,7 +36,7 @@ Siehe SYSTEM_INTERFACES §0 (Status je Schnittstelle). Implementiert (1b, ungeme
 
 | Datum | Was | Umgebung | Ergebnis |
 |---|---|---|---|
-| 2026-10-26 | Fundament 1b, EditMode-Testdateien `Assets/Tests/EditMode/*.cs` | dotnet 8 in der Cloud (`Tools/SimTests`), ohne Unity | 41/41 bestanden. Zwei Fehler im ersten Lauf gefunden und behoben: Events aus Handlern kamen im selben Flush an; Runner verlor durch float-Rundung einen Tick pro Sekunde |
+| 2026-10-26 | Fundament 1b, EditMode-Testdateien `Assets/Tests/EditMode/*.cs` | dotnet 8 in der Cloud (`Tools/SimTests`), ohne Unity | 44/44 bestanden. Zwei Fehler im ersten Lauf gefunden und behoben: Events aus Handlern kamen im selben Flush an; Runner verlor durch float-Rundung einen Tick pro Sekunde |
 | – | Unity Test Runner (EditMode) | PC des Nutzers | **nicht ausgeführt** |
 
 ## 5. Bekannte Probleme / Widersprüche

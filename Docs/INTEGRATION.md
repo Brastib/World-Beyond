@@ -14,6 +14,7 @@ Rang: gleichrangig mit ARCHITECTURE. Bei Widerspruch zur Aussage des Nutzers gil
 1. **Keine parallelen Änderungen an gemeinsamen Dateien.** Gemeinsame Dateien sind: alle Dateien unter `Docs/` außer den eigenen Entwürfen (`Docs/drafts/<PHASE>_*`, `Docs/proposals/<PHASE>_*`), das Fundament (`Assets/_Project/Scripts/Core/`, `Simulation/SimContext.cs`, `Simulation/ISimulationSystem.cs`, `Simulation/Commands/`, `Simulation/Save/`, `Simulation/Units/`, `Application/`), alle `.asmdef`, `Packages/manifest.json`, `ProjectSettings/`. Änderungen daran macht **nur der Integrations-Thread**. Andere Threads schicken ihm den gewünschten Text oder die Signatur und arbeiten derweil an ihren eigenen Dateien.
 2. **Keine riesigen Codeblöcke ohne Integration.** Jede Phase liefert konkrete Dateien in ihrem eigenen Ordner (z. B. `Simulation/World/`), trägt ihre Dienste in `GameComposition.RegisterPhaseServices` ein (per Pull Request, Prüfung durch Integration), dokumentiert ihre Abhängigkeiten und hinterlässt einen prüfbaren Übergabestatus: welche Tests liefen (dotnet / Unity), was nur geschrieben, nicht geprüft ist.
 3. **Realistisches erstes Spielziel = Meilenstein M1** (§4). Alles, was M1 nicht braucht, wartet.
+4. **Sandbox: Die Welt entwickelt sich ohne Eingreifen des Spielers** (Nutzervorgabe 2026-10-26). Jedes Fachsystem muss mit null Spielereingaben sinnvoll laufen: Civs wachsen, expandieren, erklären Krieg und schließen Frieden durch ihre KI. Spieleraktionen (God-Tools, UI-Befehle) sind optionale Eingriffe über dieselben `IWorldCommand`s, nie Voraussetzung. Jede Phase weist das mit einem Test nach, der N Spieltage ohne Commands simuliert. M1 ist erst erreicht, wenn M1.2 und M1.4 ohne Spielereingabe eintreten.
 
 Ablauf:
 - **Das Repository `Brastib/World-Beyond` ist die einzige Wahrheit** (seit 2026-10-25). Der Projektordner `/mnt/project-files/WorldBeyond/Docs/` ist nur noch eine veraltete Kopie.
@@ -92,7 +93,7 @@ Schnittstellen zwischen War und Military: War erklärt Krieg (`IDiplomacyService
 | M1.1 | Generierte Welt mit Terrain | World (Phase 2) | Welt aus Seed sichtbar, Kamera bedienbar |
 | M1.2 | Zwei Zivilisationen, die wachsen | Civ (Phase 3) | 2 Civs mit je einer Siedlung; Bevölkerung und Lager steigen über die Zeit |
 | M1.3 | Einheiten, die sich bewegen | World (Bewegung) + Fundament (UnitStore) | Siedler/Arbeiter laufen auf dem Terrain zu Zielen |
-| M1.4 | Eine Kriegserklärung und ein funktionierender Kampf | War (Phase 4) + Military (Phase 5) | Civ-KI oder Spieler erklärt Krieg; zwei Infanterie-Gruppen kämpfen, Einheiten sterben (UnitDiedEvent) |
+| M1.4 | Eine Kriegserklärung und ein funktionierender Kampf | War (Phase 4) + Military (Phase 5) | Civ-KI erklärt Krieg ohne Spielereingabe (Spieler kann es zusätzlich); zwei Infanterie-Gruppen kämpfen, Einheiten sterben (UnitDiedEvent) |
 | M1.5 | Eine bedienbare Oberfläche | UI (Phase 6) | Geschwindigkeit, Auswahl + Info, Krieg-erklären-Knopf, Ereignis-Feed; alles über echte Commands |
 | M1.6 | Speichern und Laden | Save (Phase 7) | Spielstand mit Welt, Civs, Einheiten, Krieg speichern; nach Neustart laden, Simulation läuft identisch weiter |
 
@@ -104,7 +105,7 @@ M1-Umfang je Phase (alles darüber hinaus erst nach M1): World: Höhen, Wasser, 
 |---|---|---|---|
 | 1 | Projektort festlegen | Nutzer | **erledigt**: GitHub `Brastib/World-Beyond` |
 | 2 | Docs ins Repo | 1 | **erledigt** (main, 2026-10-25) |
-| 3 | Fundament (Core, Clock, Runner, EventBus, CommandQueue, ISaveable, UnitStore, GameComposition, GameBootstrap) + Tests | 1 | **Code geschrieben, dotnet-Tests grün (41/41), nicht im Unity-Editor kompiliert** – Branch `claude/phase1b-fundament` |
+| 3 | Fundament (Core, Clock, Runner, EventBus, CommandQueue, ISaveable, UnitStore, GameComposition, GameBootstrap) + Tests | 1 | **Code geschrieben, dotnet-Tests grün (44/44), nicht im Unity-Editor kompiliert** – Branch `claude/phase1b-fundament` |
 | 4 | Unity-Projekt anlegen (Version prüfen, URP, Pakete, ProjectSettings) | Unity-Version vom Nutzer / Remote Control | offen |
 | 5 | Fundament in Unity kompilieren, EditMode-Tests per Unity Test Runner | 3, 4 | offen |
 | 6 | M1.1 + M1.3 World | 3 | offen (World) |
@@ -144,3 +145,6 @@ Definition of Done (vom Nutzer): Systeme interagieren tatsächlich, Kernspielsch
 | 2026-10-26 | `ISaveReferenceCheck` und `LoadReport` liegen im Fundament (`Simulation/Save/LoadReport.cs`), nicht bei Save | [E] | Jedes Fachsystem braucht sie; Phase 4 wartete darauf; Signatur unverändert aus SYSTEM_INTERFACES §11 |
 | 2026-10-26 | World-Abweichungen akzeptiert: `TileData.WaterLevel`; `IWorldQuery.Version`/`NavigationVersion`; `System.Numerics.Vector3` + `WorldRay` statt UnityEngine-Vektoren in Simulation; `IPathfinder`/`ISpatialIndex`/`SpatialHash` in `WorldBeyond.Simulation.World`; `TileChangeKind.Owner = 6`; Fluss als Furt (Foot 3, Wheeled gesperrt, Tracked 3); Terrain/Biome/Resource-Enums im Spielstand als Namen; `WorldEventsSystem` Order 850; `GameStartSettings` → `WorldGenSettings`. SYSTEM_INTERFACES §4/§5 wird beim Review des World-PR nachgezogen | [E] | Simulation bleibt ohne UnityEngine testbar; Fundament-Ordner unverändert |
 | 2026-10-26 | `ISaveContentCheck` (Vorschlag Phase 7) liegt im Fundament; `UnitStore` implementiert es. `SaveLoadError.CaptureFailed = 8`, Rahmenfeld `start` übernommen. `Tools/SimTests` referenziert Newtonsoft.Json 13.0.2 | [E] | Fehlende Inhalte werden als MissingContent erkannt; Application/Save braucht Newtonsoft im dotnet-Test |
+| 2026-10-26 | Sandbox-Prinzip verbindlich: Simulation läuft ohne Spielereingaben (§0 Regel 4); Nachweis je Phase durch einen Autonomie-Test | [B] | Nutzervorgabe |
+| 2026-10-26 | Fehlertoleranter Tick: Exceptions aus Systemen und Event-Handlern werden gemeldet (`SimulationRunner.SystemFailed`), der Tick wird abgeschlossen, die Uhr rückt vor; `Validate`-Exceptions werden zu `CommandRejectedEvent` | [E] | Review PR #2 (nachgewiesener Doppel-Tick); Sandbox muss ohne Eingriff weiterlaufen |
+| 2026-10-26 | Start-Civs anlegen (`GameStartSettings.CivilizationCount`) gehört Civ: deren Zeilen in `RegisterPhaseServices` gründen die Civs an `FindStartLocations` (World) | [E] | Review PR #2; ohne Start-Civs entwickelt sich die Sandbox nicht |

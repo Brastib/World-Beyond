@@ -308,6 +308,8 @@ namespace WorldBeyond.Tests
         {
             var a = GameComposition.Create(new GameStartSettings { Seed = 77 }, TestContent.Setup);
             var ctx = a.Context;
+            // Ticks vor dem Aufstellen: Fachsysteme (z. B. Bewegung) sollen die geprüften Felder nicht verändern.
+            for (int i = 0; i < 7; i++) a.Runner.StepOnce();
             ctx.UnitTypes.TryGetByKey("unit.rifleman", out var rifle);
             ctx.UnitTypes.TryGetByKey("unit.settler", out var settler);
             var u1 = ctx.Units.Spawn(rifle, 1, 1, 2);
@@ -317,7 +319,6 @@ namespace WorldBeyond.Tests
             ctx.Units.SetMoveTarget(u1, 9, 9);
             ctx.Units.SetTask(u3, new UnitTask { Kind = UnitTaskKind.Attack, TargetEntity = u1 });
             ctx.Units.SetHp(u3, 42);
-            for (int i = 0; i < 7; i++) a.Runner.StepOnce();
             ctx.Random.NextULong();
 
             var captured = new Dictionary<string, object>();
@@ -335,7 +336,9 @@ namespace WorldBeyond.Tests
                 loadOrder.Add(s.SaveKey);
                 Assert.IsTrue(s.TryRestoreState(captured[s.SaveKey], out var err), err);
             }
-            CollectionAssert.AreEqual(new[] { "core", "units" }, loadOrder);
+            // Fachphasen fügen eigene Sektionen hinzu (z. B. "world"); geprüft wird nur die Fundament-Reihenfolge.
+            Assert.AreEqual("core", loadOrder[0], "core wird zuerst eingespielt");
+            Assert.Less(loadOrder.IndexOf("core"), loadOrder.IndexOf("units"));
 
             var rc = b.Context;
             Assert.AreEqual(7, rc.Clock.Tick);
@@ -441,3 +444,94 @@ namespace WorldBeyond.Tests
         }
     }
 }
+
+namespace WorldBeyond.Tests
+{
+    public class FaultToleranceTests
+    {
+        private sealed class CountingSystem : ISimulationSystem
+        {
+            public int Runs;
+            public string Name => "Counter";
+            public int Order => 50;
+            public int TickInterval => 1;
+            public void Tick(SimContext ctx) => Runs++;
+        }
+
+        private sealed class ThrowingSystem : ISimulationSystem
+        {
+            public bool Always;
+            private bool _thrown;
+            public string Name => "Thrower";
+            public int Order => 40;
+            public int TickInterval => 1;
+            public void Tick(SimContext ctx)
+            {
+                if (Always || !_thrown) { _thrown = true; throw new System.InvalidOperationException("Systemfehler"); }
+            }
+        }
+
+        private struct Boom : WorldBeyond.Core.ISimEvent { }
+
+        [Test]
+        public void SystemException_TickRunsExactlyOnce_AndClockAdvances()
+        {
+            var comp = WorldBeyond.Application.GameComposition.Create(null);
+            var counter = new CountingSystem();
+            comp.Runner.Register(new ThrowingSystem { Always = true });
+            comp.Runner.Register(counter);
+            var sources = new List<string>();
+            comp.Runner.SystemFailed += (t, src, ex) => sources.Add(src);
+            for (int i = 0; i < 5; i++) comp.Runner.Advance(0.1f);
+            Assert.AreEqual(5, comp.Context.Clock.Tick);
+            Assert.AreEqual(5, counter.Runs, "jeder Tick genau einmal, übrige Systeme laufen weiter");
+            Assert.AreEqual(5, comp.Runner.FaultCount);
+            CollectionAssert.AreEqual(new[] { "Thrower", "Thrower", "Thrower", "Thrower", "Thrower" }, sources);
+        }
+
+        [Test]
+        public void HandlerException_DoesNotRepeatTick()
+        {
+            var comp = WorldBeyond.Application.GameComposition.Create(null);
+            var counter = new CountingSystem();
+            comp.Runner.Register(counter);
+            bool thrown = false;
+            comp.Context.Events.Subscribe<Boom>(_ => { if (!thrown) { thrown = true; throw new System.InvalidOperationException("Handlerfehler"); } });
+            comp.Context.Events.Publish(new Boom());
+            for (int i = 0; i < 5; i++) Assert.DoesNotThrow(() => comp.Runner.Advance(0.1f));
+            Assert.AreEqual(5, comp.Context.Clock.Tick);
+            Assert.AreEqual(5, counter.Runs);
+            Assert.AreEqual(1, comp.Runner.FaultCount);
+        }
+
+        private sealed class BadValidate : WorldBeyond.Simulation.Commands.IWorldCommand
+        {
+            public bool Validate(SimContext ctx, out string reason) => throw new System.InvalidOperationException("kaputt");
+            public void Execute(SimContext ctx) { }
+        }
+
+        private sealed class Good : WorldBeyond.Simulation.Commands.IWorldCommand
+        {
+            public int Executed;
+            public bool Validate(SimContext ctx, out string reason) { reason = null; return true; }
+            public void Execute(SimContext ctx) => Executed++;
+        }
+
+        [Test]
+        public void ValidateException_RejectsThatCommand_OthersStillRun()
+        {
+            var comp = WorldBeyond.Application.GameComposition.Create(null);
+            var rejected = new List<WorldBeyond.Simulation.Commands.CommandRejectedEvent>();
+            comp.Context.Events.Subscribe<WorldBeyond.Simulation.Commands.CommandRejectedEvent>(rejected.Add);
+            var good = new Good();
+            comp.Context.Commands.Enqueue(new BadValidate());
+            comp.Context.Commands.Enqueue(good);
+            comp.Runner.StepOnce();
+            Assert.AreEqual(1, good.Executed);
+            Assert.AreEqual(1, rejected.Count);
+            StringAssert.Contains("kaputt", rejected[0].Reason);
+            Assert.AreEqual(1, comp.Context.Clock.Tick);
+        }
+    }
+}
+
