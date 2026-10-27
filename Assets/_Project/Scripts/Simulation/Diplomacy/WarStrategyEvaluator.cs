@@ -266,25 +266,46 @@ namespace WorldBeyond.Simulation.Diplomacy
             return W.GetPopulation(civ) * S.PeaceArmyStrengthPerPop * (0.5f + DiplomacyService.Clamp01(W.GetAggression(civ)));
         }
 
+        // Kosten einer Armee dieser Größe: Arbeitskraft (unbegrenzt steigend), Nahrungsmangel, Kriegsmüdigkeit.
+        public float RecruitCost(int civ, int armyUnits, int population)
+        {
+            float share = Math.Min(0.99f, armyUnits / (float)Math.Max(1, population));
+            float labor = S.LaborCostWeight * share / (1f - share);
+            float food = S.FoodCostWeight * DiplomacyService.Clamp01(W.GetResourceNeed(civ));
+            float exhaustion = 0f;
+            foreach (var war in _d.ActiveWars)
+            {
+                var side = war.SideOf(civ);
+                if (side != WarSide.None) exhaustion = Math.Max(exhaustion, war.StatsOf(side).Exhaustion);
+            }
+            return labor + food + S.ExhaustionCostWeight * exhaustion / 100f;
+        }
+
         bool TryRecruit(int civ)
         {
             float threat = Threat(civ);
             bool atWar = _d.IsAtWar(civ);
             float strength = W.GetMilitaryStrength(civ);
             float deficit = Math.Max(0f, PeacetimeArmyTarget(civ) - strength);
-            int cap = Math.Min(S.MaxArmyUnitsAbsolute,
-                Math.Max(S.MinArmyUnitsCap, (int)Math.Floor(W.GetPopulation(civ) * S.MaxArmyUnitsPerPop)));
             var mem = _d.GetMemory(civ);
             long now = _d.Now;
             if (now - mem.PendingRecruitsTick >= S.RecruitPendingTicks) mem.PendingRecruits = 0;
-            int headroom = cap - Math.Max(0, W.GetArmyUnitCount(civ)) - mem.PendingRecruits;
+            int army = Math.Max(0, W.GetArmyUnitCount(civ)) + mem.PendingRecruits;
+            int pop = Math.Max(1, W.GetPopulation(civ));
             bool hopeless = atWar && threat >= S.HopelessThreat;
-            // Verteidigt wird weiter, aber nur bis zur Obergrenze; aussichtslos → TryPeace sucht früh ein Zugeständnis.
-            float utility = DiplomacyService.Clamp01(threat - 0.8f) + (atWar ? 0.3f : 0f) + (deficit > 0f ? 0.45f : 0f);
-            if (utility < S.RecruitThreshold || headroom <= 0) return false;
+            float benefit = DiplomacyService.Clamp01(threat - 0.8f) + (atWar ? 0.3f : 0f) + (deficit > 0f ? 0.45f : 0f);
             int byThreat = (int)Math.Ceiling(threat * 3f);
             int byDeficit = (int)Math.Ceiling(deficit / Math.Max(0.1f, S.AssumedUnitStrength));
-            int count = Math.Max(1, Math.Min(Math.Min(S.MaxRecruitPerRequest, headroom), Math.Max(byThreat, byDeficit)));
+            int wanted = Math.Max(1, Math.Min(S.MaxRecruitPerRequest, Math.Max(byThreat, byDeficit)));
+            // Keine feste Grenze: größte Anzahl, deren Nutzen die Kosten (Arbeitskraft, Nahrung, Kriegsmüdigkeit) noch trägt.
+            int count = 0; float utility = 0f, cost = 0f;
+            for (int n = wanted; n >= 1; n--)
+            {
+                cost = RecruitCost(civ, army + n, pop);
+                utility = benefit - cost;
+                if (utility >= S.RecruitThreshold) { count = n; break; }
+            }
+            if (count == 0) return false;
             bool ok = W.RequestMilitaryBuildup(civ, count, out string reason);
             if (!ok && count > 1)
             {
@@ -296,7 +317,7 @@ namespace WorldBeyond.Simulation.Diplomacy
             if (ok && S.RecruitPendingTicks > 0) { mem.PendingRecruits += count; mem.PendingRecruitsTick = now; }
             _d.LogDecision(civ, 0, DiplomaticActionType.Recruit, utility,
                 new DecisionFactor("Bedrohung", threat), new DecisionFactor("Im Krieg", atWar ? 1f : 0f), new DecisionFactor("Fehlende Grundarmee", deficit),
-                new DecisionFactor("Obergrenze", cap), new DecisionFactor("Aussichtslos", hopeless ? 1f : 0f),
+                new DecisionFactor("Kosten", cost), new DecisionFactor("Armeeanteil", army / (float)pop), new DecisionFactor("Aussichtslos", hopeless ? 1f : 0f),
                 new DecisionFactor("Anzahl", count), new DecisionFactor("Angenommen", ok ? 1f : 0f));
             return true;   // auch bei Ablehnung (z. B. zu wenig Ressourcen) Abklingzeit, um nicht jeden Takt neu anzufragen
         }
