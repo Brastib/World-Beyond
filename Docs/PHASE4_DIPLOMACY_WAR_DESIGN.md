@@ -206,6 +206,8 @@ Abgedeckt: T-4-01 Kriegserklärung und Bündnisruf, T-4-02 Frieden abhängig vom
 
 ### 11.4 Noch fehlend (ehrlich)
 
+- Vorgemerkt für die Zeit nach M1 (VISION V18, Festlegung 2026-10-27): Die Bereitschaft zur Rüstung soll aus der Bevölkerung kommen, aus Patriotismus, Angst und Zufriedenheit der Gruppen bei Civ. Bisher kommt sie nur aus der Kostenrechnung des Staates. Patrioten melden sich freiwillig, Ängstliche drücken sich oder fliehen. Noch nicht gebaut.
+- Kapitulation und Desertion (`ArmySurrenderedEvent`, `UnitDesertedEvent` von Military) fließen noch nicht in Erschöpfung und Kriegsstand ein. Die Events gibt es noch nicht.
 - Adapter für `IDiplomacyWorldPort` und Registrierung in `GameComposition`: wartet auf Phase 3 (Civ) und Phase 5 (Military). Bis dahin läuft Diplomatie im Spiel nicht.
 - Aufruf des Kriegsbewerters durch das CivAISystem (Phase 3).
 - UI-Panel (UI Toolkit) für Diplomatie und Armeebefehle: Phase 6; Lesemodell und Commands sind fertig.
