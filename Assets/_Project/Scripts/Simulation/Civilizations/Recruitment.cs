@@ -63,6 +63,13 @@ namespace WorldBeyond.Simulation.Civilizations
                 var u = _s.Ctx.Units.Get(id);
                 if (u.CivId == civId && _s.Ctx.UnitTypes.TryGet(u.Type, out var t) && t.Role >= UnitRole.Infantry) n++;
             }
+            return n + QueuedMilitaryCount(civId);
+        }
+
+        /// <summary>Nur Kampfeinheiten in den Ausbildungsschlangen der Siedlungen dieser Civ (noch nicht erschienen).</summary>
+        public int QueuedMilitaryCount(int civId)
+        {
+            int n = 0;
             foreach (int sid in _s.SettlementListOf(civId))
                 foreach (var o in _s.Settlements[sid].RecruitQueue)
                     if (IsMilitary(o.UnitTypeKey)) n += o.Remaining;
