@@ -80,6 +80,11 @@ namespace WorldBeyond.Presentation.UI
                 tag.Text.style.fontSize = s.IsCapital || s.Tier >= SettlementTier.City ? UiTheme.FontHeading : UiTheme.FontSmall;
 
                 Vector2 panelPos = RuntimePanelUtils.CameraTransformWorldToPanel(panel, pos, cam);
+                if (UnderPanel(panelPos))
+                {
+                    tag.Box.style.display = DisplayStyle.None;
+                    continue;
+                }
                 tag.Box.style.left = panelPos.x;
                 tag.Box.style.top = panelPos.y;
                 // Nähere Orte vorn: einfache Sortierung über die Reihenfolge ist zu teuer, Deckkraft reicht als Tiefenhinweis.
@@ -102,6 +107,24 @@ namespace WorldBeyond.Presentation.UI
                 _tags[id].Box.RemoveFromHierarchy();
                 _tags.Remove(id);
             }
+        }
+
+        // Schild würde ein HUD-Panel überdecken oder darunter durchscheinen (Unity-Lauf 4): dann ausblenden.
+        // Prüft grob das Schildrechteck (Anker unten Mitte, ca. 160 × 26 px) gegen alle sichtbaren Geschwister der Ebene.
+        bool UnderPanel(Vector2 anchor)
+        {
+            var parent = _layer.parent;
+            if (parent == null)
+                return false;
+            var tagRect = new Rect(anchor.x - 80f, anchor.y - 26f, 160f, 26f);
+            foreach (VisualElement e in parent.Children())
+            {
+                if (e == _layer || e.resolvedStyle.display == DisplayStyle.None || e.resolvedStyle.visibility == Visibility.Hidden)
+                    continue;
+                if (e.worldBound.Overlaps(tagRect))
+                    return true;
+            }
+            return false;
         }
 
         Tag CreateTag()

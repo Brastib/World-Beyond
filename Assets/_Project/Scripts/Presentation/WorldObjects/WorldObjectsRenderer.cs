@@ -27,7 +27,9 @@ namespace WorldBeyond.Presentation.WorldObjects
         [Header("Lesbarkeit aus der Ferne")]
         [Tooltip("Ab dieser Kameraentfernung werden Einheiten vergrößert, damit sie aus der Strategieansicht sichtbar bleiben.")]
         [SerializeField] float unitTrueScaleDistance = 60f;
-        [SerializeField] float unitMaxScale = 6f;
+        [SerializeField] float unitMaxScale = 4f;
+        [Tooltip("Obergrenze für Fahrzeuge, Geschütze und Wagen, die schon in echter Größe 3–5 m lang sind.")]
+        [SerializeField] float largeUnitMaxScale = 1.5f;
 
         [Header("Aktualisierung (Sekunden Echtzeit)")]
         [SerializeField] float buildingRefreshSeconds = 0.25f;
@@ -287,15 +289,25 @@ namespace WorldBeyond.Presentation.WorldObjects
                     continue;
                 float cx = (b.X + b.SizeX * 0.5f) * ts, cz = (b.Y + b.SizeY * 0.5f) * ts;
                 // Tiefster Punkt der Grundfläche, damit am Hang nichts schwebt (Sockel reicht 1 m nach unten).
-                float y = Mathf.Min(
-                    Mathf.Min(_world.SampleHeight(b.X * ts + 0.5f, b.Y * ts + 0.5f), _world.SampleHeight((b.X + b.SizeX) * ts - 0.5f, b.Y * ts + 0.5f)),
-                    Mathf.Min(_world.SampleHeight(b.X * ts + 0.5f, (b.Y + b.SizeY) * ts - 0.5f), _world.SampleHeight((b.X + b.SizeX) * ts - 0.5f, (b.Y + b.SizeY) * ts - 0.5f)));
-                y = Mathf.Min(y, _world.SampleHeight(cx, cz));
+                float x0 = b.X * ts + 0.5f, x1 = (b.X + b.SizeX) * ts - 0.5f, z0 = b.Y * ts + 0.5f, z1 = (b.Y + b.SizeY) * ts - 0.5f;
+                float h00 = _world.SampleHeight(x0, z0), h10 = _world.SampleHeight(x1, z0);
+                float h01 = _world.SampleHeight(x0, z1), h11 = _world.SampleHeight(x1, z1);
+                float y = Mathf.Min(Mathf.Min(Mathf.Min(h00, h10), Mathf.Min(h01, h11)), _world.SampleHeight(cx, cz));
+                Quaternion tilt = Quaternion.identity;
+                if (b.Shape == BuildingShape.Field)
+                {
+                    // Felder liegen flach am Hang statt als waagrechte Stufen (Unity-Lauf 4): Mitte auf Durchschnittshöhe,
+                    // Neigung aus den vier Eckhöhen.
+                    float sx = ((h10 + h11) - (h00 + h01)) * 0.5f / Mathf.Max(0.1f, x1 - x0);
+                    float sz = ((h01 + h11) - (h00 + h10)) * 0.5f / Mathf.Max(0.1f, z1 - z0);
+                    tilt = Quaternion.FromToRotation(Vector3.up, new Vector3(-sx, 1f, -sz).normalized);
+                    y = (h00 + h10 + h01 + h11) * 0.25f;
+                }
                 float horiz = b.Shape == BuildingShape.Wall ? 1f : (b.SizeX + b.SizeY) * 0.5f;
                 var scale = new Vector3(b.SizeX, horiz * b.Height01, b.SizeY);
                 // Mauern 2×1 entlang der längeren Achse, Rest nach Hash leicht gedreht (nur 0/90/180/270°, damit nichts über die Kachel ragt).
                 float yaw = b.Shape == BuildingShape.Wall || b.SizeX != b.SizeY ? 0f : ((b.X * 7 + b.Y * 13) & 3) * 90f;
-                var m = Matrix4x4.TRS(new Vector3(cx, y, cz), Quaternion.Euler(0f, yaw, 0f), scale);
+                var m = Matrix4x4.TRS(new Vector3(cx, y, cz), tilt * Quaternion.Euler(0f, yaw, 0f), scale);
 
                 int chunk = Mathf.Min(b.Y / WorldConstants.ChunkSize, _countY - 1) * _countX + Mathf.Min(b.X / WorldConstants.ChunkSize, _countX - 1);
                 Chunk c = _chunks[chunk];
@@ -359,10 +371,11 @@ namespace WorldBeyond.Presentation.WorldObjects
                 float sq = (pos - camPos).sqrMagnitude;
                 if (sq > maxSq)
                     continue;
-                float scale = Mathf.Clamp(Mathf.Sqrt(sq) / Mathf.Max(1f, unitTrueScaleDistance), 1f, unitMaxScale);
+                var shape = PlaceholderMeshes.ShapeFor(s.Role);
+                bool large = shape == PlaceholderMeshes.UnitShape.Vehicle || shape == PlaceholderMeshes.UnitShape.Gun || shape == PlaceholderMeshes.UnitShape.Wagon;
+                float scale = Mathf.Clamp(Mathf.Sqrt(sq) / Mathf.Max(1f, unitTrueScaleDistance), 1f, large ? largeUnitMaxScale : unitMaxScale);
                 if (!GeometryUtility.TestPlanesAABB(_frustum, new Bounds(pos + Vector3.up * scale, Vector3.one * (6f * scale))))
                     continue;
-                var shape = PlaceholderMeshes.ShapeFor(s.Role);
                 int key = s.CivId * PlaceholderMeshes.UnitShapeCount + (int)shape;
                 if (!_unitLists.TryGetValue(key, out var list))
                     _unitLists[key] = list = new List<Matrix4x4>();

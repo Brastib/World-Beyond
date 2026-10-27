@@ -328,6 +328,10 @@ namespace WorldBeyond.Application.Save
                 report.Warn("Simulationsgeschwindigkeit fehlt oder ist unbekannt; Spiel startet pausiert.");
             fresh.Runner.Speed = speed;
 
+            // Beim Aufbau der frischen Komposition veröffentlichte Events (Civ-/Siedlungsgründungen der Startwelt) gehören
+            // nicht zum geladenen Stand; sonst meldet der erste Tick nach dem Laden sie erneut (Unity-Lauf 4, Ereignis-Feed).
+            if (fresh.Context.Events is WorldBeyond.Core.SimEventBus bus) bus.ClearPending();
+
             // Schritt 6: erst jetzt austauschen.
             _replace(fresh);
             if (originalFormatVersion != SaveGameData.CurrentFormatVersion || sectionsMigrated) _migratedFrom[slotName] = originalFormatVersion;

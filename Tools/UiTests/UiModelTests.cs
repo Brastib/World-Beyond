@@ -203,6 +203,14 @@ namespace WorldBeyond.UiTests
                 Assert.AreNotSame(before, current, "Laden ersetzt die Komposition");
                 Assert.AreEqual(30, current.Context.Clock.Tick);
 
+                // Unity-Lauf 4: nach dem Laden erschienen die Gründungsmeldungen mit dem Ladedatum erneut.
+                var feed = new EventFeed();
+                feed.Attach(current.Context);
+                Run(current, 1);
+                Assert.IsFalse(feed.Entries.Any(e => e.Text.EndsWith("wurde gegründet.")),
+                    "Laden darf alte Gründungen nicht erneut melden: " + string.Join(" | ", feed.Entries.Select(e => e.Text)));
+                feed.Detach();
+
                 Assert.IsFalse(menu.Load(service, SaveMenuModel.SlotName(4)));
                 Assert.AreEqual(SaveMessages.ForLoad(SaveLoadError.NotFound), menu.LastMessage);
                 Assert.IsTrue(menu.LastWasError);
