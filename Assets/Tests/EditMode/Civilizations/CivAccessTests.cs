@@ -11,7 +11,7 @@ namespace WorldBeyond.Tests.Civilizations
     public class CivAccessTests
     {
         [Test]
-        public void Settlements_NeverWallThemselvesIn([Values(1UL, 12345UL)] ulong seed)
+        public void Settlements_NeverWallThemselvesIn([Values(1UL, 99UL, 12345UL)] ulong seed)
         {
             var r = CivRun.Create(seed);
             r.Years(400);
