@@ -323,10 +323,10 @@ Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude
 | ID | Klasse | Bauherr | Beispiele je Epoche | ab Epoche | Etappe | Status |
 |---|---|---|---|---|---|---|
 | bld.home.shack | Notunterkunft, Elendshütte | sehr arm | Laubhütte, Bretterbude, Wellblechhütte | F | A7 / M4 | geplant |
-| bld.home.cottage | einfaches Haus, Kate | arm | Lehmhaus, Kate, Arbeiterhäuschen | F | A7 / M4 | geplant |
-| bld.home.townhouse | Bürgerhaus | Mittelschicht | Fachwerkhaus, Bürgerhaus, Einfamilienhaus | A | A7 / M4 | geplant |
+| bld.home.cottage | einfaches Haus, Kate | arm | Lehmhaus, Kate, Arbeiterhäuschen | F | A7 / M4 | geplant (Machbarkeitstest v1 in Blender 2026-10-27, nicht im Spiel) |
+| bld.home.townhouse | Bürgerhaus | Mittelschicht | Fachwerkhaus, Bürgerhaus, Einfamilienhaus | A | A7 / M4 | geplant (Machbarkeitstest v1 in Blender 2026-10-27, nicht im Spiel) |
 | bld.home.rowhouse | Reihen-, Miets-, Hochhaus | Stadtbevölkerung | Insula, Mietskaserne, Hochhaus | A | A7 / M4 | geplant |
-| bld.home.villa | Villa | reich | Römische Villa, Stadtpalais, moderne Villa | A | A7 / M4 | geplant |
+| bld.home.villa | Villa | reich | Römische Villa, Stadtpalais, moderne Villa | A | A7 / M4 | geplant (Machbarkeitstest v1 in Blender 2026-10-27, nicht im Spiel) |
 | bld.home.manor | Herrenhaus, Palast, Anwesen | sehr reich, Herrscher | Gutshof, Burg/Schloss, Anwesen | A | A7 / M4 | geplant |
 
 ## 5. Personen, Einheiten, Fahrzeuge

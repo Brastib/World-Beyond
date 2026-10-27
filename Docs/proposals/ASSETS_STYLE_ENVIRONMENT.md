@@ -193,8 +193,13 @@ Die Darstellung nutzt dafür denselben Bruch-Baukasten wie bei Artillerie, nur l
 - Bauteil-Regeln (Raster 1–2 m, Anschlusspunkte, Pivot) sind fest, damit Unity jedes Haus aus dem Bauwunsch zusammensetzen kann (§4.4). Der Grundriss-Generator läuft in Unity, nicht in Blender, weil die Simulation zur Laufzeit neue Häuser bestellt.
 - Bruchstücke für die Zerstörung werden ebenfalls in Blender vorberechnet (Voronoi-Zerlegung je Bauteil) und als eigene Meshes exportiert.
 - Export FBX, Import nach ARCHITECTURE §16 (Maßstab, Pivot, URP-Material, LODs).
-- Blender lässt sich per Python-Skript ohne Oberfläche steuern. Damit sind wiederholbare Bauteil-Erzeugung und Vorschau-Renders möglich. In der Cloud ist Blender 4.0.2 über apt installierbar (am 2026-10-26 nur die Paketverfügbarkeit geprüft, nicht installiert oder getestet), auf dem PC des Nutzers die aktuelle Version.
+- Blender lässt sich per Python-Skript ohne Oberfläche steuern. Damit sind wiederholbare Bauteil-Erzeugung und Vorschau-Renders möglich. In der Cloud läuft Blender 4.0.2 (über apt, seit 2026-10-27 installiert und mit Cycles getestet, ohne Entrauscher), auf dem PC des Nutzers die aktuelle Version.
 - Gegen „AI-Slop“: Jedes Bauteil wird gezielt gebaut und im Spiel-Licht neben R1/R2 geprüft. Kein Massenexport ungeprüfter, generierter Modelle. Was den Vergleich nicht besteht, bleibt im Katalog auf „in Arbeit“.
+
+**Machbarkeitstest Haus v1 (2026-10-27, Cloud, Blender 4.0.2 headless):** Ein Python-Skript baut aus Klasse (arm/mittel/reich) und Seed ein Wohnhaus der modernen Epoche: hohle Außenschale mit Innenwand und Geschossdecke, Fensteröffnungen mit echter Laibungstiefe, Rahmen, Glas, Sims und Sprosse, Tür, Sockel, Satteldach mit Überstand, Giebel, Regenrinnen mit Fallrohren, Schornstein; bei „reich“ zusätzlich Holzverschalung und Anbau mit Flachdach und Glasfront. Skript und Bilder liegen in `/mnt/project-files/WorldBeyond/prototypes/haus_v1/` (nicht im Repo, nicht im Spiel).
+- Ergebnis: Die Grundstruktur trägt. Die drei Klassen unterscheiden sich sichtbar, das Haus ist innen hohl und begehbar (Schnittansicht), der Schnee-Zustand liegt auf Dach und Simsen. 1 500 bis 3 200 Dreiecke je Haus, also weit unter jedem Budget.
+- Abstand zu R2: keine Traufbretter, Faschen und Zierleisten; Materialien nur prozedural (keine gebackenen Texturen, Putz und Ziegel wirken glatt); „arm“ ist noch ein kleines Haus und keine Hütte; nur moderne Epoche; keine Bruchstücke und keine Innenausstattung; Grundriss fest statt aus dem Bauwunsch.
+- Bewertung: Offline-Render (Blender Cycles), kein Spielbild. Der Test zeigt, dass der Baukasten-Weg per Skript funktioniert. R2-Qualität braucht die oben genannten Bauteile mit Bevel, gebackene Materialien und den Vergleich im Spiel-Licht.
 
 Blender kann auch für Pflanzen helfen (Blattatlanten rendern, Impostor-Bilder backen). Der Baumgenerator selbst bleibt aber PlantForge in Unity (§4.1), weil Zustände und Wind dort zusammenhängen.
 
