@@ -81,6 +81,7 @@ namespace WorldBeyond.Simulation.Civilizations
             ctx.Register<ICivSimulationLod>(m.Lod);
             ctx.Register<ICivDecisionLog>(m.AI);
             ctx.Register<IBuildingQuery>(s.Buildings);
+            ctx.Register(m.Transport);
             ctx.Saveables.Add(m.Saveable);
 
             register(m.AI);
@@ -114,10 +115,33 @@ namespace WorldBeyond.Simulation.Civilizations
                 ulong culture = seed * 0x9E3779B97F4A7C15UL + (ulong)(i + 1) * 0xBF58476D1CE4E5B9UL;
                 var color = CivBootstrap.Palette[i % CivBootstrap.Palette.Length];
                 // FindStartLocations liefert die Mitte eines 3×3-Bereichs; der Ortskern (2×2) beginnt eine Kachel davor.
-                if (Civilizations.TryCreate(null, color, culture, starts[i].X - 1, starts[i].Y - 1, out _, out _)) created++;
+                // In der Nähe den Platz mit dem meisten bebaubaren, fruchtbaren Land wählen (Hänge tragen keine Felder).
+                var (sx, sy) = RefineStart(starts[i].X - 1, starts[i].Y - 1);
+                if (Civilizations.TryCreate(null, color, culture, sx, sy, out _, out _)) created++;
             }
             Territory.Recompute();
             return created;
+        }
+
+        private readonly List<TileScore> _refine = new List<TileScore>();
+
+        private (int x, int y) RefineStart(int x, int y)
+        {
+            var world = State.World;
+            world.FindBestTiles(x, y, 8, (int tx, int ty, in TileData t) =>
+            {
+                if (t.OwnerCivId != 0 || !world.CanPlaceFootprint(tx, ty, SettlementRegistry.CoreSize, SettlementRegistry.CoreSize, out _)) return 0f;
+                foreach (int id in State.SettlementIdsInOrder)
+                {
+                    var o = State.FindSettlement(id);
+                    int dx = o.X - tx, dy = o.Y - ty;
+                    if (dx * dx + dy * dy < SettlementRegistry.MinSettlementDistance * SettlementRegistry.MinSettlementDistance * 4) return 0f;
+                }
+                float v = ExpansionPlanner.SiteValue(world, tx, ty);
+                int ddx = tx - x, ddy = ty - y;
+                return v / (1f + (float)Math.Sqrt(ddx * ddx + ddy * ddy) * 0.05f);
+            }, 1, _refine);
+            return _refine.Count > 0 ? (_refine[0].X, _refine[0].Y) : (x, y);
         }
     }
 
