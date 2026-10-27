@@ -109,6 +109,65 @@ namespace WorldBeyond.Tests.Performance
             Assert.AreEqual(0, comp.Runner.FaultCount, "Systemfehler während des Laufs: " + string.Join(" | ", faults));
         }
 
+        // Spätes Sandbox-Spiel ohne Eingabe (Prüf-Thread: Seed 99, 256², 4 Civs wird mit der Zeit langsamer).
+        // Spult bis zur Startminute vor und misst dann je System über die angegebene Zahl Spielminuten.
+        [Explicit]
+        [TestCase(99UL, 256, 4, 500, 10)]
+        public void LateGameProfile(ulong seed, int size, int civs, int startMinute, int measureMinutes)
+        {
+            var comp = GameComposition.Create(new GameStartSettings { Seed = seed, WorldWidth = size, WorldHeight = size, CivilizationCount = civs });
+            var ctx = comp.Context;
+            long startTick = (long)startMinute * 60 * SimClock.TicksPerSecond;
+            var sw = Stopwatch.StartNew();
+            while (ctx.Clock.Tick < startTick) comp.Runner.StepOnce();
+            double forwardS = sw.Elapsed.TotalSeconds;
+
+            var systems = comp.Runner.Systems;
+            var total = new double[systems.Count];
+            var max = new double[systems.Count];
+            var allocs = new long[systems.Count];
+            int ticks = measureMinutes * 60 * SimClock.TicksPerSecond;
+            double flushMs = 0, sum = 0;
+            for (int i = 0; i < ticks; i++)
+            {
+                long tick = ctx.Clock.Tick;
+                for (int k = 0; k < systems.Count; k++)
+                {
+                    var sys = systems[k];
+                    if (tick % sys.TickInterval != 0) continue;
+                    long a = GC.GetAllocatedBytesForCurrentThread();
+                    long t0 = Stopwatch.GetTimestamp();
+                    try { sys.Tick(ctx); }
+                    catch (Exception ex) { comp.Runner.ReportFault(tick, sys.Name, ex); }
+                    double ms = (Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency;
+                    allocs[k] += GC.GetAllocatedBytesForCurrentThread() - a;
+                    total[k] += ms; sum += ms;
+                    if (ms > max[k]) max[k] = ms;
+                }
+                long f0 = Stopwatch.GetTimestamp();
+                ctx.Events.Flush();
+                double fms = (Stopwatch.GetTimestamp() - f0) * 1000.0 / Stopwatch.Frequency;
+                flushMs += fms; sum += fms;
+                ctx.Clock.Advance();
+            }
+
+            var civQuery = ctx.Get<ICivilizationQuery>();
+            var settlements = ctx.Get<ISettlementQuery>();
+            long pop = 0;
+            foreach (int id in settlements.AllSettlementIds) pop += settlements.Get(id).Population;
+            TestContext.WriteLine($"=== Spätspiel Seed {seed}, {size}², {civs} Civs: Minute {startMinute} bis {startMinute + measureMinutes} ===");
+            TestContext.WriteLine($"Vorspulen bis Minute {startMinute}: {forwardS:0} s");
+            TestContext.WriteLine($"Stand: Civs {civQuery.AllCivIds.Count}, Orte {settlements.AllSettlementIds.Count}, Einwohner {pop}, Einheiten {ctx.Units.Count}");
+            TestContext.WriteLine($"Tick im Mittel {sum / ticks:0.000} ms");
+            var order = new List<int>();
+            for (int k = 0; k < systems.Count; k++) order.Add(k);
+            order.Sort((a, b) => total[b].CompareTo(total[a]));
+            foreach (int k in order)
+                TestContext.WriteLine($"  {systems[k].Name,-22} {total[k] / ticks,8:0.000} ms/Tick  Max {max[k],8:0.00} ms  Alloc {allocs[k] / (double)ticks / 1024.0,8:0.00} KB/Tick  (Intervall {systems[k].TickInterval})");
+            TestContext.WriteLine($"  {"EventFlush",-22} {flushMs / ticks,8:0.000} ms/Tick");
+            Assert.AreEqual(0, comp.Runner.FaultCount, "Systemfehler");
+        }
+
         // Einheiten, die ständig zu neuen Zielen laufen: belastet Pfadsuche, Bewegung und Raumindex.
         private static void SpawnWanderers(SimContext ctx, int count, Random rng)
         {
