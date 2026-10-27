@@ -109,6 +109,21 @@ namespace WorldBeyond.Tests.EditMode.Combat
             Assert.That(queued, Is.EqualTo(3), "nur das Fehlende einmal anfordern");
         }
 
+        [TestCase(1f, 3)]
+        [TestCase(0f, 0)]
+        public void PeaceRecruitsBaseArmyOnlyIfCivIsWilling(float willingness, int expected)
+        {
+            var w = Make(out _, out _);
+            var env = w.Ctx.Get<ArmyEnvironment>();
+            int queued = 0;
+            env.Recruit = (civ, role, n) => { if (civ == 1) queued += n; return n; };
+            env.PendingRecruits = civ => civ == 1 ? queued : 0;
+            env.RecruitWillingness = civ => willingness;
+            w.Ctx.Units.Spawn(w.Rifleman, 1, 0f, 0f);
+            w.Ticks(1200);
+            Assert.That(queued, Is.EqualTo(expected), "Grundarmee MinAttackUnits (4) − 1 vorhanden, ohne Krieg");
+        }
+
         [Test]
         public void RecruitNeedFollowsThreatAndWillingness()
         {
