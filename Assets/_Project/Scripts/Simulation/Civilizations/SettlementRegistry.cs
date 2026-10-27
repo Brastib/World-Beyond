@@ -82,6 +82,7 @@ namespace WorldBeyond.Simulation.Civilizations
         {
             if (_s.Civ(civId) == null || !_s.Civ(civId).Alive) { reason = $"Zivilisation {civId} existiert nicht."; return false; }
             if (!_s.World.CanPlaceFootprint(x, y, CoreSize, CoreSize, out var failure)) { reason = $"Ort ungeeignet ({failure})."; return false; }
+            if (CoreOnStreet(x, y)) { reason = "Der Ortskern darf nicht auf einer Straße liegen."; return false; }
             for (int yy = y; yy < y + CoreSize; yy++)
                 for (int xx = x; xx < x + CoreSize; xx++)
                 {
@@ -158,9 +159,62 @@ namespace WorldBeyond.Simulation.Civilizations
             if (!_s.World.CanPlaceFootprint(x, y, d.SizeX, d.SizeY, out var failure)) { reason = $"Ort ungeeignet ({failure})."; return false; }
             for (int yy = y; yy < y + d.SizeY; yy++)
                 for (int xx = x; xx < x + d.SizeX; xx++)
+                {
                     if (_s.World.Get(xx, yy).OwnerCivId != st.CivId) { reason = "Nur im eigenen Gebiet."; return false; }
+                    if (IsStreet(xx, yy)) { reason = "Straße bleibt frei."; return false; }
+                }
+            if (UnitsInside(x, y, d.SizeX, d.SizeY)) { reason = "Einheiten stehen im Weg."; return false; }
             reason = null;
             return true;
+        }
+
+        private readonly List<EntityId> _unitsInRect = new List<EntityId>();
+
+        // Gebäudekacheln sind gesperrt: Eine Einheit, die beim Bau darauf stünde, fände nie wieder einen Weg (Prüf-Befund).
+        private bool UnitsInside(int x, int y, int sizeX, int sizeY)
+        {
+            if (!_s.Ctx.TryGet<ISpatialIndex>(out var spatial)) return false;
+            const float inset = 0.01f;
+            float t = WorldConstants.TileSize;
+            spatial.QueryRect(x * t + inset, y * t + inset, (x + sizeX) * t - inset, (y + sizeY) * t - inset, _unitsInRect);
+            return _unitsInRect.Count > 0;
+        }
+
+        /// <summary>Abstand des Straßenrasters: zwischen zwei Straßen liegen 5 Kacheln (Platz für zwei 2×2-Gebäude).</summary>
+        public const int StreetSpacing = 6;
+
+        /// <summary>
+        /// Weltweites Straßenraster: Jede sechste Spalte und Zeile der Karte bleibt unbebaut. Weil alle Siedlungen dasselbe
+        /// Raster nutzen, bilden die Straßen ein zusammenhängendes Netz, auch wo Nachbarorte aneinanderwachsen. So kann sich
+        /// keine Siedlung einmauern oder von Nachbarn eingemauert werden; nur Gelände (Wasser, Steilhang) unterbricht Straßen
+        /// (Prüf-Befund Seed 12345).
+        /// </summary>
+        public static bool IsStreet(int x, int y)
+        {
+            int dx = (x % StreetSpacing + StreetSpacing) % StreetSpacing;
+            int dy = (y % StreetSpacing + StreetSpacing) % StreetSpacing;
+            return dx == StreetSpacing - 1 || dy == StreetSpacing - 1;
+        }
+
+        /// <summary>
+        /// Ein Ortskern auf einer Straße schneidet sie ab; die Reststücke zwischen Kern und Gebäuden werden Sackgassen,
+        /// in denen der Ankunftspunkt landen kann (Probe-Merge mit Kriegen, Seed 1).
+        /// </summary>
+        public static bool CoreOnStreet(int x, int y)
+        {
+            for (int yy = y; yy < y + CoreSize; yy++)
+                for (int xx = x; xx < x + CoreSize; xx++)
+                    if (IsStreet(xx, yy)) return true;
+            return false;
+        }
+
+        /// <summary>Nächster Kernplatz rechts/unterhalb, dessen 2×2-Kern ganz in einem Baublock liegt.</summary>
+        public static (int x, int y) OffStreet(int x, int y)
+        {
+            int bx = x, by = y;
+            while (CoreOnStreet(bx, by) && bx < x + StreetSpacing) bx++;
+            while (CoreOnStreet(bx, by) && by < y + StreetSpacing) by++;
+            return (bx, by);
         }
 
         /// <summary>Legt eine Baustelle an und bezahlt sie aus dem Lager der Siedlung. false ohne Zustandsänderung.</summary>

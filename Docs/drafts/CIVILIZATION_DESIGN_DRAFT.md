@@ -187,9 +187,18 @@ Offen (Fundament/Integration): `CivTime.TicksPerYear = 600` (1 Jahr = 60 s bei 1
 
 Im Langzeittest gefundene und behobene Fehler: Einheiten zielten in den Ortskern (Gebäude blockieren Bewegung) → begehbarer Ankunftspunkt neben dem Kern; Expansion scheiterte an der Wegprüfung vom blockierten Kern aus; Lager-Schleife (volles Holzlager → neues Lager → mehr Holz); Holzfäller kostete Holz (Siedlung ohne Holz kam nie wieder heraus).
 
+Nachtprüfung 2026-10-27 (Prüf-Thread), behoben:
+- Siedlungen mauerten sich gegenseitig ein, weil Nachbarorte aneinanderwuchsen und jede ihr eigenes Raster hatte. Jetzt gilt ein weltweites Straßenraster: Jede 6. Spalte und Zeile der Karte bleibt unbebaut (`SettlementRegistry.IsStreet(x, y)`). Nur Gelände unterbricht Straßen.
+- Ankunftspunkt (`CivState.ArrivalTile`): Vorrang hat eine Straßenkachel mit mindestens zwei begehbaren Nachbarn, dann jede Straßenkachel, dann jede begehbare Kachel.
+- `CanBuild` lehnt Grundflächen ab, auf denen laut `ISpatialIndex` Einheiten stehen.
+- Karawanen fahren nur, wenn ein Weg existiert (`IPathfinder.AreConnected`). Nach einem Fehlschlag ist die Strecke 5 Jahre gesperrt; die Sperren werden gespeichert (`civs.BlockedRoutes`).
+- `TerritoryService.CaptureDirty` speichert Nullen, wenn nichts offen ist.
+- Höchstens 10 % der Einwohner stehen unter Waffen, mindestens 2 (`Recruitment.MaxMilitary`). Grund: Die Kriegs-KI hatte kleine Völker bis auf 6 Einwohner herunterrekrutiert.
+- Die Standortwahl zählt ebene 2×2-Feldplätze (mindestens 25). Startplätze werden im Umkreis 8 verbessert, weil das hügeligere World-Gelände Orte an Hänge ohne Felder setzte.
+
 ## 16. Tests und Übergabestatus
 
-Headless (Tools/SimTests, .NET 8, NUnit) – Stand Commit auf `phase3-civilization`: 120 von 120 Tests grün, davon 14 Civ-Tests (+2 explizite Langläufe) in `Assets/Tests/EditMode/Civilizations/`:
+Headless (Tools/SimTests, .NET 8, NUnit), Stand 2026-10-27 (`phase3-civilization` @73cf2fa): 126 von 126 Tests grün. Im Probe-Merge auf integration/m1 @9eea9a2 sind es 353 von 353. Neu sind `CivAccessTests` (Straßenraster, Erreichbarkeit der Hauptstadt, keine Einheit in Gebäuden; 400 Jahre, Seeds 1 und 12345), `CivTransportTests` (Streckensperre; Langlauf mit 0 Karawanen-Fehlschlägen) und `TerritorySaveTests`. Davor waren es 120 Tests, davon 14 Civ-Tests (+2 explizite Langläufe) in `Assets/Tests/EditMode/Civilizations/`:
 - `TwoCivs_GrowAndExpand_WithoutAnyCommand` (3 Seeds, 200 Spieljahre, kein Command): Bevölkerung mindestens verdoppelt, Gebiet wächst, mindestens drei neue Siedlungen durch echte Siedler-Einheiten, Gebäude gebaut, Forschung, Holz auf den Weltkacheln abgebaut, keine Civ bricht zusammen.
 - `FoundedSettlements_RespectPlacementRules`, `AutonomousRun_IsDeterministic`, `Hunger_ReducesPopulation_AndConsumesFood`, `Territory_IsConsistent_WithSettlementsAndCounts`, `Lod_ActiveAndDistant_DevelopSimilarly` (Abweichung < 20 %, gemessen 0–7 %), `CreateCivilization_FoundSettlement_AndEvents_Work`, `Recruitment_SpawnsRealUnit_AndPaysPopulation`.
 - `SaveMidGrowth_LoadIntoFreshGame_ContinuesIdentically`: nach 15 Jahren alle Sektionen über JSON (Newtonsoft) in ein frisches Spiel mit anderem Seed eingespielt, danach 10 Jahre weitergerechnet – Zustand bitgenau gleich. `CivSection_RejectsBrokenState_AndKeepsCurrent`.

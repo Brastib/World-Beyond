@@ -70,7 +70,11 @@ namespace WorldBeyond.Presentation.WorldView
         {
             if (RenderSettings.sun != null)
                 return RenderSettings.sun;
+#if UNITY_6000_6_OR_NEWER
+            foreach (Light l in FindObjectsByType<Light>())   // Unity 6.6: Überladung mit SortMode ist veraltet (CS0618)
+#else
             foreach (Light l in FindObjectsByType<Light>(FindObjectsSortMode.None))
+#endif
             {
                 if (l.type == LightType.Directional)
                     return l;

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace WorldBeyond.Simulation.Diplomacy
@@ -51,6 +52,7 @@ namespace WorldBeyond.Simulation.Diplomacy
 
     // ---------- Zustandsdaten (reine Daten, IDs statt Referenzen) ----------
 
+    [Serializable]
     public sealed class OpinionModifier
     {
         public int Id;                 // nie wiederverwendet
@@ -62,6 +64,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         public long CreatedTick;
     }
 
+    [Serializable]
     public sealed class Treaty
     {
         public int Id;                 // nie wiederverwendet
@@ -83,6 +86,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         public bool Fulfilled;
     }
 
+    [Serializable]
     public sealed class WarSideStats
     {
         public float StrengthLost;          // Summe Kampfstärke verlorener Einheiten
@@ -97,6 +101,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         public float Exhaustion;            // 0 … 100
     }
 
+    [Serializable]
     public sealed class War
     {
         public int Id;                 // nie wiederverwendet
@@ -136,6 +141,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         }
     }
 
+    [Serializable]
     public sealed class StrategicPoint
     {
         public int Id;                 // nie wiederverwendet
@@ -167,6 +173,7 @@ namespace WorldBeyond.Simulation.Diplomacy
     }
 
     // KI-Gedächtnis pro Civ (Abklingzeiten), Teil des Spielstands, damit die KI nach dem Laden identisch weiterläuft.
+    [Serializable]
     public sealed class CivAiMemory
     {
         public int CivId;
@@ -187,6 +194,7 @@ namespace WorldBeyond.Simulation.Diplomacy
     }
 
     // Protokoll einer KI-Entscheidung, damit Kriege nachvollziehbar sind (UI, Ereignis-Feed, Debug).
+    [Serializable]
     public sealed class DiplomaticDecision
     {
         public long Tick;

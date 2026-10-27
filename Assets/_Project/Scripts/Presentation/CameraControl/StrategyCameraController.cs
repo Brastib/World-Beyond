@@ -54,9 +54,9 @@ namespace WorldBeyond.Presentation.CameraControl
         void OnEnable()
         {
             if (worldRenderer == null)
-                worldRenderer = FindFirstObjectByType<WorldRenderer>();
+                worldRenderer = FindAnyObjectByType<WorldRenderer>();
             if (selection == null)
-                selection = FindFirstObjectByType<WorldSelection>();
+                selection = FindAnyObjectByType<WorldSelection>();
             if (worldRenderer != null)
                 worldRenderer.Rebuilt += OnWorldRebuilt;
         }

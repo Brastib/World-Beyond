@@ -70,7 +70,7 @@ namespace WorldBeyond.Tests.EditMode.Combat
             Assert.That(w.Deaths.Count, Is.GreaterThanOrEqualTo(4));
             foreach (var d in w.Deaths)
             {
-                Assert.That(d.CivId, Is.AnyOf(1, 2));
+                Assert.That(d.CivId, Is.EqualTo(1).Or.EqualTo(2));
                 Assert.That(d.KillerCivId, Is.EqualTo(3 - d.CivId), "UnitDiedEvent nennt die Zivilisation des Schützen");
                 Assert.That(d.UnitType, Is.EqualTo(w.Rifleman));
             }
