@@ -39,3 +39,20 @@ Eine Komponente `WorldBeyond.Presentation.UI.GameHud` (UI Toolkit, baut ihr UIDo
 - Weiße Scheibe/Streifen auf dem Wasser: Ersatz-Wassermaterial jetzt matt (Glätte 0,4, Specular Highlights und Environment Reflections aus). In Unity ungeprüft. Falls Bloom im URP-Volume der Szene den Rest erzeugt: Schwelle anheben (Volume liegt in der Szene, nicht im Code).
 - Warnung "No Theme Style Sheet": GameHud setzt ein leeres ThemeStyleSheet und die eingebaute Schrift. In Unity ungeprüft.
 - Notiert, kein M1-Blocker: Flüsse wirken treppig, weil Wasser kachelweise als Vierecke gebaut wird (ChunkMeshBuilder.BuildWater). Möglich später: Flussverlauf als geglättete Linie/Spline mit eigener Breite.
+
+## M1: Gebäude, Einheiten, Gebiete, Ortsnamen (Branch art/m1-world-objects, 27.10.2026)
+
+**Nichts davon ist in Unity geprüft.** Geprüft: `dotnet build Tools/UiViewCheck` und `Tools/UnityApiCheck` fehlerfrei,
+`dotnet test Tools/UiTests` 12/12 grün (5 neue Tests in WorldObjectsTests.cs).
+
+Neue Dateien:
+- `Presentation/WorldObjects/Model/BuildingVisuals.cs` – Unity-frei: alle lebenden Gebäude (IBuildingQuery) mit Form, Civ (über Siedlung), Bauzustand; zerstörte Gebäude bleiben ein Spieljahr als Ruine. Version steigt nur bei Änderung.
+- `Presentation/WorldObjects/Model/UnitInterpolator.cs` – Unity-frei: Position vorletzter/letzter Tick je Einheit, Lerp mit `InterpolationAlpha`; Tote fallen heraus.
+- `Presentation/WorldObjects/Model/TerritoryGrid.cs` – Unity-frei: Kopie von `OwnerCivId`, liefert geänderte Chunks und Grenzkanten (die Simulation meldet Besitz nicht je Kachel, darum Vergleich alle 2 s).
+- `Presentation/WorldObjects/PlaceholderMeshes.cs` – **Platzhalter bis R2**: flach schattierte Formen je Gebäudeform (10) und Einheitenrolle (5). Natürliche Materialfarben (Putz, Holz, Ziegel, Stroh), Civ-Farbe nur als Sockelband/Fahne.
+- `Presentation/WorldObjects/WorldObjectsRenderer.cs` – Graphics.DrawMeshInstanced (keine GameObjects), Gebäude je Chunk mit Frustum-Culling, Einheiten jedes Bild; ein Material je Civ-Farbe; Einheiten werden ab 60 m Kameraabstand bis 6× vergrößert (Lesbarkeit aus der Strategieansicht). Gebiete: ein Mesh je Chunk mit Shader `Sprites/Default` (Rückfall URP Particles/Unlit), Tönung 16 % + Grenzlinie.
+- `Presentation/UI/View/SettlementLabels.cs` – Ortsschilder (UI Toolkit, nicht anklickbar), Hauptstadt mit ★, Sichtweite nach Stufe.
+- GameHud: Knöpfe „Gebiete“ und „Namen“ in der Zeitleiste; legt einen WorldObjectsRenderer an, falls die Szene keinen hat.
+
+Im Unity-Lauf bitte prüfen: Gebäude stehen auf dem Boden (nicht schwebend/versunken), Ruinen/Baustellen sichtbar, Einheiten bewegen sich ohne Ruckeln bei 1×–10×, Gebietsfläche flackert nicht (z-fighting) und ist im Build vorhanden (Shader `Sprites/Default` muss im Build enthalten sein), Ortsschilder ziehen beim Kameraschwenk nicht nach, Bildrate mit vielen Einheiten.
+Offen: Ruinen-Anzeige ist nicht durch einen Test abgedeckt (kein öffentlicher Weg, ein Gebäude gezielt zu zerstören). Endgültige Modelle folgen nach ASSET_CATALOG (Bauteil-Sätze je Stamm, PR #9).

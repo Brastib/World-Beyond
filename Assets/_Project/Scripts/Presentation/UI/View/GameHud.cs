@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using WorldBeyond.Application;
 using WorldBeyond.Presentation.CameraControl;
+using WorldBeyond.Presentation.WorldObjects;
 using WorldBeyond.Simulation;
 using WorldBeyond.Simulation.Civilizations;
 using WorldBeyond.Simulation.Diplomacy;
@@ -15,12 +16,16 @@ namespace WorldBeyond.Presentation.UI
     // ISimulationRunner.Speed und ISaveLoadService. Nichts davon hält die Simulation an, außer der Pause-Knopf.
     // Baut ein UIDocument zur Laufzeit (eigene PanelSettings), damit keine UI-Assets im Projekt nötig sind.
     // Szene: auf ein GameObject legen; Verweise werden sonst per FindAnyObjectByType gesucht.
+    // Spät ausführen: LateUpdate setzt die Ortsschilder nach der Kamerabewegung (StrategyCameraController.LateUpdate).
+    [DefaultExecutionOrder(1000)]
     public sealed class GameHud : MonoBehaviour
     {
         [SerializeField] GameBootstrap bootstrap;
         [SerializeField] SaveLoadController saveLoad;
         [SerializeField] WorldSelection selection;
         [SerializeField] StrategyCameraController cameraController;
+        [Tooltip("Gebäude/Einheiten/Gebiete. Leer = in der Szene suchen, sonst wird einer angelegt.")]
+        [SerializeField] WorldObjectsRenderer worldObjects;
         [Tooltip("Optional: Unity-Runtime-Theme. Ohne Theme funktioniert die HUD trotzdem, weil sie nur eigene Stile nutzt.")]
         [SerializeField] ThemeStyleSheet theme;
         [SerializeField] Vector2Int referenceResolution = new Vector2Int(1920, 1080);
@@ -41,7 +46,8 @@ namespace WorldBeyond.Presentation.UI
         ThemeStyleSheet _emptyTheme;
         VisualElement _root, _civList, _feedList, _infoPanel, _infoLines, _savePanel, _saveRows, _toastBox;
         Label _dateLabel, _infoTitle, _infoSubtitle, _toastText, _saveMessage;
-        UiTheme.UiButton _civToggle;
+        UiTheme.UiButton _civToggle, _territoryButton, _labelButton;
+        SettlementLabels _labels;
         bool _civCollapsed;
         GameSpeed _lastRunning = GameSpeed.x1;
         long _shownTick = -1;
@@ -62,6 +68,13 @@ namespace WorldBeyond.Presentation.UI
             if (saveLoad == null) saveLoad = FindAnyObjectByType<SaveLoadController>();
             if (selection == null) selection = FindAnyObjectByType<WorldSelection>();
             if (cameraController == null) cameraController = FindAnyObjectByType<StrategyCameraController>();
+            if (worldObjects == null) worldObjects = FindAnyObjectByType<WorldObjectsRenderer>();
+            if (worldObjects == null && bootstrap != null)
+            {
+                // Szenen ohne eigenen WorldObjectsRenderer (World.unity, Schnellstart) zeigen sonst keine Gebäude/Einheiten.
+                Debug.Log("GameHud: Kein WorldObjectsRenderer in der Szene, lege einen an.");
+                worldObjects = new GameObject("World Objects").AddComponent<WorldObjectsRenderer>();
+            }
 
             BuildDocument();
             if (bootstrap != null)
@@ -103,6 +116,7 @@ namespace WorldBeyond.Presentation.UI
             SetLodSettlement(0);
             _comp = comp;
             _feed.Attach(comp?.Context);
+            _labels?.Clear();
             _info.Clear();
             _selected = default;
             _shownTick = -1;
@@ -177,6 +191,7 @@ namespace WorldBeyond.Presentation.UI
             _root.Add(BuildInfoPanel());
             _root.Add(BuildSaveMenu());
             _root.Add(BuildToast());
+            _labels = new SettlementLabels(_root);
         }
 
         // Eingebaute Unity-Schrift: ab Unity 2022.2 "LegacyRuntime.ttf", davor "Arial.ttf". Bis Barlow/IBM Plex importiert sind.
@@ -222,6 +237,15 @@ namespace WorldBeyond.Presentation.UI
                 _speedButtons.Add(b);
                 bar.Add(b);
             }
+
+            _territoryButton = new UiTheme.UiButton("Gebiete", ToggleTerritory, "Gebiete der Zivilisationen ein- oder ausblenden");
+            _territoryButton.style.marginLeft = UiTheme.S3;
+            _territoryButton.Active = worldObjects != null && worldObjects.ShowTerritory;
+            bar.Add(_territoryButton);
+            _labelButton = new UiTheme.UiButton("Namen", ToggleLabels, "Ortsnamen ein- oder ausblenden");
+            _labelButton.style.marginLeft = UiTheme.S1;
+            _labelButton.Active = true;
+            bar.Add(_labelButton);
 
             var menu = new UiTheme.UiButton("Speichern / Laden", OpenSaveMenu, "Spielstände verwalten. Das Spiel läuft dabei weiter.");
             menu.style.marginLeft = UiTheme.S3;
@@ -381,6 +405,27 @@ namespace WorldBeyond.Presentation.UI
             else if (runner.Speed != GameSpeed.Paused) _lastRunning = runner.Speed;
             runner.Speed = speed;
             RefreshTimeBar();
+        }
+
+        void LateUpdate()
+        {
+            // Nach der Kamera (StrategyCameraController bewegt in Update), damit die Schilder nicht nachziehen.
+            if (_labels == null) return;
+            var cam = cameraController != null ? cameraController.Camera : Camera.main;
+            _labels.Update(_comp?.Context, cam);
+        }
+
+        void ToggleTerritory()
+        {
+            if (worldObjects == null) { ShowToast("Gebietsanzeige nicht verfügbar (kein WorldObjectsRenderer).", true); return; }
+            worldObjects.ShowTerritory = !worldObjects.ShowTerritory;
+            _territoryButton.Active = worldObjects.ShowTerritory;
+        }
+
+        void ToggleLabels()
+        {
+            _labels.Visible = !_labels.Visible;
+            _labelButton.Active = _labels.Visible;
         }
 
         void ToggleCivPanel()
