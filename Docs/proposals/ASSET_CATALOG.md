@@ -33,7 +33,7 @@ PF = eigener Generator PlantForge · PR = eigene Prozedur (Fels, Wasser, Geländ
 
 ### 0.4 Zustände
 
-Jede Pflanze hat die Zustände aus `ASSETS_STYLE_ENVIRONMENT.md` §5 (jung … alt, Jahreszeiten, trocken, krank, tot, brennend, verkohlt, umgestürzt, Stumpf). Gebäude: Baustelle, intakt, beschädigt, brennend, Ruine, Trümmer. Sie werden nicht einzeln gezählt; ein Asset ist erst „abgenommen“, wenn alle seine Zustände abgenommen sind.
+Jede Pflanze hat die Zustände aus `ASSETS_STYLE_ENVIRONMENT.md` §5 (jung … alt, Jahreszeiten, trocken, krank, tot, brennend, verkohlt, umgestürzt, Stumpf). Gebäude: Baustelle, intakt, beschädigt (Dachloch, abgedeckte Ziegel, Einschüsse, eingestürzte Wandteile), brennend, ausgebrannt (Hülle verrußt, ohne Dach), Ruine (Mauerstümpfe), Trümmer (Schuttfeld). Diese Zustände braucht **jeder Bauteil-Satz `bld.kit.*` in jeder Epoche**, nicht nur das fertige Haus; dafür gibt es die Sätze `bld.kit.damage` und `bld.kit.rubble` (Referenzen R5/R6, §4.3). Sie werden nicht einzeln gezählt; ein Asset ist erst „abgenommen“, wenn alle seine Zustände abgenommen sind.
 
 ### 0.5 Pflege
 
@@ -73,14 +73,14 @@ Die Prüfung läuft automatisch im Generator. Zusätzlich wird für jeden Archet
 | Wasserpflanzen (§2.6) | 6 | 6 | 0 | 0 | 0 | 0 |
 | Nutzpflanzen (§2.7) | 17 | 17 | 0 | 0 | 0 | 0 |
 | Fels, Gelände, Wasser (§3) | 26 | 13 | 13 (über P-003, P-004, P-005) | 0 | 0 | 0 |
-| Gebäude (§4) | 59 | 59 | 0 | 0 | 0 | 0 |
-| Personen, Einheiten, Fahrzeuge (§5) | 36 | 36 | 0 | 0 | 0 | 0 |
+| Gebäude (§4) | 66 | 66 | 0 | 0 | 0 | 0 |
+| Personen, Einheiten, Fahrzeuge (§5) | 37 | 37 | 0 | 0 | 0 | 0 |
 | Tiere (§6) | 10 | 10 | 0 | 0 | 0 | 0 |
-| Effekte, Decals (§7) | 26 | 26 | 0 | 0 | 0 | 0 |
-| Requisiten (§8) | 14 | 14 | 0 | 0 | 0 | 0 |
+| Effekte, Decals (§7) | 32 | 32 | 0 | 0 | 0 | 0 |
+| Requisiten (§8) | 21 | 21 | 0 | 0 | 0 | 0 |
 | Innenausstattung (§8.1) | 14 | 14 | 0 | 0 | 0 | 0 |
 | Werkzeuge, Epochen-Gegenstände (§8.2) | 30 | 30 | 0 | 0 | 0 | 0 |
-| **Summe** | **346** | **331** | **15** (5 Platzhalter-Dateien P-001–P-005) | **0** | **0** | **0** |
+| **Summe** | **367** | **352** | **15** (5 Platzhalter-Dateien P-001–P-005) | **0** | **0** | **0** |
 
 Pflanzen-Gattungen gesamt (§2.2–2.7): **104** (Etappe P2). Ziel P3: 250–400 Gattungen, P4: Arten als Datensätze.
 
@@ -318,6 +318,11 @@ Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude
 | bld.watchtower | Wachturm / Feuerturm | – (neu, Civ) | – | F | A4 | geplant | erhöht Sichtung |
 | bld.well | Brunnen / Löschteich | – (neu, Civ) | – | F | A4 | geplant | Löschwasser |
 | bld.construction_site | Baustelle (generisch) | – | – | F | A7 | geplant | |
+| bld.wall_tower | Mauer- und Palisadenturm | – (neu, Civ) | 1×1 | F | A7 | geplant | Zielqualität R7 |
+| bld.gate | Tor, Torhaus | – (neu, Civ) | 1×1 | F | A7 | geplant | Zielqualität R7 |
+| bld.mill_wind | Windmühle | – (neu, Civ) | 1×1 | M | A7 | geplant | Zielqualität R7 |
+| bld.mill_water | Wassermühle | – (neu, Civ) | 1×1 | A | A7 | geplant | am Fluss |
+| bld.temple | Kultbau (Steinkreis → Tempel → Kirche, Moschee, Kathedrale je Stamm) | – (neu, Civ) | 2×2 | F | A7 | geplant | Zielqualität R5; Form wählt die Stammes-KI |
 
 **Wohnhaus-Klassen nach Vermögen und Bedürfnis** (Grundriss-Generator, `ASSETS_STYLE_ENVIRONMENT.md` §4.4; braucht individuelle NPCs aus M4). Die Klassen sind Größen- und Ausstattungsvorgaben, keine Bauformen: Wie das Haus aussieht, kommt aus dem Baustil des Stammes, jedes Haus wird aus dem Bauwunsch des Bauherrn erzeugt und ist dadurch einzigartig.
 
@@ -358,6 +363,8 @@ Der Katalog zählt deshalb nur, was wir wirklich bauen müssen: **Bauteil-Sätze
 | bld.kit.wall.green | Holz-Hybrid, begrünte Fassade, Solardach | Holzfassade, Pflanzflächen, Solarmodule | NZ | A7 | geplant (Zielqualität R3) |
 | bld.kit.wall.composite | Metall- und Verbundpaneele | Paneele, Schleusen, Rundfenster, Kuppelsegmente | RF | A7 | geplant (Zielqualität R3) |
 | bld.kit.wall.regolith | gedruckte oder gestampfte Planetenerde | Schichtwände, Sonnensegel, Druckschleusen | PL | A7 | geplant (Zielqualität R3) |
+| bld.kit.damage | Schadensteile | Bruchkanten je Baustoff, freiliegende Sparren und Balken, Dachloch-Ränder, Einschusslöcher, Ruß | F | A7 | geplant (Zielqualität R5/R6) |
+| bld.kit.rubble | Schutt | Schuttkegel und lose Trümmer je Baustoff (Ziegel, Stein, Holz, Lehm, Beton), als günstige Instanzen | F | A7 | geplant (Zielqualität R6) |
 
 **Baustil-Parameter: verbindliche Namen für Civ (`CivStyle`) und Presentation** (Stand 2026-10-27; Civ übernimmt die Namen 1:1, nur anhängen, nie umbenennen). Der Stil eines Stammes ist ein Seed plus diese Werte. Presentation setzt daraus mit den Bauteil-Sätzen oben das Haus zusammen.
 
@@ -422,6 +429,8 @@ Der Nutzer hat zwei Übersichten geschickt: R3 zeigt Häuser, Mauern und Gegenst
 
 Abgleich mit dem Katalog: Alle Häuser und Mauern aus R3 lassen sich mit den Bauteil-Sätzen `bld.kit.*` beschreiben (Flechtwerk und Reet, Stein und Ziegel, Fachwerk, Ziegelmauerwerk, Putz und Beton). Für die späten Epochen sind drei Sätze neu (`bld.kit.wall.green`, `.composite`, `.regolith`). Gegenstände und Fahrzeuge aus R3/R4, die noch fehlten, stehen jetzt in §5 und §8.2.
 
+**Referenzen R5–R7 (Nutzer 2026-10-27 17:37 UTC):** „So soll es ingame irgendwann aussehen, auch die Gebäude, aber nicht die Grafik.“ R5 zeigt eine dichte Altstadt mit Kirche im Gefecht, R6 eine zerschossene Stadt mit Ruinen und Schuttfeldern, R7 ein Palisadendorf mit Türmen, Mühlen, Feldern, Vieh und vielen Menschen. Dateien nur in `/mnt/project-files/WorldBeyond/references/` (Screenshots fremder Spiele, nicht ins Repo). Für den Katalog folgt daraus: Schadenszustände je Bauteil-Satz (§0.4, `bld.kit.damage`, `bld.kit.rubble`), Befestigung mit Türmen und Toren, Mühlen, Kultbauten, Kleinkram für belebte Orte (§8), Bewohner als günstige Massen-Instanzen (`unit.npc`) und die Effekte dazu (§7). Wie Siedlungen angeordnet werden, entscheidet Civ.
+
 **Logik-Lücke (weitergegeben 2026-10-27):** Die Simulation kennt nur die Epochen `Primitive` bis `Modern` (`Epoch`-Enum). Nahe Zukunft (NZ), Raumfahrt (RF), Planeten (PL) und Galaxie (GX) gibt es dort noch nicht. Die Katalogzeilen mit diesen Epochen sind deshalb nur vorgemerkt und werden erst gebaut, wenn Civ/Integration die Epochen anlegen.
 
 ## 5. Personen, Einheiten, Fahrzeuge
@@ -434,6 +443,7 @@ Abgleich mit dem Katalog: Alle Häuser und Mauern aus R3 lassen sich mit den Bau
 | unit.rifleman | Schütze | unit.rifleman | CH | A7 | geplant | Militär (Phase 5) |
 | unit.firefighter_bucket | Löschhelfer (Eimerkette) | – (neu, Civ) | CH | A4 | geplant | frühe Epochen |
 | unit.firefighter | Feuerwehrmann | – (neu, Civ) | CH | A4 | geplant | |
+| unit.npc | Bewohner (alle NPCs; Körper, Kleidung je Epoche und Stamm) | – (M4) | CH | A7 | geplant | LOD-Kette bis Massen-Instanzen und Impostor; Referenz R7 (viele Menschen im Ort) |
 | veh.fire_cart | Feuerwehrwagen mit Pumpe (Pferd) | – (neu) | MB | A4 | geplant | |
 | veh.fire_engine | Löschfahrzeug | – (neu) | MB | A4 | geplant | |
 | veh.firefighting_aircraft | Löschflugzeug/-hubschrauber | – (neu) | MB | A4 | geplant | Moderne |
@@ -510,6 +520,12 @@ Abgleich mit dem Katalog: Alle Häuser und Mauern aus R3 lassen sich mit den Bau
 | decal.scorch | Brandfleck | `Scorched` | A4 | geplant |
 | decal.ash | Ascheschicht unter verkohlten Bäumen | verkohlte Vegetation | A4 | geplant |
 | decal.crater | Krater | `Crater` | A7 | geplant |
+| fx.collapse_dust | Einsturzstaub, fallende Teile | Gebäude stürzt ein | A7 | geplant |
+| fx.tracer | Leuchtspur | Kampf | A7 | geplant |
+| fx.smoke.chimney | Rauch aus Schornstein und Rauchloch | bewohntes Haus, Herdfeuer | A7 | geplant |
+| fx.firelight | Feuer- und Lampenschein am Abend | Fackel, Herd, Laterne | A7 | geplant |
+| decal.rubble_scatter | verstreuter Schutt | Ruine, Beschuss | A7 | geplant |
+| decal.track | Ketten-, Rad- und Trampelspuren | Fahrzeuge, viel begangene Wege | A7 | geplant |
 
 ## 8. Requisiten
 
@@ -529,6 +545,13 @@ Abgleich mit dem Katalog: Alle Häuser und Mauern aus R3 lassen sich mit den Bau
 | prop.debris_flood | Treibgut | A6 | geplant |
 | prop.grave | Grab/Gedenkstein | A7 | geplant |
 | prop.market_stall | Marktstand | A7 | geplant |
+| prop.statue | Statue, Denkmal, Bildstock | A7 | geplant |
+| prop.street_light | Fackel, Öllaterne, Gaslaterne, Straßenlampe | A7 | geplant |
+| prop.haystack | Heuhaufen, Garben | A7 | geplant |
+| prop.campfire | Lagerfeuer, Feuerstelle im Freien | A7 | geplant |
+| prop.sandbags | Sandsäcke, Feldbefestigung | A7 | geplant |
+| prop.cart_parked | abgestellter Karren, Schubkarre | A7 | geplant |
+| prop.cobblestone | Pflaster, Plätze, Treppen im Freien (Bauteil-Satz) | A7 | geplant |
 
 ### 8.1 Innenausstattung (jedes Haus ist begehbar, `ASSETS_STYLE_ENVIRONMENT.md` §4.4)
 
