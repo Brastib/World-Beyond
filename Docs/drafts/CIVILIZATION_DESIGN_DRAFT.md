@@ -155,3 +155,122 @@ Speicher/IDs (verbindlich laut Nutzer):
 Offen:
 - [O] `ResourceType` (§4) hat Food, Wood, Stone, Ore, Oil, Gold. Der Auftrag nennt „Metall“. Vorschlag: Werte `Metal = 7`, `Tools = 8` anhängen (Erz → Metall in Schmelze, Metall → Werkzeug). Bei World und Phase 7 angefragt.
 - [O] Phase 7 nennt Ressourcentypen als String-Schlüssel, §4 als Enum mit festen Werten. Annahme: Enum mit festen Werten genügt für Ressourcen (Regel „Enums erhalten explizite Werte“); bei Phase 7 nachgefragt.
+
+## 14. Umgesetzte Abweichungen von SYSTEM_INTERFACES §7 (Stand 2026-10-26, Branch `phase3-civilization`)
+
+Bitte vom Integrations-Thread in SYSTEM_INTERFACES §7 übernehmen:
+- `ICivilizationRegistry.Create/TryCreate` nehmen `CivColor` (eigener Struct R, G, B, A) statt `UnityEngine.Color32`, damit die Simulation ohne Unity kompiliert. Die Darstellung wandelt in `Color32` um.
+- Zusätzlich zu §7: `ISettlementRegistry.TryFound`, `CanFoundAt`; `ISettlementQuery.FindAt`, `CopyBuildings`, `AllSettlementIds`; `IEconomy.GetSettlementStock`, `TrySpendAt`; `ITechTree.TryGetTech`, `IsUnlocked(civId, key)`; `IRecruitment.TryGetRecruitable`; `ICivSimulationLod` (Fokus/Auswahl), `ICivDecisionLog` (nachvollziehbare KI-Entscheidungen), `ICivWarEvaluator` (Anschluss für den Kriegsbewerter aus Phase 4).
+- `CivState` bietet öffentliche Lesezugriffe (`CivIdsInOrder`, `SettlementIdsInOrder`, `FindCiv`, `FindSettlement`) für Darstellung und Tests; geschrieben wird nur über die Dienste.
+- Ladefehler-Rückfall (abweichend von §13): verwaiste Gebäude werden abgerissen statt als Ruine stehen zu bleiben (Warnung im LoadReport); ungültige Hauptstadt → größte verbleibende Siedlung; Karawanen ohne Einheit werden verworfen.
+- `ResourceType.Metal = 7`, `Tools = 8` sind von World angehängt (nur Lagergüter).
+
+Anschluss in `GameComposition.RegisterPhaseServices` (zwei Zeilen):
+```csharp
+var civ = CivModule.Install(ctx, runner.Register);
+civ.SpawnInitialCivilizations(settings.CivilizationCount, settings.Seed);
+```
+
+## 15. Zeitskala und Raten (abgestimmt im Langzeittest)
+
+- 1 Spieljahr = 60 Spielsekunden = 600 Ticks. 30 Spielminuten = 30 Spieljahre.
+- Detailstufen: aktive Siedlungen alle 10 Ticks, entfernte alle 50 Ticks, beide mit der tatsächlich vergangenen Zeit als Zeitschritt.
+- Pro Jahr: Nahrung 1,0 je Erwachsenem, 0,6 je Kind, 0,8 je Altem; Geburten 0,085 je Erwachsenem (skaliert mit Versorgung, Wohnraum, gedämpftem Fruchtbarkeitsmerkmal ±7,5 %); Reifung 1/6, Altern 1/40; Sterblichkeit Kinder 9 %, Erwachsene 1,5 %, Alte 15 %; bei Hunger sterben 40 % der Unversorgten pro Jahr. Ergebnis: vorindustriell höchstens ~1 %/Jahr Nettowachstum, mit Medizin ~2 %/Jahr.
+- Forschung: 0,08 × √Einwohner je Siedlung und Jahr plus Bibliotheken (0,25 je Gelehrtem). Kosten: Frühzeit 120–200, Antike 2 500–4 500, Mittelalter 8 000–10 000, Industrie 10 000–12 000, Moderne 15 000–18 000 Punkte.
+- Tochtersiedlungen erst ab 20 Erwachsenen im Ursprungsort.
+- Zielvorräte statt Horten: Rohstoffbetriebe ruhen über einem Zielvorrat (Holz 80 + 3 je Einwohner, Stein 60 + 2, Erz 40 + 1 …); Lager werden nur gebaut, wenn der Zielvorrat die Lagergrenze übersteigt. Rodungsholz zählt nur bis zur Lagergrenze.
+- Startwerte je Civ: 10 Einwohner, Nahrung 80, Holz 60, Stein 10. Siedler kosten Nahrung 40, Holz 30 und 5 Erwachsene; neue Siedlung startet mit 5 Einwohnern, Nahrung 30, Holz 20.
+
+**Realistisches Tempo (VISION V7, 2026-10-26):** Der Unity-Lauf (Seed 20261026, 4 Civs) erreichte das Industriezeitalter nach 75 Jahren. Ursachen: Forschung wuchs linear mit der Einwohnerzahl, Technologien waren billig, und die Bevölkerung wuchs ~8 %/Jahr. Nach der Umstellung, gemessen headless (Welt 128 × 128, 2 Civs, Seeds 1 und 20261026): Frühzeit dauert 700 bis über 1 000 Jahre, Antike beginnt um Jahr 700–900; die Bevölkerung wächst in 1 000 Jahren von 10 auf 1 000–3 400 je Civ mit 16–37 Siedlungen. Abgesichert durch `CivTechPaceTests` (300 Jahre: noch Frühzeit, aber Wachstum und Tochtersiedlungen; explizit 1 000 Jahre: höchstens Mittelalter).
+
+Offen (Fundament/Integration): `CivTime.TicksPerYear = 600` (1 Jahr = 60 s bei 1×) ist bis zum `GameCalendar` (VISION V7/M2) die Kalenderbasis der Civ-Schicht. Alle Civ-Raten sind „pro Jahr“ formuliert; wenn der Kalender kommt, wird nur diese Konstante ersetzt. Bei 1× = Echtzeit wären Jahrhunderte nur mit Zeitsprung (V1/V3) erlebbar.
+
+Im Langzeittest gefundene und behobene Fehler: Einheiten zielten in den Ortskern (Gebäude blockieren Bewegung) → begehbarer Ankunftspunkt neben dem Kern; Expansion scheiterte an der Wegprüfung vom blockierten Kern aus; Lager-Schleife (volles Holzlager → neues Lager → mehr Holz); Holzfäller kostete Holz (Siedlung ohne Holz kam nie wieder heraus).
+
+Nachtprüfung 2026-10-27 (Prüf-Thread), behoben:
+- Siedlungen mauerten sich gegenseitig ein, weil Nachbarorte aneinanderwuchsen und jede ihr eigenes Raster hatte. Jetzt gilt ein weltweites Straßenraster: Jede 6. Spalte und Zeile der Karte bleibt unbebaut (`SettlementRegistry.IsStreet(x, y)`). Nur Gelände unterbricht Straßen.
+- Ankunftspunkt (`CivState.ArrivalTile`): Vorrang hat eine Straßenkachel mit mindestens zwei begehbaren Nachbarn, dann jede Straßenkachel, dann jede begehbare Kachel.
+- `CanBuild` lehnt Grundflächen ab, auf denen laut `ISpatialIndex` Einheiten stehen.
+- Karawanen fahren nur, wenn ein Weg existiert (`IPathfinder.AreConnected`). Nach einem Fehlschlag ist die Strecke 5 Jahre gesperrt; die Sperren werden gespeichert (`civs.BlockedRoutes`).
+- `TerritoryService.CaptureDirty` speichert Nullen, wenn nichts offen ist.
+- Höchstens 10 % der Einwohner stehen unter Waffen, mindestens 2 (`Recruitment.MaxMilitary`). Grund: Die Kriegs-KI hatte kleine Völker bis auf 6 Einwohner herunterrekrutiert.
+- Die Standortwahl zählt ebene 2×2-Feldplätze (mindestens 25). Startplätze werden im Umkreis 8 verbessert, weil das hügeligere World-Gelände Orte an Hänge ohne Felder setzte.
+
+## 16. Tests und Übergabestatus
+
+Headless (Tools/SimTests, .NET 8, NUnit), Stand 2026-10-27 (`phase3-civilization` @73cf2fa): 126 von 126 Tests grün. Im Probe-Merge auf integration/m1 @9eea9a2 sind es 353 von 353. Neu sind `CivAccessTests` (Straßenraster, Erreichbarkeit der Hauptstadt, keine Einheit in Gebäuden; 400 Jahre, Seeds 1 und 12345), `CivTransportTests` (Streckensperre; Langlauf mit 0 Karawanen-Fehlschlägen) und `TerritorySaveTests`. Davor waren es 120 Tests, davon 14 Civ-Tests (+2 explizite Langläufe) in `Assets/Tests/EditMode/Civilizations/`:
+- `TwoCivs_GrowAndExpand_WithoutAnyCommand` (3 Seeds, 200 Spieljahre, kein Command): Bevölkerung mindestens verdoppelt, Gebiet wächst, mindestens drei neue Siedlungen durch echte Siedler-Einheiten, Gebäude gebaut, Forschung, Holz auf den Weltkacheln abgebaut, keine Civ bricht zusammen.
+- `FoundedSettlements_RespectPlacementRules`, `AutonomousRun_IsDeterministic`, `Hunger_ReducesPopulation_AndConsumesFood`, `Territory_IsConsistent_WithSettlementsAndCounts`, `Lod_ActiveAndDistant_DevelopSimilarly` (Abweichung < 20 %, gemessen 0–7 %), `CreateCivilization_FoundSettlement_AndEvents_Work`, `Recruitment_SpawnsRealUnit_AndPaysPopulation`.
+- `SaveMidGrowth_LoadIntoFreshGame_ContinuesIdentically`: nach 15 Jahren alle Sektionen über JSON (Newtonsoft) in ein frisches Spiel mit anderem Seed eingespielt, danach 10 Jahre weitergerechnet – Zustand bitgenau gleich. `CivSection_RejectsBrokenState_AndKeepsCurrent`.
+- Tools/UnityApiCheck (netstandard2.1) baut ohne Warnungen.
+
+Nicht geprüft: Der Unity-Editor selbst (Import, Szenen, Darstellung). Die Darstellung der Siedlungen, Gebäude und Gebietsgrenzen in Unity ist nicht Teil dieses Branches; sie gehört zum UI-/Darstellungs-Thread und liest die Daten über `ISettlementQuery`, `ICivilizationQuery`, `IBuildingQuery`, `ITerritoryService.OwnerAt` und die Civ-Ereignisse.
+
+Bekannte Grenzen:
+- Arbeiter sind Zahlen je Siedlung (Berufe, Bau, Abbau), keine einzeln laufenden Figuren. Siedler und Karawanen sind echte Einheiten auf der Karte.
+- Migration zwischen Siedlungen derselben Civ ist abstrakt (sofortiger Wechsel bei Wohnraummangel), nicht als laufende Einheiten.
+- Der World-Test `TenMinutes_WithoutPlayerCommands_UnitsKeepMoving` setzt seine Test-Einheiten auf die Startplätze, auf denen jetzt Ortskerne stehen. Er ist grün, sollte aber `CivilizationCount = 0` setzen (beim World-Thread angefragt).
+
+## 17. Plan V15 (nach der M1-Abnahme): Zufriedenheit, Abwanderung, Neugründung, Aufstände
+
+Nutzerwunsch vom 2026-10-27: Menschen, die sich in einer Siedlung nicht wohlfühlen, können gehen und eigene Orte gründen oder einen Aufstand anzetteln. Moral im Krieg soll eine Rolle spielen. Alle Werte unten sind Startwerte für Langzeittests, keine festen Spielregeln.
+
+**Zufriedenheit je Siedlung** (`Settlement.Contentment`, 0..1, gespeichert). Sie folgt jedes Jahr gedämpft (etwa 20 % pro Jahr) einem Zielwert aus diesen Einflüssen:
+- Versorgung: Nahrungsvorrat in Jahren und Hunger.
+- Wohnraum: Belegung über 90 % senkt den Wert.
+- Arbeit: der Anteil Arbeitsloser.
+- Abgaben und Rekrutierung: Eingezogene der letzten Jahre im Verhältnis zur Einwohnerzahl.
+- Krieg: Kriegsmüdigkeit des Volkes über `IWarQuery.GetCivWarExhaustion`, dazu Verluste aus diesem Ort.
+- Sicherheit: Feinde in der Nähe, Plünderung, Eroberung.
+- Kultur und Herkunft: Ein eroberter Ort eines anderen Volkes startet niedrig.
+- Positiv wirken Bauten wie Tempel, Markt und Bibliothek, sobald es sie gibt.
+
+**Folgen, in drei Stufen:**
+1. **Abwanderung** (Zufriedenheit unter etwa 0,4): Familien ziehen in zufriedenere eigene Orte. Das gibt es heute schon für Überbelegung und Hunger und wird nur um den Zufriedenheitsgrund erweitert.
+2. **Neugründung** (unter etwa 0,3 über mehrere Jahre): Eine Gruppe (Gründergruppe 10 oder mehr) zieht als echte Siedler-Einheit los. Sie gründet einen Ort desselben Volkes. Liegt das Ziel weit weg oder ist die Kultur fremd, entsteht ein neues Volk über `ICivilizationRegistry.TryCreate`. Ein neues Volk braucht Abstimmung mit War, weil es Beziehungen und Meinungen erbt.
+3. **Aufstand** (unter etwa 0,2): Der Ort sagt sich los und wird ein eigenes Volk. Liegen Truppen dort, kann es zu Kampf kommen. Ablauf und Kampf stimmen wir mit War, dem AI Team und Military ab. Civ liefert das Ereignis `SettlementRevoltEvent` und die Abspaltung über `TransferSettlement` an ein neues Volk.
+
+**Schnittstelle zu Moral und Kriegsmüdigkeit** (abzustimmen mit Combat/Military und War):
+- Civ liest `GetCivWarExhaustion(civId)` als Eingang.
+- Civ stellt `ISettlementQuery`-Sicht `Contentment` bereit (neues Feld in SettlementView; die Änderung an der gemeinsamen Schnittstelle macht Integration).
+- Truppenmoral kann die Zufriedenheit des Herkunftsortes einbeziehen. Die Gewichtung entscheidet Military.
+
+**Etappen:**
+- V15a: Zufriedenheit berechnen und anzeigen, Abwanderung erweitern, Tests.
+- V15b: Neugründung durch Unzufriedene.
+- V15c: Aufstand und Abspaltung, gemeinsam mit War und Military.
+
+Jede Etappe bekommt Langzeittests mit 3 Seeds: Es dürfen keine Völker zerfallen, ohne dass es einen Grund dafür gibt. Die Wirkung muss im Entscheidungsprotokoll nachvollziehbar sein.
+
+## 18. Plan: Eigener Baustil je Volk, von der Spiel-KI festgelegt
+
+Nutzerwunsch vom 2026-10-27: Jeder Stamm baut eigene Häuser. Wie sie aussehen, entscheidet die Spiel-KI; wir machen nur die Vorgaben. Die Arbeit ist geteilt: Der Asset-Katalog liefert Bausteine und Bauregeln (`bld.home.*`, `bld.part.*`, Materialien). Civ entscheidet, was jedes Volk und jeder Haushalt daraus wählt, und wie sich das mit der Zeit entwickelt.
+
+**Baustil je Volk** (`CivStyle`, gespeichert, deterministisch aus Seed und Umwelt):
+- **Hauptmaterial:** Holz, Stein, Lehm, Reet/Soden oder Filz/Fell. Es folgt aus dem, was um den Hauptort tatsächlich vorkommt (Wald, Stein, Fruchtbarkeit, Klima und Biom). So bauen Völker im Wald Blockhäuser und Völker in Trockengebieten Lehmhäuser.
+- **Dachform** (steil, flach, Walm, Pult, Kuppel) und Neigung. Die Neigung folgt dem Klima: Schnee verlangt ein steiles Dach, Trockenheit erlaubt ein flaches. Die Dachform hat zusätzlich eine kulturelle Zufallskomponente aus dem Volks-Seed.
+- **Grundform:** rund, rechteckig, Langhaus oder Hofhaus.
+- **Schmuck:** keiner, Schnitzerei, Bemalung oder Ornamentband.
+- **Akzentfarbe:** eigene Palette, getrennt von der Reichsfarbe.
+
+**Entwicklung:**
+- Mit neuen Techniken ändert sich der Stil, zum Beispiel ab Bauwesen mit Steinsockel und ab Ziegel mit Ziegeldach. Die Wahl trifft das Volk, nicht ein festes Epochenbild.
+- Tochtersiedlungen übernehmen den Stil mit kleinen Abweichungen (regionale Varianten). Neue Völker aus Abspaltungen (§17) beginnen mit dem Stil ihrer Herkunft und entwickeln sich dann eigenständig.
+- Kontakt mit anderen Völkern über Handel und Eroberung kann einzelne Merkmale übertragen.
+
+**Haus je Haushalt:**
+- Jedes Wohnhaus bekommt einen Bauwunsch: Archetyp (`bld.home.*`) nach Beruf, Wohlstand und Klima, dazu Anbauten (`bld.part.*`) nach den Bedürfnissen des Haushalts (Werkstatt, Stall, Keller, Brunnen, Laden …).
+- Dazu kommt der Volksstil (Material, Dach, Schmuck).
+- Der Bauwunsch wird beim Bau festgelegt und bei Umbau, Anbau oder Verfall aktualisiert.
+
+**Schnittstelle**, abzustimmen mit dem Asset-Katalog und mit Art & UI:
+- `ICivStyleQuery.GetCivStyle(civId)` und `GetHouseSpec(buildingId)`. Ergebnis ist ein reiner Datensatz aus Katalog-Schlüsseln und Zahlen, kein Unity-Typ.
+- Neu registriert in ctx durch Civ. Für die Änderung an der gemeinsamen Schnittstellendoku ist Integration zuständig.
+- Die Darstellung (Presentation) baut daraus das Modell. Fehlt ein Baustein, nimmt sie den Platzhalter.
+
+**Etappen:**
+- S1: CivStyle (Material, Dach, Grundform, Schmuck, Farbe) aus Umwelt und Seed, mit Speichern/Laden und Tests (unterschiedliche Völker bauen unterschiedlich, Determinismus).
+- S2: HouseSpec je Wohnhaus aus Beruf, Wohlstand und Klima.
+- S3: Stilentwicklung über Techniken und Kontakt.
+
+Nach M1, vor oder zusammen mit V15, weil S2 die Haushalte aus V15 nutzt.

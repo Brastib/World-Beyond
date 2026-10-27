@@ -5,7 +5,7 @@ Dieses Dokument ist die oberste Referenz. Bei Widerspruch gilt: Aussage des Nutz
 
 ## 1. Vision
 
-> Langfristige Vision, Ausbaustufen M1–M6 und die Architekturentscheidungen dazu: **`Docs/VISION.md`** (Nutzeranweisung 2026-10-26, hat Vorrang vor älteren Aussagen hier).
+> Langfristige Vision, Ausbaustufen M1–M7 und die Architekturentscheidungen dazu: **`Docs/VISION.md`** (Nutzeranweisung 2026-10-26, hat Vorrang vor älteren Aussagen hier).
 
 World Beyond ist ein eigenständiger God-Simulator und eine Echtzeit-Weltsimulation für Windows-PC, inspiriert vom Sandbox-Prinzip von WorldBox, erweitert um echte Zivilisationen, moderne Militärtechnik, dynamische Kriege und strategische Mechaniken. Der Spieler erschafft und verändert eine Welt, beobachtet Zivilisationen und beeinflusst ihre Geschichte. Die Welt lebt auch ohne Eingriffe des Spielers weiter.
 
@@ -87,11 +87,12 @@ Danach: betroffene Dateien lesen, bestehenden Code erweitern, keine zweite Imple
 
 ## 8. Art Direction und Asset-Regeln (VERBINDLICH, Nutzerregel vom 2026-10-25)
 
-### 8.1 Echte Assets aktiv nutzen
-- Für alle wichtigen Bereiche aktiv nach echten, verfügbaren Assets suchen und sie **tatsächlich in Unity importieren**, nicht nur Links sammeln: Welt (Terrain, Berge, Wald, Gras, Wasser, Felsen, Straßen), Zivilisation (Häuser, Dörfer, Städte, Mauern, Infrastruktur), Militär (Soldaten, Humvee, Humvee mit MG, Panzer, Artillerie, Raketenfahrzeuge, weitere Fahrzeuge), Effekte (Explosion, Rauch, Feuer, Staub, Geschosse, Zerstörung), Animationen (Infanterie, Fahrzeuge, Kampf), UI (Icons, grafische Elemente).
-- 3D-Objekte = echte 3D-Modelle. Ein Bild ist nie Ersatz für ein Modell.
-- Quellen u. a.: Kenney, Poly Haven, ambientCG, Quaternius, OpenGameArt, Sketchfab (nur Modelle mit passender Lizenz, Download-Erlaubnis prüfen), weitere seriöse Plattformen.
-- Vor jeder Nutzung prüfen: tatsächliche Verfügbarkeit, Dateiformat (bevorzugt FBX/glTF/OBJ, Texturen PNG/JPG), Lizenz inkl. Namensnennungs- und Weitergabepflichten. Nie "frei" behaupten ohne geprüfte Lizenz.
+### 8.1 Eigene Modelle, Rohstoffe aus dem Netz (Nutzer 2026-10-26, ersetzt die Fassung vom 2026-10-25)
+- **Geometrie (Modelle) machen wir selbst**, prozedural oder modular, damit alles zusammenpasst (Nutzer: „Internet-Assets passen nicht zusammen, wir machen eigene“).
+- Aus dem Internet nur **stilneutrale Rohstoffe**: CC0-Fototexturen (Rinde, Blätter, Boden, Fels), HDRI-Himmel, Geräusche; Einzelteile nur, wenn sie nach Umarbeitung in den Stil passen.
+- 3D-Objekte = echte 3D-Modelle. Ein Bild ist nie Ersatz für ein Modell (Ausnahme: Impostor als ferne LOD-Stufe).
+- Vor jeder Nutzung Lizenz, Format und Namensnennung prüfen und in `ASSET_CREDITS.md` eintragen. Nie „frei“ behaupten ohne geprüfte Lizenz. Keine Käufe ohne ausdrückliche Zustimmung des Nutzers.
+- Katalog aller benötigten Assets: `Docs/proposals/ASSET_CATALOG.md`; Stil und Umweltkopplung: `Docs/proposals/ASSETS_STYLE_ENVIRONMENT.md` (PR #9).
 
 ### 8.2 Einheitlicher Grafikstil
 Pflichtkriterien für jedes Asset, bevor es importiert wird:

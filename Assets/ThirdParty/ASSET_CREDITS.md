@@ -20,9 +20,15 @@ Jeder sichtbare Platzhalter (Primitive, Standardmaterial, einfaches Ersatzmodell
 
 | Objekt | Platzhalter | Grund | Ziel-Asset / Ersatzplan | eingetragen von (Phase) | Status |
 |---|---|---|---|---|---|
-| – | – | – | – | – | Noch keine Platzhalter |
+| P-001 Nadelbaum (form.W05) | `ProceduralMeshes.Conifer()`: 3 gestapelte Kegel, flache Normalen, einfarbig | noch kein eigenes Modell | PlantForge W05 (Etappe A1), über `WorldRenderer.coniferMesh` | World (2), erfasst vom Asset-Katalog | Platzhalter |
+| P-002 Laubbaum (form.W01) | `ProceduralMeshes.Broadleaf()`: 2 facettierte Kegelstümpfe, einfarbig | dito | PlantForge W01 (A1), über `WorldRenderer.broadleafMesh` | World (2) | Platzhalter |
+| P-003 Fels (rock.boulder) | `ProceduralMeshes.Rock()`: verzerrter Doppelkegel | dito | prozedurale Felsen (A2), über `WorldRenderer.rockMesh` | World (2) | Platzhalter |
+| P-004 Gelände-Oberflächen | Vertexfarben aus `WorldPalette` + `WorldMaterials.CreateLit("Terrain")` | keine Bodentexturen | Materialmischung mit CC0-Texturen (A2) | World (2) | Platzhalter |
+| P-005 Wasser | `CreateLit("Water")`, flache Vierecke | kein Wasser-Shader | Wasser-Shader-Graph (A2) | World (2) | Platzhalter |
 
 ## 4. Kandidaten (recherchiert, NICHT importiert)
+
+Zentraler Katalog aller benötigten Assets mit Status: `Docs/proposals/ASSET_CATALOG.md` (PR #9).
 
 Detaillierte Kandidatenlisten werden von den jeweiligen Phasen gepflegt und hier zusammengeführt, sobald importiert wird:
 

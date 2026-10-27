@@ -9,6 +9,8 @@ Gilt für alle Threads, die Assets auswählen oder importieren (Welt, Zivilisati
 
 ### A1. Realismusgrad und Referenzen [E, aus Referenzbildern des Nutzers vom 2026-10-25 abgeleitet]
 
+> **Stand 2026-10-26:** Stil = **„Naturrealismus mit warmer Farbgebung“**: realistische Formen und Materialien (VISION V5, nicht Low-Poly), dazu die kräftige, warme Farbigkeit der Forge-of-Empires-Referenz und die Fernlesbarkeit von WorldBox. Regeln: ASSETS_STYLE_ENVIRONMENT §3. Aussagen unten zu „Low-/Mid-Poly gemalt“ sind dadurch ersetzt. Bestätigung durch den Nutzer am Style-Lock-Bild. **Qualitätsmaßstab des Nutzers:** fotorealistischer Laubbaum, Referenz R1 (ASSETS_STYLE_ENVIRONMENT §3.1; Bild nur im Projektordner, Urheber unbekannt, nicht ins Spiel übernehmen). Beim Style Lock Nahvergleich mit R1; reicht URP sichtbar nicht, wird HDRP dem Nutzer zur Entscheidung vorgelegt. **R1-Qualität gilt einheitlich für alle Assets** (ASSETS_STYLE_ENVIRONMENT §3.2). Alle Materialien nutzen eine gemeinsame Zustands-Shaderschicht für Nässe, Schnee (auch auf Blättern), Frost, Brand, Verkohlung und Schmutz (§5.1): bis M5 gesteuert über Jahreszeit/Testregler, ab M5 über die Umweltsimulation (VISION V9).
+
 Der Nutzer hat als Stil-Referenz vier Bilder geschickt: zwei WorldBox-Screenshots und zwei Forge-of-Empires-Screenshots (Stadt, Gefechtskarte mit Panzern). Daraus folgt:
 
 **„Farbenfroher, gemalter stilisierter Realismus“**
@@ -39,7 +41,7 @@ Alternative: „Realistisch“ (PBR, Poly-Haven-Texturen, realistische Fahrzeuge
 | Soldat | ≤ 1 500 | ≤ 1K (oft Farbpalette) |
 | Fahrzeug | ≤ 5 000 | ≤ 1K |
 | Gebäude | ≤ 4 000 | 1K–2K |
-| Bäume/Felsen | ≤ 1 500 | ≤ 1K |
+| Bäume/Felsen | LOD-Kette: LOD0 ca. 15 000–30 000 (nur wenige Bäume direkt an der Kamera, Maßstab R1), LOD1 ≈ 1 500, LOD2 ≈ 300, danach Impostor; Endwerte nach Messung in Unity | 2K für LOD0, sonst ≤ 1K |
 | Terrain-Oberflächen | – | 1K–2K, kachelbar |
 
 Mindestens 2 LOD-Stufen plus Symbol in der Fernansicht. Bevorzugte Formate: FBX oder glTF, Texturen PNG. Keine 4K-Texturen. Texturwerte folgen PROJECT_MASTER §8.2.

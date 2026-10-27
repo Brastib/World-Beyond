@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Eigene Assembly wie in Unity (asmdef WorldBeyond.Simulation), damit internal-Zugriffe über Assembly-Grenzen headless auffallen. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AssemblyName>WorldBeyond.Simulation</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../../Assets/_Project/Scripts/Simulation/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup><ProjectReference Include="../Core/WorldBeyond.Core.csproj" /></ItemGroup>
+</Project>

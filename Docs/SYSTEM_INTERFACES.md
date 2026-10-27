@@ -382,7 +382,7 @@ Hindernisse: Gebäude (Kachelbelegung), Wasser ohne Brücke, zu steiler Hang, Wa
 
 ### 4.5 Speichern der Welt (nach ARCHITECTURE §11)
 
-`WorldGrid : ISaveable` mit `SaveKey = "world"`, `LoadOrder = 0`, `SectionVersion = 1`. DTO: Seed, `WorldGenSettings`, Liste geänderter Kacheln gegenüber der frisch generierten Welt (Kachelindex `y * Width + x` + Kachel-DTO); ab > 30 % Änderungen komplettes Raster komprimiert (`fullGrid = true`). Im Kachel-DTO stehen Gelände, Biom und Ressource als String-Schlüssel über `ContentRegistry` (`ContentKind.Terrain` z. B. `"terrain.grass"`, `ContentKind.Biome` z. B. `"biome.temperate"`, `ContentKind.Resource` z. B. `"res.wood"`), `Building` als `EntityId` (Index + Generation), `OwnerCivId` als fachliche ID. Laden: aus Seed neu generieren → Deltas anwenden → Regionen, Chunks, Kartentextur neu aufbauen. Nicht gespeichert: Pfadanfragen, Regionen, Spatial Hash, Meshes. `WorldGrid` implementiert `ISaveReferenceCheck`: `Building`-IDs, die nicht mehr existieren, werden freigegeben (Warnung), `OwnerCivId` ohne existierende Zivilisation → 0 (Warnung).
+`WorldGrid : ISaveable` mit `SaveKey = "world"`, `LoadOrder = 0`, `SectionVersion = 1`. DTO: Seed, `WorldGenSettings`, Liste geänderter Kacheln gegenüber der frisch generierten Welt (Kachelindex `y * Width + x` + Kachel-DTO); ab > 30 % Änderungen komplettes Raster komprimiert (`fullGrid = true`). Im Kachel-DTO stehen Gelände, Biom und Ressource als String-Schlüssel über `ContentRegistry` (`ContentKind.Terrain` z. B. `"terrain.grass"`, `ContentKind.Biome` z. B. `"biome.temperate"`, `ContentKind.Resource` z. B. `"res.wood"`), `Building` als `EntityId` (Index + Generation), `OwnerCivId` als fachliche ID. Laden: aus Seed neu generieren → Deltas anwenden → Regionen, Chunks, Kartentextur neu aufbauen. Nicht gespeichert: Regionen, Spatial Hash, Meshes. Bewegungszustand (Agenten mit Ziel/Wegpunkten, Pfadanfragen in Reihenfolge, Fortschritt der aktiven A*-Suche) speichert `MovementSystem` als eigene Sektion `"movement"` (LoadOrder 20, v1, World adda8c4); Save→Load→Weiterlaufen ist bitgenau gleich dem durchgehenden Lauf (MovementSaveTests). `WorldGrid` implementiert `ISaveReferenceCheck`: `Building`-IDs, die nicht mehr existieren, werden freigegeben (Warnung), `OwnerCivId` ohne existierende Zivilisation → 0 (Warnung).
 
 ## 5. Räumliche Abfragen und Pfadfindung
 
@@ -417,7 +417,7 @@ namespace WorldBeyond.Core
 }
 ```
 
-Implementierung: A* auf dem Kachelraster, 8-Nachbarschaft ohne Eckenschneiden, Kosten aus `IWorldQuery.MoveCost`, binärer Heap, wiederverwendete Arrays. Nicht verbundene Ziele → sofort `NotFound`. Pfadanfragen und Regionen werden nicht gespeichert (SAVE_FORMAT_PROPOSAL §D). Flow Fields für große Verbände folgen später hinter derselben Schnittstelle.
+Implementierung: A* auf dem Kachelraster, 8-Nachbarschaft ohne Eckenschneiden, Kosten aus `IWorldQuery.MoveCost`, binärer Heap, wiederverwendete Arrays. Nicht verbundene Ziele → sofort `NotFound`. Regionen werden nicht gespeichert; Pfadanfragen speichert die Sektion `"movement"` (§4.5). Ein Ziel auf gesperrter Kachel wird auf die erste begehbare Nachbarkachel verlegt. Flow Fields für große Verbände folgen später hinter derselben Schnittstelle.
 
 `MovementSystem` (Order 300) liest `MovementClass`, `Speed`, `TurnRate`, `Acceleration` aus `UnitTypeData` (Werte von Civ/Military), bewegt entlang des Pfads mit Kurvenfahrt und Beschleunigung für Fahrzeuge, Hangfaktor und Höhe aus `SampleHeight`.
 
