@@ -11,8 +11,7 @@ Der erste echte Unity-Lauf ist genau der Zweck dieser Liste.
 - Project Settings → Graphics: ein URP-Asset ist eingetragen.
 - Project Settings → Player → Active Input Handling: **Both** (empfohlen) oder Input System Package.
 
-`ProjectSettings/`, `Packages/` und die `.meta`-Dateien liegen noch nicht im Repo. Wer sie schon lokal hat
-(DevOps-Stand), behält sie.
+`ProjectSettings/`, `Packages/` und die `.meta`-Dateien liegen seit 2026-10-27 im Repo (DevOps, 03ebda7/8a757c8). `.meta` für neue Dateien erzeugt Unity; DevOps committet sie beim nächsten Lauf.
 
 ## 1. Code holen
 
