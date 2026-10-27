@@ -174,6 +174,9 @@ namespace WorldBeyond.Simulation.Diplomacy
         public long LastPeaceProposalTick = long.MinValue / 4;
         public long LastAllianceTick = long.MinValue / 4;
         public long LastRecruitTick = long.MinValue / 4;
+        // Angenommene, vermutlich noch nicht ausgebildete Rekruten (zählen zur Armee-Obergrenze, bis RecruitPendingTicks vorbei sind).
+        public int PendingRecruits;
+        public long PendingRecruitsTick = long.MinValue / 4;
     }
 
     public readonly struct DecisionFactor

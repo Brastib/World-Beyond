@@ -336,6 +336,17 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.IsFalse(W.RecruitRequests.Any(r => r.civ == 1), "an der Obergrenze keine weitere Rekrutierung");
         }
 
+        // Probe-Merge: Aufträge sind noch nicht ausgebildet → ohne Mitzählen wurde über die Obergrenze hinaus rekrutiert.
+        [Test]
+        public void Recruitment_CountsPendingRequests_TowardsCap()
+        {
+            W.AddCiv(1, 0, 0, strength: 40, population: 300); W.AddCiv(2, 20, 0, strength: 2000, population: 4000);
+            W.Civs[1].ArmyUnits = 26;                         // Einheiten erscheinen im Test nie
+            D.DeclareWar(2, 1);
+            _rig.RunSeconds(60);
+            Assert.LessOrEqual(W.RecruitRequests.Where(r => r.civ == 1).Sum(r => r.count), 4, "Obergrenze 30 inkl. angefragter Rekruten");
+        }
+
         // Integration 2026-10-27: Kriegsende an das Kampfgeschehen koppeln.
         [Test]
         public void Peace_NotBeforeContact_OrMinWarTicks()

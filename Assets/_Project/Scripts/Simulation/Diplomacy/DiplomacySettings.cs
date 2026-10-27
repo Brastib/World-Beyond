@@ -82,6 +82,10 @@ namespace WorldBeyond.Simulation.Diplomacy
         // Obergrenze der Armee nach Bevölkerung (auch im Krieg): eine Civ rüstet sich nicht zu Tode.
         // Zählt Einheiten inklusive eingereihter Aufträge (Port GetArmyUnitCount). Platzhalter.
         public float MaxArmyUnitsPerPop = 0.10f;          // Bevölkerung 300 → höchstens 30 Einheiten
+        public int MinArmyUnitsCap = 2;                   // auch ein kleiner Stamm darf sich verteidigen
+        // Bis der Adapter eingereihte Aufträge mitzählt: angenommene Anfragen zählen so lange selbst als „unterwegs“.
+        // 0 schaltet das ab (wenn GetArmyUnitCount die Warteschlange enthält).
+        public long RecruitPendingTicks = 1200;
         // Aussichtslose Lage: Gegner mindestens so viel stärker → früh Frieden mit Zugeständnis suchen.
         public float HopelessThreat = 4f;
         public float HopelessPeaceExhaustion = 20f;

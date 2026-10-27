@@ -272,8 +272,11 @@ namespace WorldBeyond.Simulation.Diplomacy
             bool atWar = _d.IsAtWar(civ);
             float strength = W.GetMilitaryStrength(civ);
             float deficit = Math.Max(0f, PeacetimeArmyTarget(civ) - strength);
-            int cap = (int)Math.Floor(W.GetPopulation(civ) * S.MaxArmyUnitsPerPop);
-            int headroom = cap - Math.Max(0, W.GetArmyUnitCount(civ));
+            int cap = Math.Max(S.MinArmyUnitsCap, (int)Math.Floor(W.GetPopulation(civ) * S.MaxArmyUnitsPerPop));
+            var mem = _d.GetMemory(civ);
+            long now = _d.Now;
+            if (now - mem.PendingRecruitsTick >= S.RecruitPendingTicks) mem.PendingRecruits = 0;
+            int headroom = cap - Math.Max(0, W.GetArmyUnitCount(civ)) - mem.PendingRecruits;
             bool hopeless = atWar && threat >= S.HopelessThreat;
             // Verteidigt wird weiter, aber nur bis zur Obergrenze; aussichtslos → TryPeace sucht früh ein Zugeständnis.
             float utility = DiplomacyService.Clamp01(threat - 0.8f) + (atWar ? 0.3f : 0f) + (deficit > 0f ? 0.45f : 0f);
@@ -289,6 +292,7 @@ namespace WorldBeyond.Simulation.Diplomacy
                 count = 1;
                 ok = W.RequestMilitaryBuildup(civ, count, out reason);
             }
+            if (ok && S.RecruitPendingTicks > 0) { mem.PendingRecruits += count; mem.PendingRecruitsTick = now; }
             _d.LogDecision(civ, 0, DiplomaticActionType.Recruit, utility,
                 new DecisionFactor("Bedrohung", threat), new DecisionFactor("Im Krieg", atWar ? 1f : 0f), new DecisionFactor("Fehlende Grundarmee", deficit),
                 new DecisionFactor("Obergrenze", cap), new DecisionFactor("Aussichtslos", hopeless ? 1f : 0f),
