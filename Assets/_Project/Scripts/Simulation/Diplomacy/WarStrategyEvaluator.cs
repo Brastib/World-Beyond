@@ -33,7 +33,7 @@ namespace WorldBeyond.Simulation.Diplomacy
                 mem.LastAllianceTick = now;
 
             mem.RecruitWillingness = RecruitWillingness(civId);
-            if (now - mem.LastRecruitTick >= S.RecruitCooldownTicks && TryRecruit(civId))
+            if (S.SelfRecruit && now - mem.LastRecruitTick >= S.RecruitCooldownTicks && TryRecruit(civId))
                 mem.LastRecruitTick = now;
         }
 
