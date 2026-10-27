@@ -128,8 +128,9 @@ namespace WorldBeyond.Simulation.Civilizations
     public sealed class SettlerSystem
     {
         public static readonly ResourceCost SettlerCost = new ResourceCost { Food = 40, Wood = 30 };
-        public static readonly ResourceCost SettlerStartStock = new ResourceCost { Food = 30, Wood = 20 };   // mitgeführt
-        public const int SettlerPopulation = 5;
+        public static readonly ResourceCost SettlerStartStock = new ResourceCost { Food = 50, Wood = 30 };   // mitgeführt
+        /// <summary>Gründergruppe: zwei bis drei Familien. Mit 5 Personen blieben Tochterorte jahrhundertelang Weiler.</summary>
+        public const int SettlerPopulation = 10;
         public const int ReplanRadius = 10;
 
         private readonly CivState _s;
