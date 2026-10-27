@@ -155,6 +155,12 @@ namespace WorldBeyond.Presentation.UI
             _root = _document.rootVisualElement;
             _root.pickingMode = PickingMode.Ignore;
             _root.style.flexGrow = 1f;
+            if (theme == null)
+            {
+                // Ohne Theme-Stylesheet fehlt UI Toolkit zur Laufzeit die Standardschrift; eingebaute Schrift als Rückfall.
+                Font font = UnityEngine.Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                if (font != null) _root.style.unityFontDefinition = FontDefinition.FromFont(font);
+            }
             _root.Add(BuildTimeBar());
             _root.Add(BuildCivPanel());
             _root.Add(BuildFeedPanel());
