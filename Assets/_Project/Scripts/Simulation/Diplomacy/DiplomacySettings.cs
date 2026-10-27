@@ -83,9 +83,12 @@ namespace WorldBeyond.Simulation.Diplomacy
         // (IWarQuery.GetRecruitWillingness) selbst bestellt. Die Bereitschaft wird weiter berechnet.
         public bool SelfRecruit = true;
         // Keine feste Armeegrenze (Nutzerentscheidung 2026-10-27): Die KI wägt jeden Rekruten gegen seine Kosten ab.
-        // Kosten = Arbeitskraft (Armeeanteil a an der Bevölkerung: LaborCostWeight × a/(1−a), steigt gegen 100 % unbegrenzt)
+        // Kosten = Arbeitskraft: a = Armee / (Armee + Bevölkerung), weil die Bevölkerung Soldaten nicht mitzählt.
+        //          LaborCostWeight × a/(1−a) + LaborSteepWeight × ((a − LaborSteepFrom)/(1−a))² ab der Schwelle (steil, ohne harte Grenze)
         //        + Nahrung/Ressourcenmangel (FoodCostWeight × ResourceNeed) + Kriegsmüdigkeit (ExhaustionCostWeight × Erschöpfung/100).
         public float LaborCostWeight = 2f;
+        public float LaborSteepFrom = 0.12f;              // ab etwa 12 % unter Waffen steigen die Kosten steil
+        public float LaborSteepWeight = 40f;              // 20 % → ≈ 0,9 Kosten, 25 % → ≈ 1,9 (mehr als jeder Nutzen)
         public float FoodCostWeight = 0.5f;
         public float ExhaustionCostWeight = 0.5f;
         // Bis der Adapter eingereihte Aufträge mitzählt: angenommene Anfragen zählen so lange selbst als „unterwegs“.

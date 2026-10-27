@@ -267,11 +267,14 @@ namespace WorldBeyond.Simulation.Diplomacy
             return W.GetPopulation(civ) * S.PeaceArmyStrengthPerPop * (0.5f + DiplomacyService.Clamp01(W.GetAggression(civ)));
         }
 
-        // Kosten einer Armee dieser Größe: Arbeitskraft (unbegrenzt steigend), Nahrungsmangel, Kriegsmüdigkeit.
+        // Kosten einer Armee dieser Größe: Arbeitskraft (ab LaborSteepFrom steil, ohne harte Grenze), Nahrungsmangel, Kriegsmüdigkeit.
+        // population = Bevölkerung ohne Soldaten (ICivilizationQuery.Population).
         public float RecruitCost(int civ, int armyUnits, int population)
         {
-            float share = Math.Min(0.99f, armyUnits / (float)Math.Max(1, population));
-            float labor = S.LaborCostWeight * share / (1f - share);
+            // Bevölkerung zählt Soldaten nicht mit: Anteil an allen Menschen der Civ.
+            float share = Math.Min(0.99f, Math.Max(0, armyUnits) / (float)Math.Max(1, armyUnits + Math.Max(0, population)));
+            float steep = Math.Max(0f, share - S.LaborSteepFrom) / (1f - share);
+            float labor = S.LaborCostWeight * share / (1f - share) + S.LaborSteepWeight * steep * steep;
             float food = S.FoodCostWeight * DiplomacyService.Clamp01(W.GetResourceNeed(civ));
             float exhaustion = 0f;
             foreach (var war in _d.ActiveWars)
