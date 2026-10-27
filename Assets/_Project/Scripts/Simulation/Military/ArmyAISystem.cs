@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using WorldBeyond.Core;
 using WorldBeyond.Simulation.Combat;
 using WorldBeyond.Simulation.Units;
+using WorldBeyond.Simulation.World;
 
 namespace WorldBeyond.Simulation.AI
 {
@@ -27,6 +28,11 @@ namespace WorldBeyond.Simulation.Military
         private const float ArrivalRadius = 20f;
         private const float FormationSpacing = 4f;
         private const float SlotTolerance = 6f;
+        private const int FailBackoffTicks = 50;          // nach gescheitertem Weg 5 s warten, je weiterem Fehlschlag doppelt
+        private const int MaxFailBackoffTicks = 1200;     // höchstens 2 min
+        private const int BlockTargetTicks = 600;         // unerreichbares Armeeziel 60 s meiden, bei Wiederholung doppelt so lange
+        private const int MaxBlockTargetTicks = 9600;     // höchstens 16 min
+        private const float BlockRadius = 30f;
 
         private readonly ArmyRegistry _registry;
         private readonly IUnitStore _units;
@@ -34,6 +40,7 @@ namespace WorldBeyond.Simulation.Military
         private readonly CombatSystem _combat;
         private readonly CombatEnvironment _combatEnv;
         private readonly ArmyEnvironment _env;
+        private readonly SimClock _clock;
 
         private readonly List<EntityId> _alive = new List<EntityId>();
         private readonly SortedDictionary<int, List<EntityId>> _freeByCiv = new SortedDictionary<int, List<EntityId>>();
@@ -44,10 +51,16 @@ namespace WorldBeyond.Simulation.Military
         // Lauf vom ununterbrochenen ab: K7). Ziele, die nicht hier stehen, gelten als fremd und werden nicht überschrieben.
         private readonly Dictionary<EntityId, (float x, float z)> _issued = new Dictionary<EntityId, (float x, float z)>();
 
+        // Gescheiterte Wege (UnitMoveFailedEvent) je Einheit: bis wann nicht neu befehlen, wie oft in Folge gescheitert.
+        private readonly Dictionary<EntityId, (long until, int count)> _failed = new Dictionary<EntityId, (long until, int count)>();
+        // Unerreichbares Ziel je Armee (Hälfte der Einheiten scheitert): Ort, Ablauf-Tick, wie oft dieser Ort in Folge gesperrt wurde.
+        // Abgelaufene Einträge bleiben stehen, damit eine erneute Sperre desselben Orts länger dauert.
+        private readonly SortedDictionary<int, (float x, float z, long until, int count)> _blocked = new SortedDictionary<int, (float x, float z, long until, int count)>();
+
         private static bool SameSpot(float ax, float az, float bx, float bz) => MathF.Abs(ax - bx) <= 1f && MathF.Abs(az - bz) <= 1f;
 
         public ArmyAISystem(ArmyRegistry registry, IUnitStore units, MilitaryCatalog catalog, CombatSystem combat,
-            CombatEnvironment combatEnv, ArmyEnvironment env)
+            CombatEnvironment combatEnv, ArmyEnvironment env, ISimEventBus events = null, SimClock clock = null)
         {
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _units = units ?? throw new ArgumentNullException(nameof(units));
@@ -55,6 +68,50 @@ namespace WorldBeyond.Simulation.Military
             _combat = combat ?? throw new ArgumentNullException(nameof(combat));
             _combatEnv = combatEnv ?? throw new ArgumentNullException(nameof(combatEnv));
             _env = env ?? throw new ArgumentNullException(nameof(env));
+            _clock = clock;
+            events?.Subscribe<UnitMoveFailedEvent>(OnMoveFailed);
+        }
+
+        // Nur Ziele, die die Armee-KI selbst gesetzt hat; fremde Befehle (Spieler, Civ) gehen sie nichts an.
+        private void OnMoveFailed(UnitMoveFailedEvent e)
+        {
+            if (!_issued.TryGetValue(e.Unit, out var last) || !SameSpot(last.x, last.z, e.TargetX, e.TargetZ)) return;
+            _issued.Remove(e.Unit);
+            long tick = _clock?.Tick ?? 0;
+            int count = _failed.TryGetValue(e.Unit, out var f) ? f.count + 1 : 1;
+            long wait = Math.Min(MaxFailBackoffTicks, (long)FailBackoffTicks << Math.Min(count - 1, 10));
+            _failed[e.Unit] = (tick + wait, count);
+        }
+
+        private long Now => _clock?.Tick ?? 0;
+
+        private bool InBackoff(EntityId id, long tick) => _failed.TryGetValue(id, out var f) && f.until > tick;
+
+        private bool IsBlocked(int armyId, float x, float z, long tick)
+        {
+            return _blocked.TryGetValue(armyId, out var b) && b.until > tick && SameArea(b.x, b.z, x, z);
+        }
+
+        private static bool SameArea(float ax, float az, float bx, float bz)
+        {
+            float dx = ax - bx, dz = az - bz;
+            return dx * dx + dz * dz <= BlockRadius * BlockRadius;
+        }
+
+        // Scheitert mindestens die Hälfte der Einheiten am Weg, gilt das Ziel als unerreichbar: meiden und sofort neu entscheiden.
+        private void CheckUnreachable(Army a, long tick)
+        {
+            int n = a.Units.Count, failing = 0;
+            if (n == 0 || a.Order.Kind == ArmyOrderKind.None || a.Order.Kind == ArmyOrderKind.AttackUnit) return;
+            foreach (var id in a.Units) if (InBackoff(id, tick)) failing++;
+            if (failing * 2 < n || IsBlocked(a.Id, a.Order.X, a.Order.Z, tick)) return;
+            int count = 1;
+            if (_blocked.TryGetValue(a.Id, out var prev) && SameArea(prev.x, prev.z, a.Order.X, a.Order.Z)) count = prev.count + 1;
+            long wait = Math.Min(MaxBlockTargetTicks, (long)BlockTargetTicks << Math.Min(count - 1, 10));
+            _blocked[a.Id] = (a.Order.X, a.Order.Z, tick + wait, count);
+            foreach (var id in a.Units)
+                if (_failed.TryGetValue(id, out var f)) _failed[id] = (0, f.count);   // neues Ziel sofort versuchen, Zähler bleibt
+            a.LastDecisionTick = -1_000_000;
         }
 
         public string Name => "ArmyAI";
@@ -65,7 +122,7 @@ namespace WorldBeyond.Simulation.Military
         {
             long tick = ctx.Clock.Tick;
             _registry.Prune();
-            if (_issued.Count > 0 && tick % 600 == 0) PruneIssued();
+            if (tick % 600 == 0) PruneIssued(tick);
             CollectFreeUnits();
             FormArmies();
 
@@ -75,6 +132,7 @@ namespace WorldBeyond.Simulation.Military
             {
                 if (!_registry.Exists(a.Id)) continue;
                 bool manual = tick < a.ManualUntilTick;
+                if (!manual) CheckUnreachable(a, tick);
                 if (!manual && tick - a.LastDecisionTick >= DecisionIntervalTicks)
                 {
                     a.LastDecisionTick = tick;
@@ -86,11 +144,17 @@ namespace WorldBeyond.Simulation.Military
             foreach (int civ in _civs) MaybeRecruit(civ, tick);
         }
 
-        private void PruneIssued()
+        private void PruneIssued(long tick)
         {
             var dead = new List<EntityId>();
             foreach (var id in _issued.Keys) if (!_units.Exists(id)) dead.Add(id);
             foreach (var id in dead) _issued.Remove(id);
+            dead.Clear();
+            foreach (var id in _failed.Keys) if (!_units.Exists(id)) dead.Add(id);
+            foreach (var id in dead) _failed.Remove(id);
+            var expired = new List<int>();
+            foreach (var kv in _blocked) if (!_registry.Exists(kv.Key)) expired.Add(kv.Key);
+            foreach (int id in expired) _blocked.Remove(id);
         }
 
         // ---------------- Armeebildung ----------------
@@ -181,7 +245,8 @@ namespace WorldBeyond.Simulation.Military
             // 1. Kriegsziele von War (absteigend nach Wert geliefert): erstes feindliches Ziel
             if (_env.Objectives != null)
                 foreach (var o in _env.Objectives(a.CivId))
-                    if (o.OwnerCiv != a.CivId && _combatEnv.AreHostile(a.CivId, o.OwnerCiv)) { best = o; return true; }
+                    if (o.OwnerCiv != a.CivId && _combatEnv.AreHostile(a.CivId, o.OwnerCiv) && !IsBlocked(a.Id, o.X, o.Z, Now))
+                    { best = o; return true; }
 
             // 2. Rückfall: nächste feindliche Militäreinheit, sonst nächste feindliche Einheit
             float bestD = float.MaxValue;
@@ -189,6 +254,7 @@ namespace WorldBeyond.Simulation.Military
             foreach (var id in _alive)
             {
                 if (!_units.TryGet(id, out var u) || u.CivId == a.CivId || !_combatEnv.AreHostile(a.CivId, u.CivId)) continue;
+                if (IsBlocked(a.Id, u.X, u.Z, Now)) continue;
                 bool mil = _catalog.TryGet(u.Type, out _);
                 if (bestIsMilitary && !mil) continue;
                 float dx = u.X - cx, dz = u.Z - cz;
@@ -221,6 +287,7 @@ namespace WorldBeyond.Simulation.Military
             if (_lastRecruit.TryGetValue(civ, out long last) && tick - last < RecruitIntervalTicks) return;
             int have = 0;
             foreach (var a in _registry.All) if (a.CivId == civ) have += a.Units.Count;
+            if (_env.PendingRecruits != null) have += Math.Max(0, _env.PendingRecruits(civ));   // schon eingereihte Aufträge (QA: endlose Aufrüstung)
             int missing = _env.DesiredArmySize - have;
             if (missing <= 0) return;
             _lastRecruit[civ] = tick;
@@ -293,7 +360,8 @@ namespace WorldBeyond.Simulation.Military
                 float sx = a.Order.X + ((k % cols) - (cols - 1) * 0.5f) * FormationSpacing;
                 float sz = a.Order.Z + ((k / cols) - (cols - 1) * 0.5f) * FormationSpacing;
                 float dx = sx - u.X, dz = sz - u.Z;
-                if (dx * dx + dz * dz <= SlotTolerance * SlotTolerance) continue;
+                if (dx * dx + dz * dz <= SlotTolerance * SlotTolerance) { _failed.Remove(id); continue; }
+                if (!u.HasMoveTarget && InBackoff(id, _clock?.Tick ?? 0)) continue;
                 if (!u.HasMoveTarget || !SameSpot(u.MoveTargetX, u.MoveTargetZ, sx, sz))
                 {
                     _units.SetMoveTarget(id, sx, sz);
@@ -321,7 +389,14 @@ namespace WorldBeyond.Simulation.Military
                 if (_units.Exists(kv.Key))
                     issued.Add(new ArmyAIIssuedRecord { Index = kv.Key.Index, Generation = kv.Key.Generation, X = kv.Value.x, Z = kv.Value.z });
             issued.Sort((a, b) => a.Index != b.Index ? a.Index.CompareTo(b.Index) : a.Generation.CompareTo(b.Generation));
-            return new ArmyAISaveState { Recruit = recruit.ToArray(), Issued = issued.ToArray() };
+            var failed = new List<ArmyAIFailedRecord>();
+            foreach (var kv in _failed)
+                if (_units.Exists(kv.Key))
+                    failed.Add(new ArmyAIFailedRecord { Index = kv.Key.Index, Generation = kv.Key.Generation, UntilTick = kv.Value.until, Count = kv.Value.count });
+            failed.Sort((a, b) => a.Index != b.Index ? a.Index.CompareTo(b.Index) : a.Generation.CompareTo(b.Generation));
+            var blocked = new List<ArmyAIBlockedRecord>();
+            foreach (var kv in _blocked) blocked.Add(new ArmyAIBlockedRecord { ArmyId = kv.Key, X = kv.Value.x, Z = kv.Value.z, UntilTick = kv.Value.until, Count = kv.Value.count });
+            return new ArmyAISaveState { Recruit = recruit.ToArray(), Issued = issued.ToArray(), Failed = failed.ToArray(), Blocked = blocked.ToArray() };
         }
 
         public bool TryRestoreState(object dto, out string error)
@@ -329,6 +404,8 @@ namespace WorldBeyond.Simulation.Military
             if (!(dto is ArmyAISaveState s) || s.Recruit == null || s.Issued == null) { error = "armyai: Zustand fehlt oder hat falschen Typ."; return false; }
             _lastRecruit.Clear();
             _issued.Clear();
+            _failed.Clear();
+            _blocked.Clear();
             foreach (var r in s.Recruit) if (r != null) _lastRecruit[r.CivId] = r.LastTick;
             foreach (var r in s.Issued)
             {
@@ -336,6 +413,15 @@ namespace WorldBeyond.Simulation.Military
                 var id = new EntityId(r.Index, r.Generation);
                 if (_units.Exists(id)) _issued[id] = (r.X, r.Z);   // tote Einheit: Eintrag ohne Wirkung, verwerfen
             }
+            // Failed/Blocked sind additive Felder: ältere Stände ohne sie laden mit leerem Zustand.
+            foreach (var r in s.Failed ?? Array.Empty<ArmyAIFailedRecord>())
+            {
+                if (r == null) continue;
+                var id = new EntityId(r.Index, r.Generation);
+                if (_units.Exists(id)) _failed[id] = (r.UntilTick, Math.Max(1, r.Count));
+            }
+            foreach (var r in s.Blocked ?? Array.Empty<ArmyAIBlockedRecord>())
+                if (r != null) _blocked[r.ArmyId] = (r.X, r.Z, r.UntilTick, Math.Max(1, r.Count));
             error = null;
             return true;
         }
@@ -346,7 +432,15 @@ namespace WorldBeyond.Simulation.Military
     {
         public ArmyAIRecruitRecord[] Recruit;
         public ArmyAIIssuedRecord[] Issued;
+        public ArmyAIFailedRecord[] Failed;     // additiv; fehlt in älteren Ständen (null)
+        public ArmyAIBlockedRecord[] Blocked;   // additiv; fehlt in älteren Ständen (null)
     }
+
+    [Serializable]
+    public sealed class ArmyAIFailedRecord { public int Index, Generation; public long UntilTick; public int Count; }
+
+    [Serializable]
+    public sealed class ArmyAIBlockedRecord { public int ArmyId; public float X, Z; public long UntilTick; public int Count; }
 
     [Serializable]
     public sealed class ArmyAIRecruitRecord { public int CivId; public long LastTick; }

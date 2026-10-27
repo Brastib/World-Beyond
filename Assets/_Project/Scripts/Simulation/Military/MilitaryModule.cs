@@ -18,6 +18,7 @@ namespace WorldBeyond.Simulation.Military
             armyEnv ??= new ArmyEnvironment();
 
             var catalog = new MilitaryCatalog();
+            catalog.BindCensus(ctx.Units, ctx.Clock, () => armyEnv.PendingRecruits);
             MilitaryContent.RegisterM1(catalog, ctx.UnitTypes);
 
             var service = new CombatService(ctx.Units, catalog, ctx.Events, env);
@@ -32,12 +33,13 @@ namespace WorldBeyond.Simulation.Military
             registerSystem(system);
 
             var armies = new ArmyRegistry(ctx.Units, catalog, ctx.Events, ctx.Clock, armyEnv);
-            var armyAI = new ArmyAISystem(armies, ctx.Units, catalog, system, env, armyEnv);
+            var armyAI = new ArmyAISystem(armies, ctx.Units, catalog, system, env, armyEnv, ctx.Events, ctx.Clock);
             ctx.Register(armyEnv);
             ctx.Register(armies);
             ctx.Register<IArmyRegistry>(armies);
             ctx.Register<IArmyQuery>(armies);
             ctx.Register<AI.IArmyAI>(armyAI);
+            ctx.Register(armyAI);
             ctx.Saveables.Add(armies);
             ctx.Saveables.Add(armyAI);
             registerSystem(armyAI);
