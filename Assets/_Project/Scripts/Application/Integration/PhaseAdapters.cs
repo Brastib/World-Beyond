@@ -66,6 +66,18 @@ namespace WorldBeyond.Application.Integration
             return sum;
         }
 
+        // Lebende Kampfeinheiten (Stärke > 0). Eingereihte Rekrutierungsaufträge fehlen noch (IRecruitment hat keine
+        // Abfrage dafür); War zählt angenommene Anfragen solange selbst mit (DiplomacySettings.RecruitPendingTicks).
+        public int GetArmyUnitCount(int civId)
+        {
+            int n = 0;
+            _units.CopyAliveIds(_scratchUnits);
+            for (int i = 0; i < _scratchUnits.Count; i++)
+                if (_units.TryGet(_scratchUnits[i], out var u) && u.CivId == civId && _military.GetCombatStrength(u.Type) > 0f)
+                    n++;
+            return n;
+        }
+
         public float GetUnitCombatStrength(int unitTypeId) => _military.GetCombatStrength(new UnitTypeId(unitTypeId));
 
         public int GetPopulation(int civId) => _civs.TryGet(civId, out var c) ? c.Population : 0;
