@@ -201,7 +201,7 @@ Biome laut `BiomeType`. „Tropen“ = `TropicalForest` (9), „Mittelmeer“ = 
 | ID | Name | Wuchsform | Biome | Status | Bemerkung |
 |---|---|---|---|---|---|
 | plant.festuca | Schwingel (Wiesen-/Trockengras) | W18 | Temperate, Alpine | geplant | |
-| plant.stipa | Federgras | W18 | Steppe, Desert | geplant | |
+| plant.stipa | Federgras | W18 | Savanna, Desert, Temperate (trocken) | geplant | Steppe gibt es nicht als Biom (s. u.) |
 | plant.themeda | Savannengras | W18 | Savanna | geplant | |
 | plant.ammophila | Strandhafer | W18 | Coast | geplant | |
 | plant.eriophorum | Wollgras | W18 | Tundra, Wetland | geplant | |
@@ -219,6 +219,8 @@ Biome laut `BiomeType`. „Tropen“ = `TropicalForest` (9), „Mittelmeer“ = 
 | plant.lianen | Lianen (Sammelgruppe) | W22 | Tropen | geplant | Gruppe, keine Gattung |
 | plant.sphagnum | Torfmoos | W25 | Wetland, Boreal | geplant | |
 | plant.cladonia | Rentierflechte | W25 | Tundra, Boreal | geplant | Flechte, botanisch keine Pflanze |
+
+Hinweis Prüfung 2026-10-27: Die Simulation kennt kein eigenes Steppen- oder Graslandbiom (gemäßigtes Grasland, Prärie). Federgras, Wildrinder und Pferde stehen deshalb bei Savanna/Temperate. Ein Biom `Grassland` wäre eine Anfrage an World (Enum anhängen); offen, nicht dringend.
 
 ### 2.6 Wasserpflanzen
 
@@ -361,12 +363,12 @@ Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude
 | fauna.boar | Wildschwein | Temperate | P3 | geplant |
 | fauna.wolf | Wolf | Boreal, Tundra | P3 | geplant |
 | fauna.bear | Bär | Boreal, Alpine | P3 | geplant |
-| fauna.bison | Wildrind | Savanna, Steppe | P3 | geplant |
+| fauna.bison | Wildrind | Savanna, Temperate | P3 | geplant |
 | fauna.camel | Kamel | Desert | P3 | geplant |
 | fauna.birds | Vogelschwärme | alle | P3 | geplant |
 | fauna.fish | Fischschwärme | Wasser | P3 | geplant |
 | fauna.livestock | Nutztiere (Rind, Schaf, Huhn) | Siedlungen | P3 | geplant |
-| fauna.horse | Pferd | Temperate, Steppe | P3 | geplant |
+| fauna.horse | Pferd | Temperate, Savanna | P3 | geplant |
 
 ## 7. Effekte und Decals (Weg PS, Darstellung über `IVfxService`, Besitzer UI)
 

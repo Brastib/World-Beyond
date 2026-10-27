@@ -320,11 +320,11 @@ Regel INTEGRATION §0.6: Nichts aus M2–M6 beginnen, bevor M1 getestet ist. Des
 | A0 (jetzt) | Katalog, Stilkonzept, Konflikte gemeldet | – | dieses Dokument + Katalog |
 | A1 | PlantForge-Grundversion: 3 Wuchsformen (rund Laub, Kegel Nadel, Busch), Wind-Shader, LOD + Impostor; ersetzt P-001/P-002 im `VegetationLayer` (mit World abgestimmt) | M1 getestet, Unity-Projekt im Repo | Style-Board-Screenshot Nah/Mittel/Fern, Bildrate gemessen, Nutzer bestätigt |
 | A2 | Alle 27 Wuchsformen + Leitgattungen P2; Felsen; Pflanzen-Zustände (§5) per Shader | A1 abgenommen | Screenshot je Biom, Zustandsreihe |
-| A3 | Umwelt E1: Vegetationsfeld, Wachstum/Sterben/Sukzession, Wind/Wetter-Grundlage | M2 (Chronik + Kalender) | dotnet-Test „N Jahre ohne Eingriff“, Speichern/Laden identisch |
+| A3 | Umwelt E1: Vegetationsfeld, Wachstum/Sterben/Sukzession, Wind/Wetter-Grundlage | M5 (Nutzerentscheidung 2026-10-26), setzt M2 (Chronik + Kalender) voraus | dotnet-Test „N Jahre ohne Eingriff“, Speichern/Laden identisch |
 | A4 | Umwelt E2: Blitz → Brand → Sichtung → Feuerwehr | A3, Civ-Einheiten | Test: Brand wird erst nach Sichtung bekämpft; Chronik-Einträge |
 | A5 | Umwelt E3: Sturm/Orkan mit Sturmwurf und Schäden | A3 | Test + Video/Screenshot |
 | A6 | Umwelt E4: Erdbeben/Tsunami, Überflutung | A3 | Test + Screenshot |
-| A7 | Gebäude-Baukasten, Menschen-Grundkörper, Fahrzeuge (eigene Stilfamilie) | Style Lock | Style Board laut PROJECT_MASTER §8.3 |
+| A7 | Gebäude-Baukasten (Blender, mit Bruchstücken und Innenteilen), Menschen-Grundkörper, Fahrzeuge (eigene Stilfamilie) | Style Lock; Epochen-Gebäude M3, Wohnhaus-Klassen/Innenräume M4, Zerstörung M7 | Style Board laut PROJECT_MASTER §8.3 |
 | laufend | Pflanzen P3/P4 als Daten | A2 | Katalog-Zähler |
 
 **Entscheidung des Nutzers (2026-10-26 16:28 UTC): Umwelt bleibt bei M5.** A3–A6 (Vegetationsfeld, Blitz/Brand/Feuerwehr, Sturm, Tsunami) beginnen erst mit M5. Nach dem M1-Test kommen nur A1/A2 (neue Bäume, Pflanzen, Felsen, Zustände per Shader) und später A7.
