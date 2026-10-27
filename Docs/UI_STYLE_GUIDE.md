@@ -71,6 +71,21 @@ Unity Particle System, gepoolt (ARCHITECTURE §7). Rauch grau-braun und halbtran
 4. Im Spiel gerendert und neben Soldat, Humvee und Haus verglichen (Screenshot bei Nah- und Fernzoom), nicht nur anhand des Vorschaubilds.
 5. Platzhalter werden in einer Liste geführt, bis sie ersetzt sind.
 
+### A8. Langfristiges Ziel der Nahansicht [E, aus Zielbildern R5–R7 des Nutzers vom 2026-10-27]
+
+Nutzer: „So soll es ingame irgendwann aussehen … auch die Gebäude.“ Zielbilder (nicht ins Repo, fremde Spiele-Screenshots, nur Referenz): Schrägsicht auf eine dichte Altstadt mit Kirche/Platz im Gefecht, eine zerbombte Stadt mit Panzern und Ruinen, ein Palisadendorf mit Türmen, Feldern, Mühlen, Vieh und vielen Menschen. Das betrifft drei Ebenen, nicht nur die Grafik:
+
+1. **Siedlungsaufbau (Besitzer Civ):** dichte, gewachsene Orte statt Einzelgebäude auf Kacheln: Wege und Plätze, Häuser an Wegen ausgerichtet, Zentrum mit Großbau (Kirche/Halle), Mauer/Palisade mit Türmen und Toren, Felder, Weiden und Mühlen am Rand, Kleinkram (Zäune, Karren, Fässer, Bäume im Ort).
+2. **Gebäude und Zerstörung (Asset-Katalog, Art):** modulare Gebäude je Epoche (Bauteil-Sätze, ASSET_CATALOG §4), Zustände intakt/beschädigt (Dachloch, ausgebrannt)/Ruine mit Schutt; Krater, Rauch, Feuer (A6).
+3. **Leben:** viele sichtbare Menschen und Tiere im Ort (Sammelinstanzen, nicht je Person ein Simulationsobjekt), Fahrzeuge in echter Größe.
+
+Abgeleitetes Kamera- und Lichtziel für die Nahansicht (Werte zur Prüfung im Style Lock):
+- Kamera: Neigung 40–55°, Abstand 40–150 m, Sichtfeld 35–40° (weniger Verzerrung als 60°). Heute: minPitch 32°, maxPitch 72°, minDistance 15 m (StrategyCameraController, Besitzer World), Sichtfeld Standard.
+- Licht: Sonne tiefer und wärmer (30–40° Höhe statt 50°), lange weiche Schatten, Schattendistanz in der Nahansicht ≥ 150 m mit 4 Kaskaden, SSAO an, leichte Luftperspektive (Dunst ab ca. 300 m in der Nahansicht), Farbkorrektur: warme Lichter, leicht entsättigte Schatten, Bloom nur für Feuer/Explosionen. Heute: WorldAtmosphere (Sonnenhöhe 50°, Nebel 600–2600 m); URP-Asset und Post-Processing liegen bei der Integration/DevOps.
+- Materialien: Abnutzung, Kantenschmutz, Dachziegel/Stroh/Putz mit Textur (A3/A4); keine flachen Einfarbflächen in der Nahansicht.
+
+Stand 27.10.2026: Die M1-Darstellung (Presentation/WorldObjects) nutzt PLATZHALTER mit flachen Farben; sie erfüllt dieses Ziel bewusst nicht. Reihenfolge: zuerst Siedlungsaufbau und Gebäudezustände in der Simulation, dann Bauteil-Sätze aus dem Katalog, dann Licht/Post-Processing im Style Lock.
+
 ## B. Benutzeroberfläche
 
 ## 1. Designrichtung
