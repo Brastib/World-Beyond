@@ -130,7 +130,7 @@ namespace WorldBeyond.Simulation.Civilizations
             var world = State.World;
             world.FindBestTiles(x, y, 8, (int tx, int ty, in TileData t) =>
             {
-                if (t.OwnerCivId != 0 || !world.CanPlaceFootprint(tx, ty, SettlementRegistry.CoreSize, SettlementRegistry.CoreSize, out _)) return 0f;
+                if (t.OwnerCivId != 0 || SettlementRegistry.CoreOnStreet(tx, ty) || !world.CanPlaceFootprint(tx, ty, SettlementRegistry.CoreSize, SettlementRegistry.CoreSize, out _)) return 0f;
                 foreach (int id in State.SettlementIdsInOrder)
                 {
                     var o = State.FindSettlement(id);
@@ -141,7 +141,8 @@ namespace WorldBeyond.Simulation.Civilizations
                 int ddx = tx - x, ddy = ty - y;
                 return v / (1f + (float)Math.Sqrt(ddx * ddx + ddy * ddy) * 0.05f);
             }, 1, _refine);
-            return _refine.Count > 0 ? (_refine[0].X, _refine[0].Y) : (x, y);
+            if (_refine.Count > 0) return (_refine[0].X, _refine[0].Y);
+            return SettlementRegistry.OffStreet(x, y);   // Rückfall: vorgeschlagener Platz, vom Straßenraster weggeschoben
         }
     }
 
@@ -162,7 +163,7 @@ namespace WorldBeyond.Simulation.Civilizations
             world.FindStartLocations(32, SettlementRegistry.MinSettlementDistance, starts);
             foreach (var s in starts)
             {
-                int sx = s.X - 1, sy = s.Y - 1;
+                var (sx, sy) = SettlementRegistry.OffStreet(s.X - 1, s.Y - 1);
                 bool free = world.InBounds(sx, sy) && world.Get(sx, sy).OwnerCivId == 0;
                 if (!free) continue;
                 // Probe mit einer existierenden Civ ist nicht möglich; Gründbarkeit ohne Besitzprüfung genügt hier.

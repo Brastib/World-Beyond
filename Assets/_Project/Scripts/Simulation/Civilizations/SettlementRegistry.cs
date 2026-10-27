@@ -82,6 +82,7 @@ namespace WorldBeyond.Simulation.Civilizations
         {
             if (_s.Civ(civId) == null || !_s.Civ(civId).Alive) { reason = $"Zivilisation {civId} existiert nicht."; return false; }
             if (!_s.World.CanPlaceFootprint(x, y, CoreSize, CoreSize, out var failure)) { reason = $"Ort ungeeignet ({failure})."; return false; }
+            if (CoreOnStreet(x, y)) { reason = "Der Ortskern darf nicht auf einer Straße liegen."; return false; }
             for (int yy = y; yy < y + CoreSize; yy++)
                 for (int xx = x; xx < x + CoreSize; xx++)
                 {
@@ -193,6 +194,27 @@ namespace WorldBeyond.Simulation.Civilizations
             int dx = (x % StreetSpacing + StreetSpacing) % StreetSpacing;
             int dy = (y % StreetSpacing + StreetSpacing) % StreetSpacing;
             return dx == StreetSpacing - 1 || dy == StreetSpacing - 1;
+        }
+
+        /// <summary>
+        /// Ein Ortskern auf einer Straße schneidet sie ab; die Reststücke zwischen Kern und Gebäuden werden Sackgassen,
+        /// in denen der Ankunftspunkt landen kann (Probe-Merge mit Kriegen, Seed 1).
+        /// </summary>
+        public static bool CoreOnStreet(int x, int y)
+        {
+            for (int yy = y; yy < y + CoreSize; yy++)
+                for (int xx = x; xx < x + CoreSize; xx++)
+                    if (IsStreet(xx, yy)) return true;
+            return false;
+        }
+
+        /// <summary>Nächster Kernplatz rechts/unterhalb, dessen 2×2-Kern ganz in einem Baublock liegt.</summary>
+        public static (int x, int y) OffStreet(int x, int y)
+        {
+            int bx = x, by = y;
+            while (CoreOnStreet(bx, by) && bx < x + StreetSpacing) bx++;
+            while (CoreOnStreet(bx, by) && by < y + StreetSpacing) by++;
+            return (bx, by);
         }
 
         /// <summary>Legt eine Baustelle an und bezahlt sie aus dem Lager der Siedlung. false ohne Zustandsänderung.</summary>

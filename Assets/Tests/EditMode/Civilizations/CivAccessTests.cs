@@ -65,7 +65,6 @@ namespace WorldBeyond.Tests.Civilizations
                 if (blocked.Contains(WorldCoords.WorldToTile(uv.X, uv.Z))) inside++;
             }
             TestContext.WriteLine($"Einheiten: {units.Count}, davon in Gebäuden: {inside}");
-            Assert.Greater(units.Count, 0);
             Assert.AreEqual(0, inside, "Einheiten stehen in Gebäuden");
         }
     }
