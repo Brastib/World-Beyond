@@ -13,6 +13,13 @@ namespace WorldBeyond.Application
     {
         [SerializeField] private GameStartSettings startSettings = new GameStartSettings();
 
+        /// <summary>Starteinstellungen; wirken nur, wenn sie vor Awake gesetzt werden (GameObject dafür inaktiv anlegen).</summary>
+        public GameStartSettings StartSettings
+        {
+            get => startSettings;
+            set => startSettings = value ?? new GameStartSettings();
+        }
+
         public GameComposition Composition { get; private set; }
 
         /// <summary>Neue Komposition (Start, Neues Spiel, nach erfolgreichem Laden). Presentation baut sich daraufhin neu auf.</summary>

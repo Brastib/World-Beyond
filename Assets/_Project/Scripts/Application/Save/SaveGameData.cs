@@ -20,6 +20,19 @@ namespace WorldBeyond.Application.Save
         [JsonProperty("sections")] public Dictionary<string, SaveSection> Sections = new Dictionary<string, SaveSection>();
         [JsonProperty("checksum")] public string Checksum;
 
+        // Neuer Rahmen und neue SaveSection-Objekte; die JSON-Daten der Sektionen werden geteilt, nicht kopiert.
+        public SaveGameData ShallowCopyWithSections()
+        {
+            var copy = (SaveGameData)MemberwiseClone();
+            if (Sections != null)
+            {
+                copy.Sections = new Dictionary<string, SaveSection>(Sections.Count);
+                foreach (var pair in Sections)
+                    copy.Sections[pair.Key] = pair.Value == null ? null : new SaveSection { Version = pair.Value.Version, Data = pair.Value.Data };
+            }
+            return copy;
+        }
+
         public SaveGameData DeepCopy()
         {
             return JObject.FromObject(this, SaveGameSerializer.CreateJsonSerializer()).ToObject<SaveGameData>(SaveGameSerializer.CreateJsonSerializer());

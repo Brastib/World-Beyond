@@ -37,6 +37,99 @@ namespace WorldBeyond.Tests.EditMode.Save
             Assert.AreEqual(SaveGameSerializer.ComputeChecksum(a), SaveGameSerializer.ComputeChecksum(b));
         }
 
+        // Die Prüfsumme wird seit Phase 7 (Performance) ohne Baumkopie geschrieben. Sie muss mit der ursprünglichen Bildung
+        // (sortierter Klon, ToString ohne Leerraum, SHA-256) übereinstimmen, sonst wären bestehende Spielstände "beschädigt".
+        [TestCase("{\"b\":{\"y\":1,\"x\":[1,{\"q\":2,\"p\":3}]},\"a\":1.5}")]
+        [TestCase("{\"s\":\"äöü \\\"x\\\" \\u0001 </tag> 漢字\",\"n\":null,\"t\":true,\"f\":-0.30000000000000004,\"e\":1e300,\"i\":-9223372036854775808,\"u\":18446744073709551615}")]
+        [TestCase("[[],{},[{}],\"2026-10-25T20:00:00Z\",0.1,1.0,100]")]
+        [TestCase("{\"B\":1,\"a\":2,\"_\":3,\"Ä\":4,\"aa\":5,\"\":6}")]
+        public void Checksum_MatchesOriginalCanonicalForm(string json)
+        {
+            var token = Parse(json);
+            Assert.AreEqual(ReferenceChecksum(token), SaveGameSerializer.ComputeChecksum(token));
+        }
+
+        [Test]
+        public void FileChecksum_MatchesOriginalCanonicalForm()
+        {
+            var root = (JObject)Parse(SampleJson());
+            var withoutChecksum = (JObject)root.DeepClone();
+            withoutChecksum.Remove("checksum");
+            Assert.AreEqual(ReferenceChecksum(withoutChecksum), SaveGameSerializer.ComputeFileChecksum(root));
+            Assert.AreEqual((string)root["checksum"], SaveGameSerializer.ComputeFileChecksum(root));
+        }
+
+        private static JToken Parse(string json)
+        {
+            using (var reader = new Newtonsoft.Json.JsonTextReader(new System.IO.StringReader(json)) { DateParseHandling = Newtonsoft.Json.DateParseHandling.None })
+                return JToken.ReadFrom(reader);
+        }
+
+        private static string ReferenceChecksum(JToken token)
+        {
+            JToken Canon(JToken t)
+            {
+                if (t is JObject o)
+                {
+                    var sorted = new JObject();
+                    foreach (var p in System.Linq.Enumerable.OrderBy(o.Properties(), p => p.Name, System.StringComparer.Ordinal)) sorted.Add(p.Name, Canon(p.Value));
+                    return sorted;
+                }
+                if (t is JArray a) return new JArray(System.Linq.Enumerable.Select(a, Canon));
+                return t.DeepClone();
+            }
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+            {
+                var hash = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(Canon(token).ToString(Newtonsoft.Json.Formatting.None)));
+                return System.BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            }
+        }
+
+        // Unity-Fund 2026-10-27: Laden meldete "beschädigt", weil die Prüfsumme beim Speichern über die Werte im Speicher
+        // (float) gebildet wurde und beim Laden über die eingelesenen (double), die Unitys Newtonsoft anders formatiert.
+        // Headless lässt sich das mit decimal nachstellen: 1.10m wird als "1.10" geschrieben, eingelesen als double "1.1".
+        [Test]
+        public void Serialize_ValueFormattedDifferentlyAfterReading_StillLoads()
+        {
+            var data = Sample();
+            data.Sections["test.mixed"] = new SaveSection { Version = 1, Data = new JObject { ["d"] = 1.10m, ["f"] = 0.1f, ["g"] = 1e-7f } };
+            var json = _serializer.Serialize(data);
+            Assert.IsTrue(_serializer.TryDeserialize(json, out var back, out var error, out var detail), error + ": " + detail);
+            Assert.AreEqual(1.1, (double)back.Sections["test.mixed"].Data["d"], 1e-12);
+        }
+
+        [TestCase("de-DE")]
+        [TestCase("fr-FR")]
+        [TestCase("en-US")]
+        public void Serialize_ManyNonRepresentableFloats_UnderCulture_Loads(string culture)
+        {
+            var before = System.Globalization.CultureInfo.CurrentCulture;
+            try
+            {
+                System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo(culture);
+                var rng = new System.Random(4711);
+                var floats = new JArray();
+                var doubles = new JArray();
+                for (int i = 0; i < 2000; i++)
+                {
+                    floats.Add((float)(rng.NextDouble() * 1000 - 500) / 3f);
+                    doubles.Add((rng.NextDouble() - 0.5) * System.Math.Pow(10, rng.Next(-12, 12)));
+                }
+                floats.Add(float.MaxValue); floats.Add(float.Epsilon); floats.Add(-0f); floats.Add(16777217f);
+                var data = Sample();
+                data.Sections["test.floats"] = new SaveSection { Version = 1, Data = new JObject { ["f"] = floats, ["d"] = doubles } };
+                var json = _serializer.Serialize(data);
+                Assert.IsTrue(_serializer.TryDeserialize(json, out var back, out var error, out var detail), error + ": " + detail);
+                var f = (JArray)back.Sections["test.floats"].Data["f"];
+                for (int i = 0; i < 2000; i++) Assert.AreEqual((float)floats[i], (float)(double)f[i], $"float {i}");
+                Assert.AreEqual(json, _serializer.Serialize(back), "Laden und erneutes Speichern muss denselben Text liefern");
+            }
+            finally
+            {
+                System.Globalization.CultureInfo.CurrentCulture = before;
+            }
+        }
+
         [Test]
         public void Checksum_ChangesWhenArrayOrderChanges()
         {

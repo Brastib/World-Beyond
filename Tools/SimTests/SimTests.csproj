@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     Prüft die Unity-unabhängigen Teile (Core, Simulation, Application ohne Unity/) und die EditMode-Tests
-    mit dem .NET SDK, ohne Unity-Editor. Ersetzt nicht den Unity Test Runner (TEST_PLAN §2).
+    mit dem .NET SDK, ohne Unity-Editor. NUnit 3.14 (ältere Versionen laufen unter .NET 8 nicht oder ohne Filter). Achtung: Unitys NUnit ist 3.5, neuere APIs wie Is.AnyOf fallen hier nicht auf. Ersetzt nicht den Unity Test Runner (TEST_PLAN §2).
     Aufruf: dotnet test Tools/SimTests
   -->
   <PropertyGroup>
@@ -12,12 +12,18 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <RootNamespace>WorldBeyond.Tests</RootNamespace>
+    <!-- Gleicher Name wie die Unity-Test-Assembly (InternalsVisibleTo) -->
+    <AssemblyName>WorldBeyond.Tests.EditMode</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../Assets/_Project/Scripts/Core/**/*.cs" />
-    <Compile Include="../../Assets/_Project/Scripts/Simulation/**/*.cs" />
-    <Compile Include="../../Assets/_Project/Scripts/Application/**/*.cs" Exclude="../../Assets/_Project/Scripts/Application/Unity/**/*.cs" />
     <Compile Include="../../Assets/Tests/EditMode/**/*.cs" />
+    <Compile Remove="Layers/**" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Getrennte Assemblies wie die asmdefs in Unity: internal-Zugriffe über Grenzen fallen so auch headless auf. -->
+    <ProjectReference Include="Layers/Core/WorldBeyond.Core.csproj" />
+    <ProjectReference Include="Layers/Simulation/WorldBeyond.Simulation.csproj" />
+    <ProjectReference Include="Layers/Application/WorldBeyond.Application.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />

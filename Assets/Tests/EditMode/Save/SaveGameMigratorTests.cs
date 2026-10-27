@@ -149,7 +149,9 @@ namespace WorldBeyond.Tests.EditMode.Save
             var root = JObject.Parse(SampleJson());
             Assert.IsTrue(new SaveGameMigrator(null).TryMigrateFrame(root, out var migrated, out _, out _));
             Assert.IsTrue(JToken.DeepEquals(root, migrated));
-            Assert.AreNotSame(root, migrated);
+            // Ohne Migrationsschritt keine Kopie (Ladezeit großer Spielstände); der Rahmen bleibt unverändert.
+            Assert.AreSame(root, migrated);
+            Assert.IsTrue(JToken.DeepEquals(JObject.Parse(SampleJson()), root));
         }
 
         [Test]
