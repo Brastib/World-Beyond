@@ -176,6 +176,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         public long LastRecruitTick = long.MinValue / 4;
         // Angenommene, vermutlich noch nicht ausgebildete Rekruten (zählen zur Armee-Obergrenze, bis RecruitPendingTicks vorbei sind).
         public int PendingRecruits;
+        public float RecruitWillingness;    // 0 … 1, zuletzt berechnete Bereitschaft zum Aufrüsten (Nutzen − Kosten)
         public long PendingRecruitsTick = long.MinValue / 4;
     }
 

@@ -35,6 +35,9 @@ namespace WorldBeyond.Simulation.Diplomacy
         IReadOnlyList<TargetPriority> GetTargetPriorities(int civId);
         // Für Military-Moral: Kriegsmüdigkeit der Civ 0 … 1 (höchste Erschöpfung ihrer laufenden Kriege / 100), 0 ohne Krieg.
         float GetCivWarExhaustion(int civId);
+        // Für Military ArmyEnvironment.RecruitWillingness: Bereitschaft zum Aufrüsten 0 … 1 (Nutzen − Kosten aus der Kriegs-KI,
+        // bei jeder KI-Auswertung der Civ neu berechnet; ab RecruitThreshold fordert die KI selbst Rekruten an). 0 = unbekannt.
+        float GetRecruitWillingness(int civId);
     }
 
     // Was Phase 4 von Welt, Zivilisationen, Wirtschaft und Militär braucht.

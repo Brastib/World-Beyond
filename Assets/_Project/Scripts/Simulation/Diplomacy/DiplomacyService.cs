@@ -667,6 +667,12 @@ namespace WorldBeyond.Simulation.Diplomacy
             return Clamp01(worst / 100f);
         }
 
+        public float GetRecruitWillingness(int civId)
+        {
+            foreach (var m in Memory) if (m.CivId == civId) return Clamp01(m.RecruitWillingness);
+            return 0f;
+        }
+
         // Kampftreffer zwischen zwei Civs (Military über den Adapter, optional): markiert die erste Feindberührung.
         public void ReportCombatContact(int civA, int civB)
         {
