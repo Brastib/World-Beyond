@@ -89,7 +89,7 @@ Pflanzen-Gattungen gesamt (§2.2–2.7): **104** (Etappe P2). Ziel P3: 250–400
 
 | ID | Wuchsform | Kronen-/Formhülle | Beispiele | Etappe | Status |
 |---|---|---|---|---|---|
-| form.W01 | Laubbaum, rundkronig | Kugel/Ei | Eiche, Buche, Linde | A1 | Platzhalter (P-002) |
+| form.W01 | Laubbaum, rundkronig | Kugel/Ei | Eiche, Buche, Linde | A1 | Platzhalter (P-002); Machbarkeitstest v1 in Blender 2026-10-27, nicht im Spiel |
 | form.W02 | Laubbaum, hoch/schlank | gestrecktes Ei | Esche, Birke, Erle | A2 | geplant |
 | form.W03 | Schirmbaum | flacher Schirm | Akazie, Kapok, Mesquite | A2 | geplant |
 | form.W04 | Hängeform | Kugel mit hängenden Ruten | Trauerweide | A2 | geplant |

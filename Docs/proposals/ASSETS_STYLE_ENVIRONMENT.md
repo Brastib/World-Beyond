@@ -132,6 +132,12 @@ Warum kein fertiges Werkzeug:
 
 Risiko: Der eigene Generator ist Arbeit (geschätzt mehrere Etappen, §8). Dafür bekommen wir einheitlichen Stil, unbegrenzte Varianten, alle Zustände und Wind aus einer Quelle und keine Lizenzfragen bei der Geometrie.
 
+**Machbarkeitstest Baum v1 (2026-10-27, Cloud, Blender 4.0.2 headless):** Ein Python-Skript setzt die Verfahren aus dieser Tabelle um: Kronenhülle aus mehreren Lappen, Space Colonization, Pipe-Radien, Äste als Kurven, gelappte Blattgeometrie in Büscheln mit Lücken, Durchscheinen und Zustände über dieselbe Geometrie. Skript und Bilder liegen in `/mnt/project-files/WorldBeyond/prototypes/baum_v1/` (nicht im Repo, nicht im Spiel).
+- **Ergebnis:** Pro Seed entsteht ein anderer, runder Laubbaum mit sichtbarem Astgerüst (`varianten_4_seeds.png`). Sommer, Herbst, Schnee, tot und verkohlt kommen aus demselben Baum (`zustaende_ein_baum.png`). Ein Baum braucht etwa 3 s zum Erzeugen und 20–60 s zum Rendern (Cycles, CPU).
+- **Abstand zu R1 (`vergleich_R1.png`):** Die Krone ist noch lichter und gleichmäßiger, die Blätter wirken zu einheitlich und blass, die Selbstverschattung in der Krone fehlt. Rinde und Blätter sind nur prozedural, ohne Fotoscans, weil Downloads nicht geprüft wurden. Der Stamm knickt am Kronenansatz, und der Schnee wirkt fleckig statt aufliegend.
+- **Wichtig für das Spiel:** Der Test hat 280 000–480 000 Dreiecke pro Baum, weil jedes Blatt echte Geometrie ist. Für Unity muss PlantForge daraus Blattbüschel-Karten mit Alpha und LODs backen, Ziel 15–30k Dreiecke (§3.1). Das ist ein Offline-Render und **kein** Spielbild; im Spiel wird es weniger detailliert aussehen.
+- **Nächste Verbesserungen:** Blattbüschel aus Fotoscans, dichtere Krone mit Selbstverschattung, Gabelung in 2–3 Leittriebe wie R1, Schnee als aufliegende Schicht statt Fleckenmuster, Export als FBX mit LOD-Kette und Test in Unity (braucht das Unity-Projekt auf dem PC).
+
 ### 4.2 Texturen
 
 CC0-Fotoscans für Rinde, Blätter, Boden, Fels, Sand, Schnee (Kandidaten: Poly Haven, ambientCG; Lizenz laut Seite CC0, **vor jedem Import je Datei prüfen** und in ASSET_CREDITS eintragen). Alle laufen durch denselben Kalibrierungsschritt (§3). Blattatlanten können zusätzlich vom Generator selbst gezeichnet werden (Blattform als Kurve), damit jede Gattung eine eigene Blattform bekommt. Hinweis: Downloads sind aus der Cloud laut Phase 5 blockiert (CURRENT_STATE K3), also auf dem PC.
