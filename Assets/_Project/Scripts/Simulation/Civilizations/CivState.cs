@@ -100,21 +100,41 @@ namespace WorldBeyond.Simulation.Civilizations
         /// </summary>
         internal (float x, float z) ArrivalPoint(Settlement s, MovementClass mc)
         {
+            var t = ArrivalTile(World, s.X, s.Y, mc);
+            return t.x < 0 ? SettlementCenter(s) : (WorldCoords.TileCenterX(t.x), WorldCoords.TileCenterZ(t.y));
+        }
+
+        /// <summary>
+        /// Kachel des Ankunftspunkts (-1, -1 ohne Treffer). Vorrang: Straßenkachel mit mindestens zwei begehbaren
+        /// Nachbarn, dann jede Straßenkachel, dann jede begehbare Kachel. Nur das Straßennetz ist sicher mit dem Umland
+        /// verbunden; eine freie Kachel zwischen Gebäuden, Ortskern und Hang kann eine Sackgasse sein (Prüf-Befund).
+        /// </summary>
+        public static (int x, int y) ArrivalTile(IWorldQuery world, int sx, int sy, MovementClass mc)
+        {
             int size = SettlementRegistry.CoreSize;
+            (int x, int y) street = (-1, -1), any = (-1, -1);
             for (int r = 1; r <= 6; r++)
             {
-                for (int y = s.Y - r; y < s.Y + size + r; y++)
+                for (int y = sy - r; y < sy + size + r; y++)
                 {
-                    for (int x = s.X - r; x < s.X + size + r; x++)
+                    for (int x = sx - r; x < sx + size + r; x++)
                     {
-                        bool onRing = x == s.X - r || x == s.X + size + r - 1 || y == s.Y - r || y == s.Y + size + r - 1;
-                        if (!onRing || !World.InBounds(x, y) || !World.IsWalkable(x, y, mc)) continue;
-                        return (WorldCoords.TileCenterX(x), WorldCoords.TileCenterZ(y));
+                        bool onRing = x == sx - r || x == sx + size + r - 1 || y == sy - r || y == sy + size + r - 1;
+                        if (!onRing || !Walkable(world, x, y, mc)) continue;
+                        if (any.x < 0) any = (x, y);
+                        if (!SettlementRegistry.IsStreet(x, y)) continue;
+                        int open = (Walkable(world, x - 1, y, mc) ? 1 : 0) + (Walkable(world, x + 1, y, mc) ? 1 : 0)
+                                 + (Walkable(world, x, y - 1, mc) ? 1 : 0) + (Walkable(world, x, y + 1, mc) ? 1 : 0);
+                        if (open >= 2) return (x, y);
+                        if (street.x < 0) street = (x, y);
                     }
                 }
             }
-            return SettlementCenter(s);
+            return street.x >= 0 ? street : any;
         }
+
+        private static bool Walkable(IWorldQuery world, int x, int y, MovementClass mc) =>
+            world.InBounds(x, y) && world.IsWalkable(x, y, mc);
 
         internal (float x, float z) ArrivalPoint(Settlement s, UnitTypeId type) =>
             ArrivalPoint(s, Ctx.UnitTypes.TryGet(type, out var t) ? t.Movement : MovementClass.Foot);

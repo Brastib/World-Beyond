@@ -70,25 +70,35 @@ namespace WorldBeyond.Simulation.Civilizations
             return 0;
         }
 
-        /// <summary>Wert eines Standorts aus der Umgebung (Radius 5): Nahrung, Holz, Stein, Erz, Wasser.</summary>
-        public float SiteValue(int cx, int cy)
+        /// <summary>Mindestzahl möglicher 2×2-Feldplätze im Umkreis, damit ein Ort sich ernähren und wachsen kann.</summary>
+        public const int MinFieldSpots = 25;
+
+        /// <summary>
+        /// Wert eines Standorts aus der Umgebung (Radius 5): Plätze für 2×2-Felder (eben genug, kein Wasser), deren
+        /// Fruchtbarkeit, Holz, Stein, Erz, Wasser. Steile Hänge zählen nicht: dort lassen sich keine Felder anlegen.
+        /// </summary>
+        public float SiteValue(int cx, int cy) => SiteValue(_s.World, cx, cy);
+
+        public static float SiteValue(IWorldQuery world, int cx, int cy)
         {
-            var world = _s.World;
-            float fert = 0f; int land = 0, forest = 0, stone = 0, ore = 0, water = 0;
+            float fert = 0f; int spots = 0, forest = 0, stone = 0, ore = 0, water = 0;
             for (int y = cy - 5; y <= cy + 6; y++)
                 for (int x = cx - 5; x <= cx + 6; x++)
                 {
                     if (!world.InBounds(x, y)) continue;
                     if (world.IsWater(x, y)) { water++; continue; }
                     ref readonly var t = ref world.Get(x, y);
-                    land++;
-                    fert += t.Fertility;
                     if (t.Resource == ResourceType.Wood) forest++;
                     else if (t.Resource == ResourceType.Stone) stone++;
                     else if (t.Resource == ResourceType.Ore || t.Resource == ResourceType.Gold) ore++;
+                    int ddx = x - cx, ddy = y - cy;
+                    if (ddx * ddx + ddy * ddy > 25) continue;   // nur im Startgebiet (Radius 5)
+                    if (!world.CanPlaceFootprint(x, y, 2, 2, out _)) continue;
+                    spots++;
+                    fert += t.Fertility;
                 }
-            if (land < 40) return 0f;
-            float v = fert / land / 255f * 4f;          // Fruchtbarkeit wichtigster Faktor
+            if (spots < MinFieldSpots) return 0f;
+            float v = fert / spots / 255f * 4f * (Math.Min(spots, 80) / 80f + 0.5f);   // Fruchtbarkeit und Fläche wichtigste Faktoren
             v += Math.Min(forest, 20) * 0.08f;
             v += Math.Min(stone, 8) * 0.06f + Math.Min(ore, 6) * 0.08f;
             v += Math.Min(water, 10) * 0.04f;

@@ -105,7 +105,8 @@ namespace WorldBeyond.Simulation.Civilizations
                     "Nahrungsbilanz zu niedrig")) return;
             }
             // 2. Wohnraum
-            if (pop > st.HousingCapacity * 0.85)
+            // Früh genug bauen: Geburten werden ab ~2 freien Plätzen gebremst; kleine Orte blieben sonst knapp darunter stehen.
+            if (pop > st.HousingCapacity - Math.Max(3.0, st.HousingCapacity * 0.15))
                 if (TryBuild(civ, st, BestAvailable(civ, st, "building.apartment", "building.house", "building.hut"), "Wohnraum fast voll")) return;
             // 3. Lager
             foreach (var r in Resources.Stockable)
