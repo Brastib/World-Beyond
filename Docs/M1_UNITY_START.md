@@ -11,8 +11,7 @@ Der erste echte Unity-Lauf ist genau der Zweck dieser Liste.
 - Project Settings → Graphics: ein URP-Asset ist eingetragen.
 - Project Settings → Player → Active Input Handling: **Both** (empfohlen) oder Input System Package.
 
-`ProjectSettings/`, `Packages/` und die `.meta`-Dateien liegen noch nicht im Repo. Wer sie schon lokal hat
-(DevOps-Stand), behält sie.
+`ProjectSettings/`, `Packages/` und die `.meta`-Dateien liegen seit 2026-10-27 im Repo (DevOps, 03ebda7/8a757c8). `.meta` für neue Dateien erzeugt Unity; DevOps committet sie beim nächsten Lauf.
 
 ## 1. Code holen
 
@@ -75,6 +74,8 @@ Steuerung:
 Screenshots: Übersicht, Nahansicht Siedlung, HUD mit Feed, Kampf (falls gesehen), Profiler bei 10×.
 
 ## 6. Bekannte Grenzen (ehrlich)
+
+- **Stand 2026-10-27 13:10 (Unity-Lauf 3):** Siedlungen, Gebäude, Einheiten und Gebiete werden noch NICHT gezeichnet (es gibt dafür noch keinen Renderer; Art & UI baut ihn). Laden meldet in Unity „Corrupted“ (Prüfsumme, Save/Perf behebt). Sichtbar sind Gelände, Wasser, Vegetation, HUD und Feed.
 
 - Grafik ist Platzhalter: eigene Modelle nach R1/R2 kommen erst mit dem Asset-Katalog.
 - Mehrere Werte sind PLATZHALTER (Kosten, Ressourcenbedarf, Konfliktfaktoren).
