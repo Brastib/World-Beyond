@@ -181,3 +181,19 @@ Ziel: Soldaten und Armeen haben Moral. Sie beeinflusst Kampfkraft, Flucht, Deser
 4. Kapitulation mit War.
 
 Jede Stufe einzeln testen.
+
+### 11.1 Abstimmung mit War (2026-10-27)
+
+**Eingang Kriegsmüdigkeit:** `IWarQuery.GetCivWarExhaustion(civId)`, Wert 0..1, ohne Krieg 0. Geliefert von War in phase4/diplomacy-war aad28fd. Military bindet das über den Delegate `MoraleEnvironment.WarExhaustion` an, die Verdrahtung macht Integration.
+
+**Ausgang:** DiplomacyService abonniert `UnitDesertedEvent` und `ArmySurrenderedEvent` selbst. Kein Adapter dazwischen, sonst wird doppelt gezählt.
+
+Pflichtfelder der Events, nur stabile Ids und keine Unity-Referenzen:
+- `UnitDesertedEvent`: Unit, CivId, UnitType, Strength, ArmyId (0 = keine Armee).
+- `ArmySurrenderedEvent`: ArmyId, CivId, VictorCivId (0 = unklar), UnitCount, Strength.
+
+Wie War die Events wertet:
+- Desertion zählt als Verlust ohne Gegner.
+- Kapitulation zählt als Verlust der ganzen Armeestärke, gibt einen Zuschlag auf die Erschöpfung und Kriegsscore für den Sieger.
+
+**RecruitWillingness:** War stellt `IWarQuery.GetRecruitWillingness(civId)` bereit (0..1, aus WarStrategyEvaluator.RecruitCost). Integration setzt `ArmyEnvironment.RecruitWillingness` darauf.
