@@ -43,7 +43,7 @@ Wer ein Asset anlegt, ändert, ersetzt oder entfernt, aktualisiert hier sofort d
 
 Der Nutzer will unendlich viele Arten von Möbeln, Häusern usw., und alles soll von den NPCs im Spiel gemacht werden. Für den Katalog heißt das: **Eine Zeile ist ein Archetyp (Bauplan-Familie), kein einzelnes Modell.** Die sichtbaren Varianten entstehen aus
 - endlich vielen, sorgfältig gebauten Bauteilen pro Archetyp (z. B. Tischplatte, Beine, Zarge, Schnitzerei; Wand, Fenster, Dach),
-- Parametern, die der herstellende NPC festlegt: Maße, Form, Material, Verzierung, Stil seiner Kultur und Epoche, Qualität aus seinem Können,
+- Parametern, die der herstellende NPC festlegt: Maße, Form, Material, Verzierung, Baustil seines Stammes (von der Spiel-KI gewählt) und Epoche, Qualität aus seinem Können,
 - einem Seed.
 Damit gibt es unbegrenzt viele Kombinationen. Ehrliche Grenze: Jedes Bauteil muss trotzdem einzeln in R1/R2-Qualität gebaut werden. Die Vielfalt wächst mit der Zahl der Bauteile, die wir herstellen.
 
@@ -73,13 +73,13 @@ Die Prüfung läuft automatisch im Generator. Zusätzlich wird für jeden Archet
 | Wasserpflanzen (§2.6) | 6 | 6 | 0 | 0 | 0 | 0 |
 | Nutzpflanzen (§2.7) | 17 | 17 | 0 | 0 | 0 | 0 |
 | Fels, Gelände, Wasser (§3) | 26 | 13 | 13 (über P-003, P-004, P-005) | 0 | 0 | 0 |
-| Gebäude (§4) | 51 | 51 | 0 | 0 | 0 | 0 |
+| Gebäude (§4) | 56 | 56 | 0 | 0 | 0 | 0 |
 | Personen, Einheiten, Fahrzeuge (§5) | 21 | 21 | 0 | 0 | 0 | 0 |
 | Tiere (§6) | 10 | 10 | 0 | 0 | 0 | 0 |
 | Effekte, Decals (§7) | 26 | 26 | 0 | 0 | 0 | 0 |
 | Requisiten (§8) | 14 | 14 | 0 | 0 | 0 | 0 |
 | Innenausstattung (§8.1) | 14 | 14 | 0 | 0 | 0 | 0 |
-| **Summe** | **293** | **278** | **15** (5 Platzhalter-Dateien P-001–P-005) | **0** | **0** | **0** |
+| **Summe** | **298** | **283** | **15** (5 Platzhalter-Dateien P-001–P-005) | **0** | **0** | **0** |
 
 Pflanzen-Gattungen gesamt (§2.2–2.7): **104** (Etappe P2). Ziel P3: 250–400 Gattungen, P4: Arten als Datensätze.
 
@@ -290,7 +290,7 @@ Hinweis: Alle Terrain-Zeilen mit „Platzhalter“ teilen sich P-004, alle Wasse
 
 ## 4. Gebäude (Sim-Schlüssel aus `CivContent.cs`, `integration/m1`)
 
-Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude gibt es **ab seiner Epoche in jeder späteren Epoche** in eigener Ausführung (Spalte „ab Epoche“, aus der benötigten Technologie in `CivContent.cs`; Frühzeit F, Antike A, Mittelalter M, Industrie I, Moderne Mo), außerdem je Kultur-Stilfamilie. Alle Gebäude sind auf Bauteil-Ebene an jeder Stelle zerstörbar (Beschuss, Brand, Naturgewalt, aber auch Einsturz wegen schlechter Bauqualität) und haben die Zustände aus §0.4 sowie nass, Schnee und Brand (`ASSETS_STYLE_ENVIRONMENT.md` §4.4, §5.1). Epochen-Ausführungen: 75 für die 19 vorhandenen Gebäude, 95 mit den 4 neuen.
+Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude gibt es **ab seiner Epoche in jeder späteren Epoche** in eigener Ausführung (Spalte „ab Epoche“, aus der benötigten Technologie in `CivContent.cs`; Frühzeit F, Antike A, Mittelalter M, Industrie I, Moderne Mo). **Wie ein Gebäude aussieht, entscheidet die Spiel-KI des jeweiligen Stammes** (Nutzer 2026-10-27, siehe „Baustil je Stamm“ unten); der Katalog liefert nur Vorgaben und Bauteil-Sätze. Alle Gebäude sind auf Bauteil-Ebene an jeder Stelle zerstörbar (Beschuss, Brand, Naturgewalt, aber auch Einsturz wegen schlechter Bauqualität) und haben die Zustände aus §0.4 sowie nass, Schnee und Brand (`ASSETS_STYLE_ENVIRONMENT.md` §4.4, §5.1). Epochen-Ausführungen: 75 für die 19 vorhandenen Gebäude, 95 mit den 4 neuen.
 
 | ID | Name | Sim-Schlüssel | Größe (Kacheln) | ab Epoche | Etappe | Status | Bemerkung |
 |---|---|---|---|---|---|---|---|
@@ -318,7 +318,7 @@ Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude
 | bld.well | Brunnen / Löschteich | – (neu, Civ) | – | F | A4 | geplant | Löschwasser |
 | bld.construction_site | Baustelle (generisch) | – | – | F | A7 | geplant | |
 
-**Wohnhaus-Klassen nach Vermögen und Bedürfnis** (Grundriss-Generator, `ASSETS_STYLE_ENVIRONMENT.md` §4.4; braucht individuelle NPCs aus M4). Jede Klasse gibt es in jeder Epoche und Kultur, jedes Haus wird aus dem Bauwunsch des Bauherrn erzeugt und ist dadurch einzigartig.
+**Wohnhaus-Klassen nach Vermögen und Bedürfnis** (Grundriss-Generator, `ASSETS_STYLE_ENVIRONMENT.md` §4.4; braucht individuelle NPCs aus M4). Die Klassen sind Größen- und Ausstattungsvorgaben, keine Bauformen: Wie das Haus aussieht, kommt aus dem Baustil des Stammes, jedes Haus wird aus dem Bauwunsch des Bauherrn erzeugt und ist dadurch einzigartig.
 
 | ID | Klasse | Bauherr | Beispiele je Epoche | ab Epoche | Etappe | Status |
 |---|---|---|---|---|---|---|
@@ -329,21 +329,72 @@ Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude
 | bld.home.villa | Villa | reich | Römische Villa, Stadtpalais, moderne Villa | A | A7 / M4 | geplant (Machbarkeitstest v1 in Blender 2026-10-27, nicht im Spiel) |
 | bld.home.manor | Herrenhaus, Palast, Anwesen | sehr reich, Herrscher | Gutshof, Burg/Schloss, Anwesen | A | A7 / M4 | geplant |
 
-**Wohnhaus-Typen nach Beruf, Lebensweise und Klima** (Nutzer 2026-10-27: „deutlich mehr Häuser, je nach Bedürfnis der Bewohner“). Ein Typ wird mit einer Vermögensklasse oben kombiniert: Ein armer und ein reicher Bauer bauen beide ein Bauernhaus, aber verschieden groß und aus anderem Material. Der Bauwunsch des NPC (M4) wählt Typ und Klasse; Bauregeln-Prototyp: Haus v2 (`ASSETS_STYLE_ENVIRONMENT.md` §4.4).
+**Baustil je Stamm: die Spiel-KI entscheidet, wir geben nur Vorgaben (Nutzer 2026-10-27 13:05 UTC, verbindlich).** Jeder Stamm hat eigene Häuser. Es gibt im Katalog deshalb **keine festen Haustypen** (Langhaus, Jurte, Fachwerkhaus usw. sind nur Beispiele dafür, was dabei herauskommen *kann*). Ein Haus entsteht in drei Ebenen:
+1. **Harte Vorgaben (von uns, gelten für alle):** Physik und Maße nach §0.7; Klima des Bauplatzes (Schneelast → Mindest-Dachneigung, Regen → Dachüberstand, Hitze → Wanddicke/Fenstergröße); nur Baustoffe, die es im Gebiet gibt (Biom, Rohstoffe, Handel); nur Techniken, die der Stamm kennt (Epoche/Technologie); Bedürfnisse des Bauwunsches (Fläche je Person, Beruf, Vermögen).
+2. **Baustil des Stammes (entscheidet die Spiel-KI):** ein Parametersatz je Stamm, z. B. bevorzugte Grundform (rechteckig, rund, lang, um einen Hof, auf Pfählen, eingetieft), Dachform und Neigung, Wand- und Dachbaustoff, Farben, Fensterform und -größe, Läden, Schmuck. Der Stil entsteht bei der Gründung aus Umwelt und Zufall, ändert sich mit Technik, Kontakt zu anderen Stämmen und Geschmack, und spaltet sich, wenn ein Stamm sich teilt. Wer ihn in der Simulation hält und wie die KI wählt, gehört zum Systembereich Civ/NPC (weitergegeben 2026-10-27).
+3. **Einzelhaus (entscheidet der NPC-Bauherr):** Größe, Anbauten und Ausstattung aus seinem Bauwunsch, innerhalb des Stammes-Stils.
 
-| ID | Typ | für wen | Merkmale | ab Epoche | Etappe | Status |
-|---|---|---|---|---|---|---|
-| bld.home.pithouse | Grubenhaus | Frühzeit-Siedler | halb eingetieft, Dach aus Stangen und Reet/Soden | F | A7 / M4 | geplant |
-| bld.home.longhouse | Langhaus | Großfamilie, Sippe | lang, Mensch und Vieh unter einem Dach, Firstpfosten | F | A7 / M4 | geplant |
-| bld.home.tent | Zelt, Jurte | Nomaden, Hirten | zerlegbar, Filz/Fell über Gerüst | F | A7 / M4 | geplant |
-| bld.home.stilt | Pfahlbau | Ufer, Sumpf, Tropen | auf Pfählen, steiles Dach, Steg | F | A7 / M4 | geplant |
-| bld.home.adobe | Lehmhaus mit Flachdach | heißes, trockenes Klima | dicke Lehmwände, kleine Fenster, Attika, Wasserspeier | F | A7 / M4 | geplant (Bauregel in Haus v2, nicht im Spiel) |
-| bld.home.loghouse | Blockhaus | kaltes Klima, Waldgebiete | liegende Stämme, steiles Dach gegen Schneelast | F | A7 / M4 | geplant (Bauregel in Haus v2, nicht im Spiel) |
-| bld.home.fisher | Fischerhaus | Fischer | am Ufer, Netzgestell, Bootsschuppen | F | A7 / M4 | geplant |
-| bld.home.farmhouse | Bauernhaus mit Stall oder Scheune | Bauern | Wohnteil + Stall/Scheune mit Tor, Hofplatz | F | A7 / M4 | geplant (Bauregel in Haus v2, nicht im Spiel) |
-| bld.home.craft | Handwerkerhaus mit Werkstatt | Handwerker (Schmied, Tischler, Töpfer …) | Werkstatt-Anbau mit breitem Tor, Werkhof | A | A7 / M4 | geplant (Bauregel in Haus v2, nicht im Spiel) |
-| bld.home.shophouse | Wohn- und Geschäftshaus | Händler | Laden im Erdgeschoss mit Schaufenster und Markise, Wohnung oben | A | A7 / M4 | geplant (Bauregel in Haus v2, nicht im Spiel) |
-| bld.home.courtyard | Hof- oder Atriumhaus | Mittelmeer, trockenes Klima, Wohlhabende | Räume um einen Innenhof, wenige Außenfenster | A | A7 / M4 | geplant |
+Der Katalog zählt deshalb nur, was wir wirklich bauen müssen: **Bauteil-Sätze** in R1/R2-Qualität, aus denen jeder Stil zusammengesetzt werden kann. Je mehr Sätze, desto verschiedener die Stämme.
+
+| ID | Bauteil-Satz | Inhalt | ab Epoche | Etappe | Status |
+|---|---|---|---|---|---|
+| bld.kit.wall.pole | Stangen, Flechtwerk, Lehmbewurf | Pfosten, Flechtwände, Lehmputz | F | A7 | geplant |
+| bld.kit.wall.log | Blockbau | liegende Stämme, Eckverbindungen | F | A7 | geplant (Probe in Haus v2/v3) |
+| bld.kit.wall.textile | Fell, Filz, Plane über Gerüst | Gerüststangen, Bahnen, Seile | F | A7 | geplant |
+| bld.kit.wall.adobe | Lehm, Adobe, Stampflehm | Wände, Gesimse, Wasserspeier | F | A7 | geplant (Probe in Haus v2/v3) |
+| bld.kit.wall.timberframe | Fachwerk | Ständer, Riegel, Streben, Gefache | A | A7 | geplant |
+| bld.kit.wall.stone | Bruch- und Quaderstein | Mauerwerk, Ecksteine, Stürze | A | A7 | geplant |
+| bld.kit.wall.brick | Ziegelmauerwerk, Putz | Mauerwerk, Putzflächen, Faschen | A | A7 | geplant (Probe in Haus v2/v3) |
+| bld.kit.wall.modern | Beton, Stahl, Glas | Fertigteile, Fassadenplatten, Glasfronten | I | A7 | geplant |
+| bld.kit.roof.thatch | Reet, Stroh, Soden | Deckung, First, Traufe | F | A7 | geplant (Probe in Haus v3) |
+| bld.kit.roof.shingle | Holzschindel, Rinde | Deckung, Ortgang | F | A7 | geplant |
+| bld.kit.roof.tile | Ziegel, Schiefer | Deckung, First, Gauben | A | A7 | geplant (Probe in Haus v1–v3) |
+| bld.kit.roof.metal | Blech, Wellblech | Deckung, Rinnen, Fallrohre | I | A7 | geplant (Probe in Haus v2) |
+| bld.kit.roof.flat | Flachdach, Attika | Lehm- oder Betondach, Brüstung, Abfluss | F | A7 | geplant (Probe in Haus v2/v3) |
+| bld.kit.opening | Öffnungen | Türen, Fenster, Bögen, Läden, Gitter, Vorhänge je Baustoff | F | A7 | geplant (Probe in Haus v1–v3) |
+| bld.kit.support | Tragwerk | Pfähle, Stützen, Säulen, Balken, Plattformen, Stege | F | A7 | geplant |
+| bld.kit.ornament | Schmuck | Schnitzerei, Bemalung, Giebelzier, Farbflächen (Muster und Farben setzt der Stil) | F | A7 | geplant |
+
+**Baustil-Parameter: verbindliche Namen für Civ (`CivStyle`) und Presentation** (Stand 2026-10-27; Civ übernimmt die Namen 1:1, nur anhängen, nie umbenennen). Der Stil eines Stammes ist ein Seed plus diese Werte. Presentation setzt daraus mit den Bauteil-Sätzen oben das Haus zusammen.
+
+| Parameter | erlaubte Werte | Bauteil-Satz |
+|---|---|---|
+| `WallMaterial` | `Pole`, `Log`, `Textile`, `Adobe`, `TimberFrame`, `Stone`, `Brick`, `Modern` | bld.kit.wall.pole, .log, .textile, .adobe, .timberframe, .stone, .brick, .modern |
+| `WallFinish` | `Raw`, `Plaster`, `Painted` | Teil von bld.kit.wall.* |
+| `RoofMaterial` | `Thatch`, `Sod`, `Hide`, `Shingle`, `Tile`, `Slate`, `Metal`, `FlatEarth`, `Concrete` | bld.kit.roof.thatch (Thatch, Sod), .wall.textile (Hide), .shingle, .tile (Tile, Slate), .metal, .flat (FlatEarth, Concrete) |
+| `RoofShape` | `Gable`, `Hip`, `Shed`, `Flat`, `Cone`, `Dome` | bld.kit.roof.* |
+| `RoofPitchDeg` | Zahl 0–60, Grenzen siehe Regeln unten | – |
+| `OverhangM` | Zahl 0–1,2 | – |
+| `FloorPlan` | `Rect`, `Long`, `Round`, `Courtyard`, `LShape` | – |
+| `Elevation` | `Ground`, `Sunken`, `Stilt` | bld.kit.support (Stilt) |
+| `WindowShape` | `Small`, `Square`, `Tall`, `Wide`, `Arched`, `Round` | bld.kit.opening |
+| `WindowClosure` | `Open`, `Shutters`, `Glazed` | bld.kit.opening |
+| `Ornament` | `None`, `Carving`, `Painting`, `GableDecor`, `Pattern`, `Relief` | bld.kit.ornament |
+| `WallColor`, `AccentColor` | RGB aus der Stammes-Palette (Seed), Sättigung höchstens mittel (Stil §3) | – |
+
+**Regeln, die jeder Stil einhalten muss** (Prüfung im Generator; ein Stil, der sie bricht, wird von Civ nicht gewählt):
+- *Technik:* `Stone`, `Brick`, `Tile`, `Slate`, `Relief` erst mit `tech.masonry`; `TimberFrame` und `Glazed` erst mit `tech.construction`; `Metal`, `Concrete`, `Modern` erst mit `tech.industrialization`. Alles andere ab `Primitive`.
+- *Formen:* `Round` nur mit `Cone` oder `Dome`; `Dome` nur mit `Adobe`, `Stone`, `Brick`, `Modern` oder `Textile`; `Courtyard` erst ab `Ancient`; `Flat` nur mit `FlatEarth` oder `Concrete`.
+- *Mindestneigung je Dachdeckung:* `Thatch` 40°, `Hide` 35°, `Shingle` 30°, `Tile` und `Slate` 25°, `Sod` 15–30°, `Metal` 8°, `FlatEarth` und `Concrete` 0–5°.
+- *Klima (aus dem Biom):* Schnee (`Boreal`, `Tundra`, `Alpine`): kein `Flat`, Neigung +10° über der Mindestneigung (außer `Sod`). Heiß und trocken (`Desert`, `Savanna`, `Mediterranean`): Fenster bevorzugt `Small`, Wände dicker. Nass und warm (`Wetland`, `TropicalForest`): `OverhangM` ≥ 0,6; `Stilt`, wenn der Bauplatz überflutet werden kann.
+
+**Baustoffe je Biom** (was ohne Handel vor Ort wächst oder liegt; über Handel oder ab `tech.industrialization` sind alle Baustoffe überall möglich):
+
+| Biom (`BiomeType`) | Wände | Dächer |
+|---|---|---|
+| `Coast` | Pole, Log, Adobe, Stone, Brick | Thatch, Shingle, Tile, Slate |
+| `Temperate` | Pole, Log, TimberFrame, Stone, Brick | Thatch, Shingle, Tile, Slate |
+| `Boreal` | Log, Pole, Stone | Sod, Shingle, Hide, Slate |
+| `Tundra` | Textile, Stone | Hide, Sod |
+| `Desert` | Adobe, Stone, Textile | FlatEarth, Hide |
+| `Savanna` | Pole, Adobe, Textile | Thatch, FlatEarth, Hide |
+| `Wetland` | Pole, Log | Thatch, Shingle |
+| `Alpine` | Stone, Log | Slate, Shingle, Sod |
+| `TropicalForest` | Pole, Log | Thatch, Shingle |
+| `Mediterranean` | Stone, Adobe, Brick, TimberFrame | Tile, FlatEarth, Thatch |
+| `Ocean` | – (kein Bauplatz) | – |
+
+**Ab wann was gilt:** Wohnhaus-Klassen `bld.home.*` siehe Spalte „ab Epoche“ oben (es gibt **keine** Haustypen nach Beruf mehr; der Beruf wirkt nur über `bld.part.*`). Bauteil-Sätze siehe Tabelle oben und die Technik-Regeln. Bedürfnis-Bausteine: alle ab `Primitive`, außer `bld.part.shopfront` ab `Ancient` und Glasfronten in `bld.part.terrace` erst mit `tech.industrialization`.
 
 **Bedürfnis-Bausteine** (werden an jedes Haus angebaut, wenn der Bauherr sie braucht und bezahlen kann; ein Haus kann später wachsen, wenn die Familie wächst):
 
@@ -359,7 +410,7 @@ Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude
 | bld.part.water | Brunnen, Zisterne | kein Wasser in der Nähe | A7 / M4 | geplant |
 | bld.part.terrace | Terrasse, Wintergarten, Anbau mit Glasfront | Wohlstand | A7 / M4 | geplant (Bauregel in Haus v2) |
 | bld.part.climate | Klima-Teile: steiles Dach, Flachdach mit Attika, dicke Wände, Fensterläden, Vordach | Klima des Bauplatzes | A7 / M4 | geplant (Bauregel in Haus v2) |
-| bld.part.makeshift | Notbau-Teile: Bretter, Wellblech, Plane, Pultdach | sehr wenig Geld, Notlage, Flucht | A7 / M4 | geplant (Bauregel in Haus v2) |
+| bld.part.makeshift | Notbau-Teile: Äste, Bretter, Rinde, Plane, Pultdach (Wellblech erst mit `tech.industrialization`) | sehr wenig Geld, Notlage, Flucht | A7 / M4 | geplant (Bauregel in Haus v2) |
 
 ## 5. Personen, Einheiten, Fahrzeuge
 
