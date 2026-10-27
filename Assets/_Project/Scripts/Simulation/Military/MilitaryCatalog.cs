@@ -50,6 +50,7 @@ namespace WorldBeyond.Simulation.Military
     public sealed class MilitaryCatalog : IMilitaryQuery
     {
         private readonly Dictionary<int, MilitaryUnitData> _byType = new Dictionary<int, MilitaryUnitData>();
+        private readonly Dictionary<byte, float> _strengthByRole = new Dictionary<byte, float>();   // erster registrierter Typ je Rolle
         private readonly Dictionary<string, WeaponData> _weapons = new Dictionary<string, WeaponData>(StringComparer.Ordinal);
 
         public UnitTypeId Register(UnitTypeRegistry registry, UnitTypeData unit, MilitaryUnitData military)
@@ -66,6 +67,7 @@ namespace WorldBeyond.Simulation.Military
             military.Type = id;
             _byType[id.Value] = military;
             _weapons[military.Weapon.Key] = military.Weapon;
+            if (!_strengthByRole.ContainsKey(unit.MilitaryRole)) _strengthByRole[unit.MilitaryRole] = military.CombatStrength;
             return id;
         }
 
@@ -74,6 +76,9 @@ namespace WorldBeyond.Simulation.Military
         public bool TryGetWeapon(string key, out WeaponData weapon) => _weapons.TryGetValue(key ?? "", out weapon);
 
         public float GetCombatStrength(UnitTypeId type) => TryGet(type, out var d) ? d.CombatStrength : 0f;
+
+        /// <summary>Kampfstärke des ersten registrierten Typs dieser Rolle (Rekrutierungsplanung); 0 = keiner.</summary>
+        public float GetRoleStrength(MilitaryRole role) => _strengthByRole.TryGetValue((byte)role, out float s) ? s : 0f;
 
         // ---------------- Zählung je Civ (einmal je Tick gezählt, dann gepuffert) ----------------
         private IUnitQuery _census;
