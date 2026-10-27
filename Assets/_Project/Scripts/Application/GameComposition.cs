@@ -147,6 +147,17 @@ namespace WorldBeyond.Application
             armyEnv.PendingRecruits = civId => civ.Recruitment.QueuedMilitaryCount(civId);
             // Regel 6: Rüstungsbereitschaft aus der Kosten-Nutzen-Abwägung von War (0..1), keine feste Grenze.
             armyEnv.RecruitWillingness = civId => diplomacy.GetRecruitWillingness(civId);
+            // Angreifer zielt auf Überlegenheit, Verteidiger auf Gleichstand (Military RecruitNeed). Ruhende Kriege zählen nicht.
+            armyEnv.IsAttackerAgainst = (c, e) =>
+            {
+                var wars = diplomacy.ActiveWars;
+                for (int i = 0; i < wars.Count; i++)
+                {
+                    var w = wars[i];
+                    if (!w.Suspended && w.Attackers.Contains(c) && w.Defenders.Contains(e)) return true;
+                }
+                return false;
+            };
         }
     }
 }
