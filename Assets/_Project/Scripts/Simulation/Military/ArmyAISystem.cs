@@ -45,7 +45,8 @@ namespace WorldBeyond.Simulation.Military
 
         private readonly List<EntityId> _alive = new List<EntityId>();
         private readonly SortedDictionary<int, List<EntityId>> _freeByCiv = new SortedDictionary<int, List<EntityId>>();
-        private readonly SortedSet<int> _civs = new SortedSet<int>();
+        private readonly SortedSet<int> _civs = new SortedSet<int>();           // Civs mit Militäreinheiten
+        private readonly SortedSet<int> _recruitCivs = new SortedSet<int>();    // dazu alle Siedlungsbesitzer: auch eine Civ ohne Soldaten muss rekrutieren können
         private readonly Dictionary<int, long> _lastRecruit = new Dictionary<int, long>();
         private readonly List<Army> _scratchArmies = new List<Army>();
         // Zuletzt von der Armee-KI gesetztes Bewegungsziel je Einheit (gespeichert, sonst weicht ein geladener
@@ -142,7 +143,11 @@ namespace WorldBeyond.Simulation.Military
                 Execute(a);
             }
 
-            foreach (int civ in _civs) MaybeRecruit(civ, tick);
+            _recruitCivs.Clear();
+            _recruitCivs.UnionWith(_civs);
+            var settlements = _env.Settlements?.Invoke();
+            if (settlements != null) foreach (var st in settlements) if (st.OwnerCiv > 0) _recruitCivs.Add(st.OwnerCiv);
+            foreach (int civ in _recruitCivs) MaybeRecruit(civ, tick);
         }
 
         private void PruneIssued(long tick)
@@ -210,7 +215,7 @@ namespace WorldBeyond.Simulation.Military
 
             // Heimat bedroht? Diese Armee verteidigt, solange die übrigen eigenen Truppen dort nicht genügen (Abwägung je Armee,
             // in Id-Reihenfolge, damit nicht alle Armeen gleichzeitig umkehren).
-            float homeThreat = EnemyStrengthNear(a.CivId, a.HomeX, a.HomeZ, HomeThreatRadius);
+            float homeThreat = HomeThreat(a.CivId, a.HomeX, a.HomeZ);
             if (homeThreat > 0f && OwnStrengthNearExcept(a, a.HomeX, a.HomeZ, HomeThreatRadius) < homeThreat * _env.Superiority)
             {
                 if (a.Order.Kind != ArmyOrderKind.Defend || !SameSpot(a.Order.X, a.Order.Z, a.HomeX, a.HomeZ))
@@ -295,6 +300,30 @@ namespace WorldBeyond.Simulation.Military
             return s;
         }
 
+        // Feinde nahe der eigenen Heimat, die näher an ihr stehen als an ihrer eigenen: Eine Garnison, die zu Hause
+        // steht, ist keine Bedrohung, auch wenn die Heimatorte nah beieinander liegen (kleine Karten).
+        private float HomeThreat(int civ, float hx, float hz)
+        {
+            float r2 = HomeThreatRadius * HomeThreatRadius, s = 0f;
+            foreach (var id in _alive)
+            {
+                if (!_units.TryGet(id, out var u) || u.CivId == civ || u.MaxHp <= 0f || !_combatEnv.AreHostile(civ, u.CivId)) continue;
+                float dx = u.X - hx, dz = u.Z - hz, d2 = dx * dx + dz * dz;
+                if (d2 > r2) continue;
+                if (_env.HomeOf != null)
+                {
+                    var (ok, ex, ez) = _env.HomeOf(u.CivId);
+                    if (ok)
+                    {
+                        float ox = u.X - ex, oz = u.Z - ez;
+                        if (ox * ox + oz * oz <= d2) continue;   // steht näher an der eigenen Heimat
+                    }
+                }
+                s += _catalog.GetCombatStrength(u.Type) * (u.Hp / u.MaxHp);
+            }
+            return s;
+        }
+
         private float EnemyStrengthNear(int civ, float x, float z, float radius)
         {
             float r2 = radius * radius, s = 0f;
@@ -324,6 +353,7 @@ namespace WorldBeyond.Simulation.Military
 
         internal int RecruitNeed(int civ)
         {
+            // Angreifer wollen Überlegenheit, Verteidiger nur Gleichstand (sonst schaukeln sich beide Seiten gegenseitig hoch).
             float own = 0f, threat = 0f;
             foreach (var id in _alive)
             {
@@ -331,12 +361,13 @@ namespace WorldBeyond.Simulation.Military
                 float s = _catalog.GetCombatStrength(u.Type) * (u.Hp / u.MaxHp);
                 if (s <= 0f) continue;
                 if (u.CivId == civ) own += s;
-                else if (_combatEnv.AreHostile(civ, u.CivId)) threat += s;
+                else if (_combatEnv.AreHostile(civ, u.CivId))
+                    threat += s * (_env.IsAttackerAgainst == null || _env.IsAttackerAgainst(civ, u.CivId) ? _env.Superiority : _env.DefenderRatio);
             }
             float unit = RecruitUnitStrength();
             if (unit <= 0f) return 0;
             if (_env.PendingRecruits != null) own += Math.Max(0, _env.PendingRecruits(civ)) * unit;   // eingereihte Aufträge zählen mit
-            float wanted = Math.Max(threat * _env.Superiority, _env.MinAttackUnits * unit);
+            float wanted = Math.Max(threat, _env.MinAttackUnits * unit);
             float willingness = _env.RecruitWillingness == null ? 1f : Math.Clamp(_env.RecruitWillingness(civ), 0f, 1f);
             float gap = (wanted - own) * willingness;
             return gap <= 0f ? 0 : (int)MathF.Ceiling(gap / unit - 1e-4f);

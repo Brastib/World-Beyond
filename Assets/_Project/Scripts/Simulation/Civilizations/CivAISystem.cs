@@ -36,30 +36,33 @@ namespace WorldBeyond.Simulation.Civilizations
         public int Order => SystemOrder.AI;
         public int TickInterval => 1;
 
+        private readonly List<int> _due = new List<int>();
+
+        // Lastverteilung (Leistungsmessung: Spitzen bis 31 ms, wenn ein Volk alle Orte im selben Tick plante):
+        // Jeder Ort entscheidet alle DecisionIntervalTicks in seinem eigenen Takt (Ort-Id + Tick), Volksentscheidungen
+        // (Forschung, Expansion, Krieg) im Takt des Volkes. Der Takt folgt nur aus Tick und Ids, also auch nach dem Laden gleich.
         public void Tick(SimContext ctx)
         {
             long now = ctx.Clock.Tick;
             foreach (int civId in _s.CivOrder)
             {
                 var civ = _s.Civs[civId];
-                if (!civ.Alive || now < civ.NextAiTick) continue;
+                if (!civ.Alive) continue;
+                var list = _s.SettlementListOf(civId);
+                _due.Clear();
+                foreach (int sid in list)
+                    if ((sid + now) % DecisionIntervalTicks == 0) _due.Add(sid);   // Puffer: Bauen kann die Liste ändern
+                foreach (int sid in _due)
+                {
+                    var st = _s.Settlement(sid);
+                    if (st != null && st.CivId == civId) DecideBuilding(civ, st);
+                }
+                if (now < civ.NextAiTick) continue;
                 civ.NextAiTick = now + DecisionIntervalTicks;
-                Decide(ctx, civ);
+                ChooseResearch(civ);
+                DecideExpansion(civ);
+                if (ctx.TryGet<ICivWarEvaluator>(out var war)) war.EvaluateAndAct(civ.Id);
             }
-        }
-
-        private void Decide(SimContext ctx, Civilization civ)
-        {
-            ChooseResearch(civ);
-            var ids = _s.SettlementListOf(civ.Id).ToArray();
-            foreach (int sid in ids)
-            {
-                var st = _s.Settlement(sid);
-                if (st == null) continue;
-                DecideBuilding(civ, st);
-            }
-            DecideExpansion(civ);
-            if (ctx.TryGet<ICivWarEvaluator>(out var war)) war.EvaluateAndAct(civ.Id);
         }
 
         // ---------------- Forschung ----------------
@@ -107,12 +110,12 @@ namespace WorldBeyond.Simulation.Civilizations
             // 2. Wohnraum
             // Früh genug bauen: Geburten werden ab ~2 freien Plätzen gebremst; kleine Orte blieben sonst knapp darunter stehen.
             if (pop > st.HousingCapacity - Math.Max(3.0, st.HousingCapacity * 0.15))
-                if (TryBuild(civ, st, BestAvailable(civ, st, "building.apartment", "building.house", "building.hut"), "Wohnraum fast voll")) return;
+                if (TryBuild(civ, st, HousingFor(civ, st), "Wohnraum fast voll")) return;
             // 3. Lager
             foreach (var r in Resources.Stockable)
                 if (st.Stock[(int)r] >= st.StorageCapacity * 0.9 && SettlementSimulationSystem.StockTarget(st, r) > st.StorageCapacity * 0.9)
                 {
-                    if (TryBuild(civ, st, BestAvailable(civ, st, "building.warehouse", "building.storehouse"), $"Lager für {r} voll")) return;
+                    if (TryBuild(civ, st, BestAvailable(civ, st, StorageKeys), $"Lager für {r} voll")) return;
                     break;
                 }
             // 4. Rohstoffe
@@ -137,12 +140,12 @@ namespace WorldBeyond.Simulation.Civilizations
             // 7. Verteidigung: bei Grenzkontakt oder ab Stadtgröße, verstärkt durch Militarismus
             if (BorderContact(civ.Id) || (st.Tier >= SettlementTier.Town && civ.Traits.Militarism > 1.1f))
             {
-                string def = BestAvailable(civ, st, "building.stone_wall", "building.barracks", "building.palisade");
+                string def = BestAvailable(civ, st, DefenseKeys);
                 if (def != null && TryBuild(civ, st, def, "Grenze sichern")) return;
             }
             // 8. Arbeitslose beschäftigen: Nahrung als sicherer Überschuss
             if (st.Unemployed > 4)
-                TryBuild(civ, st, pop > st.HousingCapacity * 0.7 ? BestAvailable(civ, st, "building.house", "building.hut") : "building.farm", $"{st.Unemployed} Arbeitslose");
+                TryBuild(civ, st, pop > st.HousingCapacity * 0.7 ? BestAvailable(civ, st, HouseOrHutKeys) : "building.farm", $"{st.Unemployed} Arbeitslose");
         }
 
         private int FreeFoodSlots(Settlement st)
@@ -158,7 +161,45 @@ namespace WorldBeyond.Simulation.Civilizations
             return slots;
         }
 
-        private string BestAvailable(Civilization civ, Settlement st, params string[] keys)
+        /// <summary>
+        /// Haustyp nach Lage der Bewohner: Steinhäuser nur, wenn der Ort Stein übrig hat und satt ist (Wohlstand);
+        /// sonst baut jede Familie ihre Hütte.
+        /// </summary>
+        // Wohnen bei der Arbeit: Arbeitsgebäude (keine Wohnhäuser, Ortskerne, Lager) im Umkreis von 3 Kacheln, je Kachel gezählt.
+        private int NearbyWorkplaces(int x, int y)
+        {
+            var world = _s.World;
+            int n = 0;
+            for (int yy = y - 3; yy <= y + 3; yy++)
+                for (int xx = x - 3; xx <= x + 3; xx++)
+                {
+                    if (!world.InBounds(xx, yy)) continue;
+                    var b = world.Get(xx, yy).Building;
+                    if (!b.IsValid) continue;
+                    var r = _s.Buildings.GetRecord(b);
+                    if (r == null) continue;
+                    var c = _s.Content.Buildings.Get(r.Type).Category;
+                    if (c != BuildingCategory.Housing && c != BuildingCategory.Center && c != BuildingCategory.Storage) n++;
+                }
+            return n;
+        }
+
+        private string HousingFor(Civilization civ, Settlement st)
+        {
+            double need = SettlementSimulationSystem.FoodNeedPerYear(st);
+            bool wealthy = st.Stock[(int)ResourceType.Stone] >= WealthyStone && st.Stock[(int)ResourceType.Food] >= need;
+            return wealthy ? BestAvailable(civ, st, AllHousingKeys) : BestAvailable(civ, st, HutKeys);
+        }
+
+        public const double WealthyStone = 60;
+
+        private static readonly string[] StorageKeys = { "building.warehouse", "building.storehouse" };
+        private static readonly string[] DefenseKeys = { "building.stone_wall", "building.barracks", "building.palisade" };
+        private static readonly string[] HouseOrHutKeys = { "building.house", "building.hut" };
+        private static readonly string[] AllHousingKeys = { "building.apartment", "building.house", "building.hut" };
+        private static readonly string[] HutKeys = { "building.hut" };
+
+        private string BestAvailable(Civilization civ, Settlement st, string[] keys)
         {
             foreach (var k in keys)
             {
@@ -210,16 +251,9 @@ namespace WorldBeyond.Simulation.Civilizations
             foreach (var r in Resources.Stockable) if (st.Stock[(int)r] < d.Cost[r]) return false;
 
             int radius = TerritoryService.RadiusOf(st.Tier) - 1;
-            var world = _s.World;
-            world.FindBestTiles(st.X + 1, st.Y + 1, radius, (int x, int y, in TileData t) =>
-            {
-                if (t.OwnerCivId != civ.Id || t.Building.IsValid) return 0f;
-                if (!_settlements.CanBuild(st, type, x, y, out _)) return 0f;
-                float v = PlacementValue(d, x, y);
-                if (v <= 0f) return 0f;
-                int dx = x - st.X, dy = y - st.Y;
-                return v / (1f + (float)Math.Sqrt(dx * dx + dy * dy) * 0.05f);
-            }, 1, _tiles);
+            _siteCiv = civ.Id; _siteSt = st; _siteType = type; _siteDef = d;
+            _s.World.FindBestTiles(st.X + 1, st.Y + 1, radius, _siteScorer ??= ScoreBuildSite, 1, _tiles);
+            _siteSt = null; _siteDef = null;
             if (_tiles.Count == 0) return false;
             var best = _tiles[0];
             if (!_settlements.TryPlaceBuilding(st, type, best.X, best.Y, out _, out _)) return false;
@@ -227,10 +261,28 @@ namespace WorldBeyond.Simulation.Civilizations
             return true;
         }
 
+        // Bewertung als wiederverwendeter Delegat statt Lambda je Aufruf (Allokation pro Tick).
+        private int _siteCiv;
+        private Settlement _siteSt;
+        private BuildingTypeId _siteType;
+        private BuildingTypeData _siteDef;
+        private TileScorer _siteScorer;
+
+        private float ScoreBuildSite(int x, int y, in TileData t)
+        {
+            if (t.OwnerCivId != _siteCiv || t.Building.IsValid) return 0f;
+            if (!_settlements.CanBuild(_siteSt, _siteType, x, y, out _)) return 0f;
+            float v = PlacementValue(_siteDef, x, y);
+            if (v <= 0f) return 0f;
+            int dx = x - _siteSt.X, dy = y - _siteSt.Y;
+            return v / (1f + (float)Math.Sqrt(dx * dx + dy * dy) * 0.05f);
+        }
+
         /// <summary>Standortwert eines Gebäudes: Rohstoffe im Einzugsbereich, Fruchtbarkeit, Wasser; sonst Nähe zum Kern.</summary>
         private float PlacementValue(BuildingTypeData d, int x, int y)
         {
             var world = _s.World;
+            if (d.Category == BuildingCategory.Housing) return 1f + NearbyWorkplaces(x, y) * 0.5f;
             int rad = d.HarvestFrom != ResourceType.None || d.NeedsWater || d.UsesFertility ? d.CatchmentRadius : 0;
             if (rad == 0) return 1f;
             float v = 0f;

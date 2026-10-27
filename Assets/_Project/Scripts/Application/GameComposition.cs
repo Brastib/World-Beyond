@@ -120,8 +120,8 @@ namespace WorldBeyond.Application
             // War (Phase 4): Diplomatie und Kriegsentscheidung. Verluste abonniert DiplomacyService selbst (UnitDiedEvent).
             var port = new DiplomacyWorldPortAdapter(civ.Civilizations, civ.Settlements, civ.Territory, civ.Economy,
                 civ.Recruitment, ctx.Units, military, world, spatial);
-            // GetArmyUnitCount enthält die Ausbildungsschlangen (Military + Civ), War muss Anfragen nicht selbst mitzählen.
-            var diplomacy = new DiplomacyService(port, ctx.Events, () => ctx.Clock.Tick, new DiplomacySettings { RecruitPendingTicks = 0 });
+            // Nur Military rekrutiert (War liefert die Bereitschaft); GetArmyUnitCount enthält die Ausbildungsschlangen.
+            var diplomacy = new DiplomacyService(port, ctx.Events, () => ctx.Clock.Tick, new DiplomacySettings { RecruitPendingTicks = 0, SelfRecruit = false });
             ctx.Register<IDiplomacyService>(diplomacy);
             ctx.Register<IDiplomacyQuery>(diplomacy);
             ctx.Register<IWarQuery>(diplomacy);
@@ -145,6 +145,19 @@ namespace WorldBeyond.Application
             MilitaryWiring.Connect(combatEnv, armyEnv, diplomacy, world, spatial, civ.Civilizations, civ.Settlements, civ.Recruitment);
             // Eingereihte Militäraufträge (nur Ausbildungsschlangen) für die Aufrüstungsgrenze der Armee-KI und von War.
             armyEnv.PendingRecruits = civId => civ.Recruitment.QueuedMilitaryCount(civId);
+            // Regel 6: Rüstungsbereitschaft aus der Kosten-Nutzen-Abwägung von War (0..1), keine feste Grenze.
+            armyEnv.RecruitWillingness = civId => diplomacy.GetRecruitWillingness(civId);
+            // Angreifer zielt auf Überlegenheit, Verteidiger auf Gleichstand (Military RecruitNeed). Ruhende Kriege zählen nicht.
+            armyEnv.IsAttackerAgainst = (c, e) =>
+            {
+                var wars = diplomacy.ActiveWars;
+                for (int i = 0; i < wars.Count; i++)
+                {
+                    var w = wars[i];
+                    if (!w.Suspended && w.Attackers.Contains(c) && w.Defenders.Contains(e)) return true;
+                }
+                return false;
+            };
         }
     }
 }

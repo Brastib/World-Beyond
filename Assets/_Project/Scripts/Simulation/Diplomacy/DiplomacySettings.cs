@@ -79,11 +79,18 @@ namespace WorldBeyond.Simulation.Diplomacy
         public float PeaceArmyStrengthPerPop = 0.05f;     // Grundarmee: Bevölkerung 1000, Haltung 0,5 → Stärke 50
         public float AssumedUnitStrength = 5f;            // Schätzwert pro Einheit für die Anzahl einer Anfrage
         public int MaxRecruitPerRequest = 5;
-        // Obergrenze der Armee nach Bevölkerung (auch im Krieg): eine Civ rüstet sich nicht zu Tode.
-        // Zählt Einheiten inklusive eingereihter Aufträge (Port GetArmyUnitCount). Platzhalter.
-        public float MaxArmyUnitsPerPop = 0.10f;          // Bevölkerung 300 → höchstens 30 Einheiten
-        public int MinArmyUnitsCap = 2;                   // auch ein kleiner Stamm darf sich verteidigen
-        public int MaxArmyUnitsAbsolute = 80;             // absolute Obergrenze je Civ (Leistung, Platzhalter; Civ-Recruitment gleich)
+        // Genau eine Stelle rekrutiert: false, sobald Military über ArmyEnvironment.RecruitWillingness
+        // (IWarQuery.GetRecruitWillingness) selbst bestellt. Die Bereitschaft wird weiter berechnet.
+        public bool SelfRecruit = true;
+        // Keine feste Armeegrenze (Nutzerentscheidung 2026-10-27): Die KI wägt jeden Rekruten gegen seine Kosten ab.
+        // Kosten = Arbeitskraft: a = Armee / (Armee + Bevölkerung), weil die Bevölkerung Soldaten nicht mitzählt.
+        //          LaborCostWeight × a/(1−a) + LaborSteepWeight × ((a − LaborSteepFrom)/(1−a))² ab der Schwelle (steil, ohne harte Grenze)
+        //        + Nahrung/Ressourcenmangel (FoodCostWeight × ResourceNeed) + Kriegsmüdigkeit (ExhaustionCostWeight × Erschöpfung/100).
+        public float LaborCostWeight = 2f;
+        public float LaborSteepFrom = 0.12f;              // ab etwa 12 % unter Waffen steigen die Kosten steil
+        public float LaborSteepWeight = 40f;              // 20 % → ≈ 0,9 Kosten, 25 % → ≈ 1,9 (mehr als jeder Nutzen)
+        public float FoodCostWeight = 0.5f;
+        public float ExhaustionCostWeight = 0.5f;
         // Bis der Adapter eingereihte Aufträge mitzählt: angenommene Anfragen zählen so lange selbst als „unterwegs“.
         // 0 schaltet das ab (wenn GetArmyUnitCount die Warteschlange enthält).
         public long RecruitPendingTicks = 1200;

@@ -64,7 +64,7 @@ Steuerung:
 - [ ] Welt mit Gelände, Wasser, Bäumen und Felsen (prozedurale Platzhalter-Modelle, nicht die Ziel-Optik R1/R2).
 - [ ] HUD: Datum/Tempo oben, Zivilisationsliste, Ereignis-Feed, Infofeld bei Auswahl. Text muss lesbar sein.
 - [ ] Bei 10×: Völker starten mit 40 Personen, gründen in den ersten Jahren Tochtersiedlungen (headless: bis Jahr 45 je 3 Siedlungen), Einheiten bewegen sich.
-- [ ] Erster Krieg: headless nach rund 45 Spielminuten, bei 10× also nach etwa **4,5 Minuten**. Der Krieg ist
+- [ ] Erster Krieg: headless (Stand 22d04b8) nach rund 3,9 Spielstunden, bei 10× also nach etwa **24 Minuten**. Der Krieg ist
       eine KI-Entscheidung und wird nicht erzwungen. Im Unity-Lauf kann es etwas abweichen, wenn die Bildrate
       das Tempo bremst.
 - [ ] Kampf: Einheiten sterben, Feed meldet Kriegserklärung, Frieden oder Eroberung.

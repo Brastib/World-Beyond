@@ -125,6 +125,20 @@ namespace WorldBeyond.Tests.EditMode.Combat
         }
 
         [Test]
+        public void CivWithoutAnySoldierStillRecruits()
+        {
+            // Henne-Ei: eine Civ ohne Militär kennt die Armee-KI nur über ihre Siedlungen (ArmyEnvironment.Settlements).
+            var w = Make(out _, out _);
+            var env = w.Ctx.Get<ArmyEnvironment>();
+            int queued = 0;
+            env.Recruit = (civ, role, n) => { if (civ == 3) queued += n; return n; };
+            env.PendingRecruits = civ => civ == 3 ? queued : 0;
+            env.Settlements = () => new[] { new ArmyObjective(0f, 0f, 1f, ownerCiv: 3, settlementId: 1) };
+            w.Ticks(300);
+            Assert.That(queued, Is.EqualTo(env.MinAttackUnits));
+        }
+
+        [Test]
         public void RecruitNeedFollowsThreatAndWillingness()
         {
             var w = Make(out var war, out _);
@@ -142,6 +156,38 @@ namespace WorldBeyond.Tests.EditMode.Combat
             Assert.That(ai.RecruitNeed(1), Is.EqualTo(5), "Civ wägt Kosten ab: halbe Bereitschaft");
             env.RecruitWillingness = civ => 0f;
             Assert.That(ai.RecruitNeed(1), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void EnemyGarrisonAtItsOwnHomeIsNoThreatEvenIfClose()
+        {
+            // Kleine Karte: Heimatorte 250 m auseinander, beide Garnisonen stehen zu Hause → trotzdem wird angegriffen.
+            var w = Make(out var war, out _);
+            var env = w.Ctx.Get<ArmyEnvironment>();
+            env.Recruit = (civ, role, n) => 0;
+            env.HomeOf = civ => civ == 1 ? (true, 0f, 0f) : (true, 0f, 250f);
+            env.Objectives = civ => civ == 1 ? new[] { new ArmyObjective(0f, 250f, 10f, 2, 8) } : Array.Empty<ArmyObjective>();
+            for (int i = 0; i < 6; i++) w.Ctx.Units.Spawn(w.Rifleman, 1, i * 3f, 0f);
+            for (int i = 0; i < 2; i++) { var d = w.Ctx.Units.Spawn(w.Rifleman, 2, i * 3f, 250f); w.Ctx.Combat_SetHold(d); }
+            war[0] = true;
+            w.Ticks(60);
+            var view = w.Ctx.Get<IArmyQuery>().GetArmies(1)[0];
+            Assert.That(view.Order.Kind, Is.EqualTo(ArmyOrderKind.AttackSettlement), "fremde Garnison daheim bedroht nicht");
+        }
+
+        [Test]
+        public void DefenderAimsForParityAttackerForSuperiority()
+        {
+            var w = Make(out var war, out _);
+            var env = w.Ctx.Get<ArmyEnvironment>();
+            env.IsAttackerAgainst = (civ, enemy) => civ == 2;   // Civ 2 hat den Krieg erklärt
+            w.Ctx.Units.Spawn(w.Rifleman, 1, 0f, 0f);
+            for (int i = 0; i < 10; i++) w.Ctx.Units.Spawn(w.Rifleman, 2, 1000f, i * 3f);
+            war[0] = true;
+            w.Ticks(10);
+            var ai = w.Ctx.Get<ArmyAISystem>();
+            Assert.That(ai.RecruitNeed(1), Is.EqualTo(9), "Verteidiger: 1,0 × 10 − 1");
+            Assert.That(ai.RecruitNeed(2), Is.EqualTo(0), "Angreifer ist schon überlegen (10 ≥ 1,5 × 1)");
         }
 
         [Test]
