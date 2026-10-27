@@ -215,7 +215,7 @@ namespace WorldBeyond.Simulation.Military
 
             // Heimat bedroht? Diese Armee verteidigt, solange die übrigen eigenen Truppen dort nicht genügen (Abwägung je Armee,
             // in Id-Reihenfolge, damit nicht alle Armeen gleichzeitig umkehren).
-            float homeThreat = EnemyStrengthNear(a.CivId, a.HomeX, a.HomeZ, HomeThreatRadius);
+            float homeThreat = HomeThreat(a.CivId, a.HomeX, a.HomeZ);
             if (homeThreat > 0f && OwnStrengthNearExcept(a, a.HomeX, a.HomeZ, HomeThreatRadius) < homeThreat * _env.Superiority)
             {
                 if (a.Order.Kind != ArmyOrderKind.Defend || !SameSpot(a.Order.X, a.Order.Z, a.HomeX, a.HomeZ))
@@ -296,6 +296,30 @@ namespace WorldBeyond.Simulation.Military
                 bool there = dx * dx + dz * dz <= r2;
                 bool going = other.Order.Kind == ArmyOrderKind.Defend && SameSpot(other.Order.X, other.Order.Z, x, z);
                 if (there || going) s += _registry.Strength(other);
+            }
+            return s;
+        }
+
+        // Feinde nahe der eigenen Heimat, die näher an ihr stehen als an ihrer eigenen: Eine Garnison, die zu Hause
+        // steht, ist keine Bedrohung, auch wenn die Heimatorte nah beieinander liegen (kleine Karten).
+        private float HomeThreat(int civ, float hx, float hz)
+        {
+            float r2 = HomeThreatRadius * HomeThreatRadius, s = 0f;
+            foreach (var id in _alive)
+            {
+                if (!_units.TryGet(id, out var u) || u.CivId == civ || u.MaxHp <= 0f || !_combatEnv.AreHostile(civ, u.CivId)) continue;
+                float dx = u.X - hx, dz = u.Z - hz, d2 = dx * dx + dz * dz;
+                if (d2 > r2) continue;
+                if (_env.HomeOf != null)
+                {
+                    var (ok, ex, ez) = _env.HomeOf(u.CivId);
+                    if (ok)
+                    {
+                        float ox = u.X - ex, oz = u.Z - ez;
+                        if (ox * ox + oz * oz <= d2) continue;   // steht näher an der eigenen Heimat
+                    }
+                }
+                s += _catalog.GetCombatStrength(u.Type) * (u.Hp / u.MaxHp);
             }
             return s;
         }

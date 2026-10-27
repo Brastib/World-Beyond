@@ -159,6 +159,23 @@ namespace WorldBeyond.Tests.EditMode.Combat
         }
 
         [Test]
+        public void EnemyGarrisonAtItsOwnHomeIsNoThreatEvenIfClose()
+        {
+            // Kleine Karte: Heimatorte 250 m auseinander, beide Garnisonen stehen zu Hause → trotzdem wird angegriffen.
+            var w = Make(out var war, out _);
+            var env = w.Ctx.Get<ArmyEnvironment>();
+            env.Recruit = (civ, role, n) => 0;
+            env.HomeOf = civ => civ == 1 ? (true, 0f, 0f) : (true, 0f, 250f);
+            env.Objectives = civ => civ == 1 ? new[] { new ArmyObjective(0f, 250f, 10f, 2, 8) } : Array.Empty<ArmyObjective>();
+            for (int i = 0; i < 6; i++) w.Ctx.Units.Spawn(w.Rifleman, 1, i * 3f, 0f);
+            for (int i = 0; i < 2; i++) { var d = w.Ctx.Units.Spawn(w.Rifleman, 2, i * 3f, 250f); w.Ctx.Combat_SetHold(d); }
+            war[0] = true;
+            w.Ticks(60);
+            var view = w.Ctx.Get<IArmyQuery>().GetArmies(1)[0];
+            Assert.That(view.Order.Kind, Is.EqualTo(ArmyOrderKind.AttackSettlement), "fremde Garnison daheim bedroht nicht");
+        }
+
+        [Test]
         public void DefenderAimsForParityAttackerForSuperiority()
         {
             var w = Make(out var war, out _);
