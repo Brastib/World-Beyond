@@ -329,6 +329,7 @@ namespace WorldBeyond.Simulation.Military
 
         internal int RecruitNeed(int civ)
         {
+            // Angreifer wollen Überlegenheit, Verteidiger nur Gleichstand (sonst schaukeln sich beide Seiten gegenseitig hoch).
             float own = 0f, threat = 0f;
             foreach (var id in _alive)
             {
@@ -336,12 +337,13 @@ namespace WorldBeyond.Simulation.Military
                 float s = _catalog.GetCombatStrength(u.Type) * (u.Hp / u.MaxHp);
                 if (s <= 0f) continue;
                 if (u.CivId == civ) own += s;
-                else if (_combatEnv.AreHostile(civ, u.CivId)) threat += s;
+                else if (_combatEnv.AreHostile(civ, u.CivId))
+                    threat += s * (_env.IsAttackerAgainst == null || _env.IsAttackerAgainst(civ, u.CivId) ? _env.Superiority : _env.DefenderRatio);
             }
             float unit = RecruitUnitStrength();
             if (unit <= 0f) return 0;
             if (_env.PendingRecruits != null) own += Math.Max(0, _env.PendingRecruits(civ)) * unit;   // eingereihte Aufträge zählen mit
-            float wanted = Math.Max(threat * _env.Superiority, _env.MinAttackUnits * unit);
+            float wanted = Math.Max(threat, _env.MinAttackUnits * unit);
             float willingness = _env.RecruitWillingness == null ? 1f : Math.Clamp(_env.RecruitWillingness(civ), 0f, 1f);
             float gap = (wanted - own) * willingness;
             return gap <= 0f ? 0 : (int)MathF.Ceiling(gap / unit - 1e-4f);

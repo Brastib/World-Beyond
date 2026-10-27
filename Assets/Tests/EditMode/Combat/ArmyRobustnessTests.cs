@@ -159,6 +159,21 @@ namespace WorldBeyond.Tests.EditMode.Combat
         }
 
         [Test]
+        public void DefenderAimsForParityAttackerForSuperiority()
+        {
+            var w = Make(out var war, out _);
+            var env = w.Ctx.Get<ArmyEnvironment>();
+            env.IsAttackerAgainst = (civ, enemy) => civ == 2;   // Civ 2 hat den Krieg erklärt
+            w.Ctx.Units.Spawn(w.Rifleman, 1, 0f, 0f);
+            for (int i = 0; i < 10; i++) w.Ctx.Units.Spawn(w.Rifleman, 2, 1000f, i * 3f);
+            war[0] = true;
+            w.Ticks(10);
+            var ai = w.Ctx.Get<ArmyAISystem>();
+            Assert.That(ai.RecruitNeed(1), Is.EqualTo(9), "Verteidiger: 1,0 × 10 − 1");
+            Assert.That(ai.RecruitNeed(2), Is.EqualTo(0), "Angreifer ist schon überlegen (10 ≥ 1,5 × 1)");
+        }
+
+        [Test]
         public void ThreatenedHomeIsDefendedInsteadOfAttacking()
         {
             var w = Make(out var war, out _);
