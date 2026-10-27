@@ -45,7 +45,8 @@ namespace WorldBeyond.Simulation.Military
 
         private readonly List<EntityId> _alive = new List<EntityId>();
         private readonly SortedDictionary<int, List<EntityId>> _freeByCiv = new SortedDictionary<int, List<EntityId>>();
-        private readonly SortedSet<int> _civs = new SortedSet<int>();
+        private readonly SortedSet<int> _civs = new SortedSet<int>();           // Civs mit Militäreinheiten
+        private readonly SortedSet<int> _recruitCivs = new SortedSet<int>();    // dazu alle Siedlungsbesitzer: auch eine Civ ohne Soldaten muss rekrutieren können
         private readonly Dictionary<int, long> _lastRecruit = new Dictionary<int, long>();
         private readonly List<Army> _scratchArmies = new List<Army>();
         // Zuletzt von der Armee-KI gesetztes Bewegungsziel je Einheit (gespeichert, sonst weicht ein geladener
@@ -142,7 +143,11 @@ namespace WorldBeyond.Simulation.Military
                 Execute(a);
             }
 
-            foreach (int civ in _civs) MaybeRecruit(civ, tick);
+            _recruitCivs.Clear();
+            _recruitCivs.UnionWith(_civs);
+            var settlements = _env.Settlements?.Invoke();
+            if (settlements != null) foreach (var st in settlements) if (st.OwnerCiv > 0) _recruitCivs.Add(st.OwnerCiv);
+            foreach (int civ in _recruitCivs) MaybeRecruit(civ, tick);
         }
 
         private void PruneIssued(long tick)
@@ -309,11 +314,12 @@ namespace WorldBeyond.Simulation.Military
         }
 
         // Abwägung statt fester Zahl (VISION §2 Regel 6): Ziel ist eigene Stärke ≥ feindliche Stärke × Superiority.
-        // Ohne feindliche Truppen genügt eine kleine Eroberungstruppe. Kosten, Unterhalt und Kriegsmüdigkeit wägt die Civ
+        // Ohne feindliche Truppen (auch im Frieden) genügt eine kleine Grundarmee. Kosten, Unterhalt und Kriegsmüdigkeit wägt die Civ
         // über RecruitWillingness (0..1) ab; was sie sich nicht leisten kann, lehnt IRecruitment ohnehin ab.
         private void MaybeRecruit(int civ, long tick)
         {
-            if (_env.Recruit == null || !HasEnemy(civ)) return;
+            // Auch im Frieden: Grundarmee (MinAttackUnits), soweit die Civ bereit ist (War rekrutiert seit 0a07383 nicht mehr selbst).
+            if (_env.Recruit == null) return;
             if (_lastRecruit.TryGetValue(civ, out long last) && tick - last < RecruitIntervalTicks) return;
             int missing = RecruitNeed(civ);
             if (missing <= 0) return;
@@ -323,6 +329,7 @@ namespace WorldBeyond.Simulation.Military
 
         internal int RecruitNeed(int civ)
         {
+            // Angreifer wollen Überlegenheit, Verteidiger nur Gleichstand (sonst schaukeln sich beide Seiten gegenseitig hoch).
             float own = 0f, threat = 0f;
             foreach (var id in _alive)
             {
@@ -330,12 +337,13 @@ namespace WorldBeyond.Simulation.Military
                 float s = _catalog.GetCombatStrength(u.Type) * (u.Hp / u.MaxHp);
                 if (s <= 0f) continue;
                 if (u.CivId == civ) own += s;
-                else if (_combatEnv.AreHostile(civ, u.CivId)) threat += s;
+                else if (_combatEnv.AreHostile(civ, u.CivId))
+                    threat += s * (_env.IsAttackerAgainst == null || _env.IsAttackerAgainst(civ, u.CivId) ? _env.Superiority : _env.DefenderRatio);
             }
             float unit = RecruitUnitStrength();
             if (unit <= 0f) return 0;
             if (_env.PendingRecruits != null) own += Math.Max(0, _env.PendingRecruits(civ)) * unit;   // eingereihte Aufträge zählen mit
-            float wanted = Math.Max(threat * _env.Superiority, _env.MinAttackUnits * unit);
+            float wanted = Math.Max(threat, _env.MinAttackUnits * unit);
             float willingness = _env.RecruitWillingness == null ? 1f : Math.Clamp(_env.RecruitWillingness(civ), 0f, 1f);
             float gap = (wanted - own) * willingness;
             return gap <= 0f ? 0 : (int)MathF.Ceiling(gap / unit - 1e-4f);

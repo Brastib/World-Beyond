@@ -202,7 +202,7 @@ namespace WorldBeyond.Simulation.Diplomacy
 
         static CivAiMemory Copy(CivAiMemory m) => new CivAiMemory
         { CivId = m.CivId, LastWarTick = m.LastWarTick, LastPeaceProposalTick = m.LastPeaceProposalTick, LastAllianceTick = m.LastAllianceTick, LastRecruitTick = m.LastRecruitTick,
-          PendingRecruits = m.PendingRecruits, PendingRecruitsTick = m.PendingRecruitsTick };
+          PendingRecruits = m.PendingRecruits, PendingRecruitsTick = m.PendingRecruitsTick, RecruitWillingness = m.RecruitWillingness };
 
         static DiplomaticDecision Copy(DiplomaticDecision d)
         {

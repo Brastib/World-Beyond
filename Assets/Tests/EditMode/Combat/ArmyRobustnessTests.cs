@@ -109,6 +109,35 @@ namespace WorldBeyond.Tests.EditMode.Combat
             Assert.That(queued, Is.EqualTo(3), "nur das Fehlende einmal anfordern");
         }
 
+        [TestCase(1f, 3)]
+        [TestCase(0f, 0)]
+        public void PeaceRecruitsBaseArmyOnlyIfCivIsWilling(float willingness, int expected)
+        {
+            var w = Make(out _, out _);
+            var env = w.Ctx.Get<ArmyEnvironment>();
+            int queued = 0;
+            env.Recruit = (civ, role, n) => { if (civ == 1) queued += n; return n; };
+            env.PendingRecruits = civ => civ == 1 ? queued : 0;
+            env.RecruitWillingness = civ => willingness;
+            w.Ctx.Units.Spawn(w.Rifleman, 1, 0f, 0f);
+            w.Ticks(1200);
+            Assert.That(queued, Is.EqualTo(expected), "Grundarmee MinAttackUnits (4) − 1 vorhanden, ohne Krieg");
+        }
+
+        [Test]
+        public void CivWithoutAnySoldierStillRecruits()
+        {
+            // Henne-Ei: eine Civ ohne Militär kennt die Armee-KI nur über ihre Siedlungen (ArmyEnvironment.Settlements).
+            var w = Make(out _, out _);
+            var env = w.Ctx.Get<ArmyEnvironment>();
+            int queued = 0;
+            env.Recruit = (civ, role, n) => { if (civ == 3) queued += n; return n; };
+            env.PendingRecruits = civ => civ == 3 ? queued : 0;
+            env.Settlements = () => new[] { new ArmyObjective(0f, 0f, 1f, ownerCiv: 3, settlementId: 1) };
+            w.Ticks(300);
+            Assert.That(queued, Is.EqualTo(env.MinAttackUnits));
+        }
+
         [Test]
         public void RecruitNeedFollowsThreatAndWillingness()
         {
@@ -127,6 +156,21 @@ namespace WorldBeyond.Tests.EditMode.Combat
             Assert.That(ai.RecruitNeed(1), Is.EqualTo(5), "Civ wägt Kosten ab: halbe Bereitschaft");
             env.RecruitWillingness = civ => 0f;
             Assert.That(ai.RecruitNeed(1), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void DefenderAimsForParityAttackerForSuperiority()
+        {
+            var w = Make(out var war, out _);
+            var env = w.Ctx.Get<ArmyEnvironment>();
+            env.IsAttackerAgainst = (civ, enemy) => civ == 2;   // Civ 2 hat den Krieg erklärt
+            w.Ctx.Units.Spawn(w.Rifleman, 1, 0f, 0f);
+            for (int i = 0; i < 10; i++) w.Ctx.Units.Spawn(w.Rifleman, 2, 1000f, i * 3f);
+            war[0] = true;
+            w.Ticks(10);
+            var ai = w.Ctx.Get<ArmyAISystem>();
+            Assert.That(ai.RecruitNeed(1), Is.EqualTo(9), "Verteidiger: 1,0 × 10 − 1");
+            Assert.That(ai.RecruitNeed(2), Is.EqualTo(0), "Angreifer ist schon überlegen (10 ≥ 1,5 × 1)");
         }
 
         [Test]
