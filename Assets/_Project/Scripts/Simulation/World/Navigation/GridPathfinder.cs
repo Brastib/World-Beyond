@@ -89,7 +89,10 @@ namespace WorldBeyond.Simulation.World.Navigation
             return r.Id;
         }
 
-        // Liegt das Ziel auf einer gesperrten Kachel, wird die erste begehbare Nachbarkachel (feste Reihenfolge) im
+        // Ziele tief in Gebäudeblöcken (z. B. Formationsplätze am Ortskern) werden bis zu diesem Abstand verlegt.
+        public const int MaxGoalSearchRadius = 8;
+
+        // Liegt das Ziel auf einer gesperrten Kachel, wird die nächste begehbare Kachel (Ringe, feste Reihenfolge) im
         // Gebiet des Starts gewählt. Der Pfad endet dann dort; der Aufrufer erkennt das an der letzten Wegpunktkachel.
         bool ResolveGoal(Request r)
         {
@@ -98,7 +101,7 @@ namespace WorldBeyond.Simulation.World.Navigation
             int startRegion = _regions.RegionOfStart(r.FromX, r.FromY, r.Mc);
             if (startRegion == 0)
                 return false;
-            for (int ring = 1; ring <= 2; ring++)
+            for (int ring = 1; ring <= MaxGoalSearchRadius; ring++)
             {
                 for (int dy = -ring; dy <= ring; dy++)
                 {
