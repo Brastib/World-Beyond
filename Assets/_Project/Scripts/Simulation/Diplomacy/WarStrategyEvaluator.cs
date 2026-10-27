@@ -32,6 +32,7 @@ namespace WorldBeyond.Simulation.Diplomacy
             else if (now - mem.LastAllianceTick >= S.AllianceCooldownTicks && TryAlliance(civId))
                 mem.LastAllianceTick = now;
 
+            mem.RecruitWillingness = RecruitWillingness(civId);
             if (now - mem.LastRecruitTick >= S.RecruitCooldownTicks && TryRecruit(civId))
                 mem.LastRecruitTick = now;
         }
@@ -281,19 +282,36 @@ namespace WorldBeyond.Simulation.Diplomacy
             return labor + food + S.ExhaustionCostWeight * exhaustion / 100f;
         }
 
+        float RecruitBenefit(int civ, out float threat, out bool atWar, out float deficit)
+        {
+            threat = Threat(civ);
+            atWar = _d.IsAtWar(civ);
+            deficit = Math.Max(0f, PeacetimeArmyTarget(civ) - W.GetMilitaryStrength(civ));
+            return DiplomacyService.Clamp01(threat - 0.8f) + (atWar ? 0.3f : 0f) + (deficit > 0f ? 0.45f : 0f);
+        }
+
+        int CountedArmy(int civ, CivAiMemory mem, long now)
+        {
+            if (now - mem.PendingRecruitsTick >= S.RecruitPendingTicks) mem.PendingRecruits = 0;
+            return Math.Max(0, W.GetArmyUnitCount(civ)) + mem.PendingRecruits;
+        }
+
+        // Bereitschaft für einen weiteren Rekruten: Nutzen − Kosten, 0 … 1 (für Military über IWarQuery.GetRecruitWillingness).
+        public float RecruitWillingness(int civ)
+        {
+            float benefit = RecruitBenefit(civ, out _, out _, out _);
+            int army = CountedArmy(civ, _d.GetMemory(civ), _d.Now);
+            return DiplomacyService.Clamp01(benefit - RecruitCost(civ, army + 1, Math.Max(1, W.GetPopulation(civ))));
+        }
+
         bool TryRecruit(int civ)
         {
-            float threat = Threat(civ);
-            bool atWar = _d.IsAtWar(civ);
-            float strength = W.GetMilitaryStrength(civ);
-            float deficit = Math.Max(0f, PeacetimeArmyTarget(civ) - strength);
+            float benefit = RecruitBenefit(civ, out float threat, out bool atWar, out float deficit);
             var mem = _d.GetMemory(civ);
             long now = _d.Now;
-            if (now - mem.PendingRecruitsTick >= S.RecruitPendingTicks) mem.PendingRecruits = 0;
-            int army = Math.Max(0, W.GetArmyUnitCount(civ)) + mem.PendingRecruits;
+            int army = CountedArmy(civ, mem, now);
             int pop = Math.Max(1, W.GetPopulation(civ));
             bool hopeless = atWar && threat >= S.HopelessThreat;
-            float benefit = DiplomacyService.Clamp01(threat - 0.8f) + (atWar ? 0.3f : 0f) + (deficit > 0f ? 0.45f : 0f);
             int byThreat = (int)Math.Ceiling(threat * 3f);
             int byDeficit = (int)Math.Ceiling(deficit / Math.Max(0.1f, S.AssumedUnitStrength));
             int wanted = Math.Max(1, Math.Min(S.MaxRecruitPerRequest, Math.Max(byThreat, byDeficit)));

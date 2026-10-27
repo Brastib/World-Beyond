@@ -368,6 +368,39 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.Less(asked, 150, "angefragte Rekruten zählen zum Armeeanteil");
         }
 
+        // Für Military-Moral (Phase 5 §11): Kriegsmüdigkeit je Civ 0 … 1.
+        [Test]
+        public void CivWarExhaustion_IsZeroInPeace_AndFollowsWar()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 100);
+            Assert.AreEqual(0f, D.GetCivWarExhaustion(1));
+            D.DeclareWar(2, 1);
+            for (int i = 0; i < 10; i++) D.ReportUnitLost(1, 2, 5f);
+            var war = D.FindWar(1, 2);
+            Assert.AreEqual(war.DefenderStats.Exhaustion / 100f, D.GetCivWarExhaustion(1), 1e-4f);
+            Assert.Greater(D.GetCivWarExhaustion(1), D.GetCivWarExhaustion(2));
+            Assert.AreEqual(0f, D.GetCivWarExhaustion(3));
+        }
+
+        // Für Military ArmyEnvironment.RecruitWillingness (Phase 5 §11.1).
+        [Test]
+        public void RecruitWillingness_HigherUnderThreat_LowerWhenArmyIsLarge()
+        {
+            W.AddCiv(1, 0, 0, strength: 50, population: 1000); W.AddCiv(2, 20, 0, strength: 300, population: 1000);
+            W.Civs[1].ArmyUnits = 10;
+            Assert.AreEqual(0f, D.GetRecruitWillingness(1), "vor der ersten KI-Auswertung unbekannt");
+            _rig.RunSeconds(5);
+            float peace = D.GetRecruitWillingness(1);
+            D.DeclareWar(2, 1);
+            _rig.RunSeconds(5);
+            float war = D.GetRecruitWillingness(1);
+            Assert.Greater(war, peace, "Krieg und Bedrohung erhöhen die Bereitschaft");
+            W.Civs[1].ArmyUnits = 500;                        // halbe Bevölkerung unter Waffen
+            _rig.RunSeconds(5);
+            Assert.Less(D.GetRecruitWillingness(1), war, "Arbeitskraft-Kosten senken die Bereitschaft");
+            Assert.That(D.GetRecruitWillingness(1), Is.InRange(0f, 1f));
+        }
+
         // Integration 2026-10-27: Kriegsende an das Kampfgeschehen koppeln.
         [Test]
         public void Peace_NotBeforeContact_OrMinWarTicks()
