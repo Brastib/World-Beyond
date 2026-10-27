@@ -45,7 +45,8 @@ namespace WorldBeyond.Simulation.Military
 
         private readonly List<EntityId> _alive = new List<EntityId>();
         private readonly SortedDictionary<int, List<EntityId>> _freeByCiv = new SortedDictionary<int, List<EntityId>>();
-        private readonly SortedSet<int> _civs = new SortedSet<int>();
+        private readonly SortedSet<int> _civs = new SortedSet<int>();           // Civs mit Militäreinheiten
+        private readonly SortedSet<int> _recruitCivs = new SortedSet<int>();    // dazu alle Siedlungsbesitzer: auch eine Civ ohne Soldaten muss rekrutieren können
         private readonly Dictionary<int, long> _lastRecruit = new Dictionary<int, long>();
         private readonly List<Army> _scratchArmies = new List<Army>();
         // Zuletzt von der Armee-KI gesetztes Bewegungsziel je Einheit (gespeichert, sonst weicht ein geladener
@@ -142,7 +143,11 @@ namespace WorldBeyond.Simulation.Military
                 Execute(a);
             }
 
-            foreach (int civ in _civs) MaybeRecruit(civ, tick);
+            _recruitCivs.Clear();
+            _recruitCivs.UnionWith(_civs);
+            var settlements = _env.Settlements?.Invoke();
+            if (settlements != null) foreach (var st in settlements) if (st.OwnerCiv > 0) _recruitCivs.Add(st.OwnerCiv);
+            foreach (int civ in _recruitCivs) MaybeRecruit(civ, tick);
         }
 
         private void PruneIssued(long tick)

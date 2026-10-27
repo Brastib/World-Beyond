@@ -125,6 +125,20 @@ namespace WorldBeyond.Tests.EditMode.Combat
         }
 
         [Test]
+        public void CivWithoutAnySoldierStillRecruits()
+        {
+            // Henne-Ei: eine Civ ohne Militär kennt die Armee-KI nur über ihre Siedlungen (ArmyEnvironment.Settlements).
+            var w = Make(out _, out _);
+            var env = w.Ctx.Get<ArmyEnvironment>();
+            int queued = 0;
+            env.Recruit = (civ, role, n) => { if (civ == 3) queued += n; return n; };
+            env.PendingRecruits = civ => civ == 3 ? queued : 0;
+            env.Settlements = () => new[] { new ArmyObjective(0f, 0f, 1f, ownerCiv: 3, settlementId: 1) };
+            w.Ticks(300);
+            Assert.That(queued, Is.EqualTo(env.MinAttackUnits));
+        }
+
+        [Test]
         public void RecruitNeedFollowsThreatAndWillingness()
         {
             var w = Make(out var war, out _);
