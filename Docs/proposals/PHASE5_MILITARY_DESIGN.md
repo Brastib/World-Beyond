@@ -130,3 +130,70 @@ Zweck: Ein Artillerie-Einschlag soll Gebäude an genau der getroffenen Stelle be
 - `ICombatService.ApplyAreaDamage` bleibt der einzige Einstieg. Er schadet Einheiten wie bisher und veröffentlicht das erweiterte `ExplosionEvent`. Civ hört darauf und rechnet über `AreaFalloff` den Schaden pro Bauteil aus. Military kennt keine Gebäude-Interna.
 - Für Treffer ohne Fläche (Panzergranate in eine Wand) kommt später ein `StructureHitEvent` mit Punkt, Richtung, Stärke und Schadensart dazu.
 - `UnitDamagedEvent` bleibt auf Einheiten beschränkt. Für Bauteile gibt es ein eigenes Event von Civ, damit Einheiten- und Gebäudeschaden nicht vermischt werden.
+
+## 10. Abwägung statt fester Grenzen (VISION §2 Regel 6, umgesetzt 2026-10-27)
+
+- **Rekrutierung (`ArmyAISystem.RecruitNeed`):** Die Civ will mindestens die feindliche Stärke × `Superiority` haben (Stärke nach HP gewichtet). Hat der Feind keine Truppen, genügt `MinAttackUnits` als Eroberungstruppe. Eingereihte Aufträge (`PendingRecruits`) zählen mit. Kosten, Unterhalt und Kriegsmüdigkeit liefert die Civ als `RecruitWillingness` (0..1). Was sie sich nicht leisten kann, lehnt `IRecruitment` ab.
+- **Wen sie schickt:** Steht ein Feind im Umkreis von 300 m um die Heimat, verteidigt eine Armee, solange die übrigen eigenen Truppen dort weniger als Bedrohung × `Superiority` haben. Die Armeen werden in Id-Reihenfolge geprüft. Alle anderen greifen weiter an.
+- `Superiority` (1,5) und `MinAttackUnits` (4) sind PLATZHALTER. Später liefern Persönlichkeit und War-KI diese Werte je Civ.
+- **M2 Leistung (geplant):** Gemeinsamer Pfad je Armee (ein Leitpfad, Formation folgt versetzt). Die Armee-KI-Entscheidungen werden über die Ticks verteilt (Armee-Id modulo Intervall). Ferne Armeen bekommen eine Simulationsstufe (zusammengefasste Stärke statt Einzeleinheiten).
+
+## 11. Etappe Moral im Krieg (Nutzerwunsch 2026-10-27, geplant, nicht gebaut)
+
+Ziel: Soldaten und Armeen haben Moral. Sie beeinflusst Kampfkraft, Flucht, Desertion und Kapitulation, damit Kriege glaubwürdig enden und nicht nur durch Vernichtung.
+
+**Moral je Einheit (0..1)** liegt in Military, wird pro Einheit gespeichert und bekommt eine eigene Sektion `morale`.
+- Senkt die Moral:
+  - eigene Verluste in der Nähe
+  - Beschuss (vor allem Explosionen)
+  - Unterlegenheit vor Ort
+  - fehlende Versorgung (V8)
+  - lange Märsche
+  - Kriegsmüdigkeit der Civ (von War)
+  - schlechte Stimmung der Herkunftssiedlung (Civ)
+- Hebt die Moral:
+  - Siege und Überlegenheit
+  - Nähe zur Heimat und Verteidigung der eigenen Siedlung
+  - Versorgung und Ruhe
+  - später Anführer (NPC-Persönlichkeit)
+
+**Wirkung** (Schwellen sind PLATZHALTER, später Persönlichkeit):
+- **Kampfkraft:** Trefferchance und Feuerrate skalieren mit der Moral, zum Beispiel × (0,6 + 0,4 · Moral).
+- **Flucht/Rückzug:** Unter etwa 0,25 flieht die Einheit Richtung Heimat (Haltung HoldFire). Ist mehr als die Hälfte einer Armee betroffen, zieht sich die Armee zurück. Das ergänzt die bisherige Stärkeregel.
+- **Desertion:** Bei sehr niedriger Moral über längere Zeit verlässt die Einheit die Armee. Sie wird Zivilist in der nächsten eigenen Siedlung, die Civ entscheidet darüber. Ein Zufallswurf über `SimRandom` sorgt dafür, dass das deterministisch bleibt.
+- **Kapitulation:** Sind Truppen umzingelt und haben keine Moral mehr, ergeben sie sich. Für eine Siedlung entscheidet die Civ, ob sie kapituliert. War kann dann Frieden oder Gebietsabtretung verhandeln.
+
+**Schnittstellen (Vorschlag):**
+- `IMoraleQuery.GetMorale(EntityId)`
+- `GetArmyMorale(armyId)`
+- Events `UnitFledEvent`, `UnitDesertedEvent`, `ArmySurrenderedEvent`
+- Eingänge über Delegates: `WarWeariness(civ)` von War, `SettlementMood(settlementId)` von Civ und `Supplied(unit)` von Versorgung V8.
+
+**Abstimmung:**
+- AI Team/War: Kriegsmüdigkeit als Eingang, Kapitulation als Ausgang.
+- Civ: Stimmung der Siedlung, Deserteure aufnehmen. Aufstand und Abwanderung sind Civ-Themen, die Moral der Truppen kann sie beeinflussen.
+- Integration: neue Sektion und Verdrahtung.
+
+**Reihenfolge:**
+1. Moral-Wert, Verluste und Überlegenheit sowie die Wirkung auf die Kampfkraft, mit Test und Save/Load.
+2. Flucht und Rückzug.
+3. Desertion.
+4. Kapitulation mit War.
+
+Jede Stufe einzeln testen.
+
+### 11.1 Abstimmung mit War (2026-10-27)
+
+**Eingang Kriegsmüdigkeit:** `IWarQuery.GetCivWarExhaustion(civId)`, Wert 0..1, ohne Krieg 0. Geliefert von War in phase4/diplomacy-war aad28fd. Military bindet das über den Delegate `MoraleEnvironment.WarExhaustion` an, die Verdrahtung macht Integration.
+
+**Ausgang:** DiplomacyService abonniert `UnitDesertedEvent` und `ArmySurrenderedEvent` selbst. Kein Adapter dazwischen, sonst wird doppelt gezählt.
+
+Pflichtfelder der Events, nur stabile Ids und keine Unity-Referenzen:
+- `UnitDesertedEvent`: Unit, CivId, UnitType, Strength, ArmyId (0 = keine Armee).
+- `ArmySurrenderedEvent`: ArmyId, CivId, VictorCivId (0 = unklar), UnitCount, Strength.
+
+Wie War die Events wertet:
+- Desertion zählt als Verlust ohne Gegner.
+- Kapitulation zählt als Verlust der ganzen Armeestärke, gibt einen Zuschlag auf die Erschöpfung und Kriegsscore für den Sieger.
+
+**RecruitWillingness:** War stellt `IWarQuery.GetRecruitWillingness(civId)` bereit (0..1, aus WarStrategyEvaluator.RecruitCost). Integration setzt `ArmyEnvironment.RecruitWillingness` darauf.

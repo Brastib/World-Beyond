@@ -104,7 +104,9 @@ namespace WorldBeyond.Simulation.Military
         public Func<int, (bool ok, float x, float z)> SettlementPosition;   // Siedlungsmittelpunkt
         public Func<int, MilitaryRole, int, int> Recruit;                    // IRecruitment.Request → Anzahl eingereiht
         public Func<int, int> PendingRecruits;                               // eingereihte, noch nicht fertige Militäraufträge je Civ (Civ-Warteschlange)
-        public int DesiredArmySize = 8;
+        public Func<int, float> RecruitWillingness;                          // 0..1: Bereitschaft der Civ aufzurüsten (Kosten, Unterhalt, Kriegsmüdigkeit); null = 1
+        public float Superiority = 1.5f;                                     // PLATZHALTER bis Persönlichkeit/War: gewünschte Überlegenheit gegenüber feindlicher Stärke
+        public int MinAttackUnits = 4;                                       // PLATZHALTER: kleine Eroberungstruppe, wenn der Feind keine Truppen hat
 
         // Besetzung von Siedlungen (SettlementCaptureSystem)
         public Func<int, int, bool> CaptureSettlement;                       // (settlementId, newCivId) → ISettlementRegistry.TransferSettlement

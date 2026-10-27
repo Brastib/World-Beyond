@@ -33,6 +33,7 @@ namespace WorldBeyond.Simulation.Military
         private const int BlockTargetTicks = 600;         // unerreichbares Armeeziel 60 s meiden, bei Wiederholung doppelt so lange
         private const int MaxBlockTargetTicks = 9600;     // höchstens 16 min
         private const float BlockRadius = 30f;
+        private const float HomeThreatRadius = 300f;      // Feind so nah an der Heimat gilt als Bedrohung
 
         private readonly ArmyRegistry _registry;
         private readonly IUnitStore _units;
@@ -207,6 +208,16 @@ namespace WorldBeyond.Simulation.Military
                 return;
             }
 
+            // Heimat bedroht? Diese Armee verteidigt, solange die übrigen eigenen Truppen dort nicht genügen (Abwägung je Armee,
+            // in Id-Reihenfolge, damit nicht alle Armeen gleichzeitig umkehren).
+            float homeThreat = EnemyStrengthNear(a.CivId, a.HomeX, a.HomeZ, HomeThreatRadius);
+            if (homeThreat > 0f && OwnStrengthNearExcept(a, a.HomeX, a.HomeZ, HomeThreatRadius) < homeThreat * _env.Superiority)
+            {
+                if (a.Order.Kind != ArmyOrderKind.Defend || !SameSpot(a.Order.X, a.Order.Z, a.HomeX, a.HomeZ))
+                    _registry.SetOrder(a.Id, new ArmyOrder { Kind = ArmyOrderKind.Defend, X = a.HomeX, Z = a.HomeZ }, byAI: true);
+                return;
+            }
+
             _registry.Center(a, out float cx, out float cz);
             if (!TryPickObjective(a, cx, cz, out var obj))
             {
@@ -268,6 +279,22 @@ namespace WorldBeyond.Simulation.Military
             return found;
         }
 
+        // Stärke der eigenen Truppen im Umkreis ohne Armee a: freie Einheiten und andere Armeen, die dort sind oder dorthin unterwegs sind.
+        private float OwnStrengthNearExcept(Army a, float x, float z, float radius)
+        {
+            float s = 0f, r2 = radius * radius;
+            foreach (var other in _registry.All)
+            {
+                if (other.CivId != a.CivId || other.Id == a.Id) continue;
+                _registry.Center(other, out float ox, out float oz);
+                float dx = ox - x, dz = oz - z;
+                bool there = dx * dx + dz * dz <= r2;
+                bool going = other.Order.Kind == ArmyOrderKind.Defend && SameSpot(other.Order.X, other.Order.Z, x, z);
+                if (there || going) s += _registry.Strength(other);
+            }
+            return s;
+        }
+
         private float EnemyStrengthNear(int civ, float x, float z, float radius)
         {
             float r2 = radius * radius, s = 0f;
@@ -281,18 +308,41 @@ namespace WorldBeyond.Simulation.Military
             return s;
         }
 
+        // Abwägung statt fester Zahl (VISION §2 Regel 6): Ziel ist eigene Stärke ≥ feindliche Stärke × Superiority.
+        // Ohne feindliche Truppen (auch im Frieden) genügt eine kleine Grundarmee. Kosten, Unterhalt und Kriegsmüdigkeit wägt die Civ
+        // über RecruitWillingness (0..1) ab; was sie sich nicht leisten kann, lehnt IRecruitment ohnehin ab.
         private void MaybeRecruit(int civ, long tick)
         {
-            if (_env.Recruit == null || !HasEnemy(civ)) return;
+            // Auch im Frieden: Grundarmee (MinAttackUnits), soweit die Civ bereit ist (War rekrutiert seit 0a07383 nicht mehr selbst).
+            if (_env.Recruit == null) return;
             if (_lastRecruit.TryGetValue(civ, out long last) && tick - last < RecruitIntervalTicks) return;
-            int have = 0;
-            foreach (var a in _registry.All) if (a.CivId == civ) have += a.Units.Count;
-            if (_env.PendingRecruits != null) have += Math.Max(0, _env.PendingRecruits(civ));   // schon eingereihte Aufträge (QA: endlose Aufrüstung)
-            int missing = _env.DesiredArmySize - have;
+            int missing = RecruitNeed(civ);
             if (missing <= 0) return;
             _lastRecruit[civ] = tick;
             _env.Recruit(civ, MilitaryRole.Rifleman, missing);
         }
+
+        internal int RecruitNeed(int civ)
+        {
+            float own = 0f, threat = 0f;
+            foreach (var id in _alive)
+            {
+                if (!_units.TryGet(id, out var u) || u.MaxHp <= 0f) continue;
+                float s = _catalog.GetCombatStrength(u.Type) * (u.Hp / u.MaxHp);
+                if (s <= 0f) continue;
+                if (u.CivId == civ) own += s;
+                else if (_combatEnv.AreHostile(civ, u.CivId)) threat += s;
+            }
+            float unit = RecruitUnitStrength();
+            if (unit <= 0f) return 0;
+            if (_env.PendingRecruits != null) own += Math.Max(0, _env.PendingRecruits(civ)) * unit;   // eingereihte Aufträge zählen mit
+            float wanted = Math.Max(threat * _env.Superiority, _env.MinAttackUnits * unit);
+            float willingness = _env.RecruitWillingness == null ? 1f : Math.Clamp(_env.RecruitWillingness(civ), 0f, 1f);
+            float gap = (wanted - own) * willingness;
+            return gap <= 0f ? 0 : (int)MathF.Ceiling(gap / unit - 1e-4f);
+        }
+
+        private float RecruitUnitStrength() => _catalog.GetRoleStrength(MilitaryRole.Rifleman);
 
         // ---------------- Ausführung ----------------
 
