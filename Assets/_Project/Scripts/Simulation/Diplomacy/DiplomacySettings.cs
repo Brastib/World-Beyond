@@ -72,6 +72,11 @@ namespace WorldBeyond.Simulation.Diplomacy
         public float PeaceArmyStrengthPerPop = 0.05f;     // Grundarmee: Bevölkerung 1000, Haltung 0,5 → Stärke 50
         public float AssumedUnitStrength = 5f;            // Schätzwert pro Einheit für die Anzahl einer Anfrage
         public int MaxRecruitPerRequest = 5;
+        // Obergrenze der Armee nach Bevölkerung (auch im Krieg): eine Civ rüstet sich nicht zu Tode.
+        public float MaxArmyStrengthPerPop = 0.15f;       // Bevölkerung 300 → höchstens Stärke 45 (≈ 9 Einheiten)
+        // Aussichtslose Lage: Gegner mindestens so viel stärker → früh Frieden mit Zugeständnis suchen.
+        public float HopelessThreat = 4f;
+        public float HopelessPeaceExhaustion = 20f;
         public int MaxAlliancesPerCiv = 2;
         public float TargetDistanceScale = 64f;
         public int StrategicPointRadius = 4;

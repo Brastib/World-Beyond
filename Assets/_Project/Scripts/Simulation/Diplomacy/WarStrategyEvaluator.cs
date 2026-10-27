@@ -139,7 +139,9 @@ namespace WorldBeyond.Simulation.Diplomacy
 
                 PeaceTerm term;
                 if (score >= 25f) term = BestDemand(war, civ, opponent, score);
-                else if (score <= -45f || exhaustion >= 80f) term = BestConcession(civ, opponent);
+                else if (score <= -45f || exhaustion >= 80f
+                         || (Threat(civ) >= S.HopelessThreat && exhaustion >= S.HopelessPeaceExhaustion))
+                    term = BestConcession(civ, opponent);   // aussichtslose Lage: lieber früh nachgeben
                 else if (score <= -20f || exhaustion >= 60f || !leader) term = PeaceTerm.White();
                 else continue;
 
@@ -270,11 +272,16 @@ namespace WorldBeyond.Simulation.Diplomacy
             bool atWar = _d.IsAtWar(civ);
             float strength = W.GetMilitaryStrength(civ);
             float deficit = Math.Max(0f, PeacetimeArmyTarget(civ) - strength);
+            float cap = W.GetPopulation(civ) * S.MaxArmyStrengthPerPop;
+            float headroom = cap - strength;
+            bool hopeless = atWar && threat >= S.HopelessThreat;
+            // Verteidigt wird weiter, aber nur bis zur Obergrenze; aussichtslos → TryPeace sucht früh ein Zugeständnis.
             float utility = DiplomacyService.Clamp01(threat - 0.8f) + (atWar ? 0.3f : 0f) + (deficit > 0f ? 0.45f : 0f);
-            if (utility < S.RecruitThreshold) return false;
+            if (utility < S.RecruitThreshold || headroom <= 0f) return false;
             int byThreat = (int)Math.Ceiling(threat * 3f);
             int byDeficit = (int)Math.Ceiling(deficit / Math.Max(0.1f, S.AssumedUnitStrength));
-            int count = Math.Max(1, Math.Min(S.MaxRecruitPerRequest, Math.Max(byThreat, byDeficit)));
+            int byCap = Math.Max(1, (int)Math.Floor(headroom / Math.Max(0.1f, S.AssumedUnitStrength)));
+            int count = Math.Max(1, Math.Min(Math.Min(S.MaxRecruitPerRequest, byCap), Math.Max(byThreat, byDeficit)));
             bool ok = W.RequestMilitaryBuildup(civ, count, out string reason);
             if (!ok && count > 1)
             {
@@ -285,6 +292,7 @@ namespace WorldBeyond.Simulation.Diplomacy
             }
             _d.LogDecision(civ, 0, DiplomaticActionType.Recruit, utility,
                 new DecisionFactor("Bedrohung", threat), new DecisionFactor("Im Krieg", atWar ? 1f : 0f), new DecisionFactor("Fehlende Grundarmee", deficit),
+                new DecisionFactor("Obergrenze", cap), new DecisionFactor("Aussichtslos", hopeless ? 1f : 0f),
                 new DecisionFactor("Anzahl", count), new DecisionFactor("Angenommen", ok ? 1f : 0f));
             return true;   // auch bei Ablehnung (z. B. zu wenig Ressourcen) Abklingzeit, um nicht jeden Takt neu anzufragen
         }

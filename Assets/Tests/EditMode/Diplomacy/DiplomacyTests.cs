@@ -296,9 +296,10 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.IsTrue(D.ProposePeace(1, 2, PeaceTerm.White()).Accepted);
         }
 
-        // Stärke 10:1 ohne Eroberung: kein Ping-Pong mit weißem Frieden nach wenigen Minuten.
+        // Stärke 10:1 ohne Eroberung: kein weißer Frieden. Der aussichtslos Unterlegene gibt früh mit einem Zugeständnis nach
+        // (QA-Befund Nachtprüfung: sonst rüstet er sich bis zum Bevölkerungsverlust auf).
         [Test]
-        public void Autonomy_TenToOne_WarLasts_AndEndsWithConcession()
+        public void Autonomy_TenToOne_EndsWithConcession_NotWhitePeace()
         {
             W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
             W.SetBorder(1, 2, 80);
@@ -313,8 +314,23 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             var peace = _rig.Bus.Of<PeaceSignedEvent>();
             Assert.AreEqual(1, peace.Count, "Frieden entsteht ohne Eingriff");
             Assert.AreNotEqual(PeaceTermType.WhitePeace, peace[0].Term, "der Unterlegene muss etwas abgeben");
-            Assert.GreaterOrEqual(seconds, 5 * 60, "Krieg dauert länger als das bisherige Ping-Pong (1–4 min)");
-            Assert.IsTrue(D.RecentDecisions.Any(x => x.Action == DiplomaticActionType.RejectPeace && x.CivId == 2));
+            Assert.IsTrue(D.RecentDecisions.Any(x => x.Action == DiplomaticActionType.AcceptPeace && x.CivId == 2));
+        }
+
+        // QA-Befund Nachtprüfung (Seed 99): Civ3 rüstete im Krieg gegen eine 12× größere Civ von Stärke 13 auf 163 auf.
+        [Test]
+        public void Recruitment_IsCappedByPopulation_EvenAtWar()
+        {
+            W.AddCiv(1, 0, 0, strength: 40, population: 300); W.AddCiv(2, 20, 0, strength: 2000, population: 4000);
+            D.DeclareWar(2, 1);
+            _rig.RunSeconds(5);
+            int beforeCap = W.RecruitRequests.Where(r => r.civ == 1).Sum(r => r.count);
+            Assert.Greater(beforeCap, 0, "unter der Obergrenze wird verteidigt");
+            Assert.LessOrEqual(beforeCap, 1, "Stärke 40 + 1 Einheit erreicht die Obergrenze 45 (300 × 0,15)");
+            W.Civs[1].Strength = 45f;
+            W.RecruitRequests.Clear();
+            _rig.RunSeconds(120);
+            Assert.IsFalse(W.RecruitRequests.Any(r => r.civ == 1), "an der Obergrenze keine weitere Rekrutierung");
         }
 
         // Nutzervorgabe: Krieg nur, wenn die KI ihn wirklich für nötig hält. Stärke allein ist kein Grund.
