@@ -77,7 +77,15 @@ namespace WorldBeyond.Simulation.Commands
             {
                 var cmd = batch[i];
                 string name = cmd.GetType().Name;
-                if (!cmd.Validate(ctx, out string reason))
+                bool valid;
+                string reason;
+                try { valid = cmd.Validate(ctx, out reason); }
+                catch (Exception ex)
+                {
+                    ctx.Events.Publish(new CommandRejectedEvent { CommandName = name, Reason = "Fehler bei Prüfung: " + ex.Message });
+                    continue;
+                }
+                if (!valid)
                 {
                     ctx.Events.Publish(new CommandRejectedEvent { CommandName = name, Reason = reason ?? "abgelehnt" });
                     continue;

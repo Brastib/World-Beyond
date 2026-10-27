@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Prüft die Unity-freien UI-Modelle (Presentation/UI/Model) gegen die echte GameComposition, ohne Unity-Editor.
+    Die Unity-Ansicht (Presentation/UI/View) ist hier nicht enthalten; sie wird nur im Unity-Lauf geprüft.
+    Aufruf: dotnet test Tools/UiTests
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RootNamespace>WorldBeyond.UiTests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/_Project/Scripts/Core/**/*.cs" />
+    <Compile Include="../../Assets/_Project/Scripts/Simulation/**/*.cs" />
+    <Compile Include="../../Assets/_Project/Scripts/Application/**/*.cs" Exclude="../../Assets/_Project/Scripts/Application/Unity/**/*.cs" />
+    <Compile Include="../../Assets/_Project/Scripts/Presentation/UI/Model/**/*.cs" />
+    <Compile Include="*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+  </ItemGroup>
+</Project>

@@ -30,6 +30,9 @@ namespace WorldBeyond.Simulation.World
         // ~1 µs pro Expansion (.NET 8, Cloud); in Unity (Mono/IL2CPP) nicht gemessen. 6000 hält den Tick auch bei vielen
         // gleichzeitigen Anfragen im einstelligen Millisekundenbereich; längere Warteschlangen verteilen sich auf mehrere Ticks.
         public const int DefaultPathBudget = 6000;
+
+        // Wie weit eine Einheit auf gesperrtem Boden nach freiem Boden sucht (Kacheln).
+        public const int MaxEscapeRadius = 6;
         const float SeparationStrength = 0.5f;
 
         sealed class Agent
@@ -55,6 +58,14 @@ namespace WorldBeyond.Simulation.World
 
         public int PathBudgetPerTick { get; set; } = DefaultPathBudget;
 
+        // Bei Warteschlange (z. B. viele Einheiten bekommen gleichzeitig Ziele) wächst das Budget mit der Zahl
+        // wartender Anfragen bis MaxPathBudget. Bewusst nicht zeitbasiert: das wäre nicht deterministisch
+        // (Save/Load, Wiederholbarkeit). Die Warteschlangenlänge ist Teil des gespeicherten Zustands.
+        public const int MaxPathBudget = 20000;
+        public const int BudgetPerPendingRequest = 400;
+
+        public int CurrentPathBudget => Math.Min(MaxPathBudget, PathBudgetPerTick + _pathfinder.PendingCount * BudgetPerPendingRequest);
+
         public MovementSystem(IWorldGrid world, GridPathfinder pathfinder, SpatialHash spatial)
         {
             _world = world ?? throw new ArgumentNullException(nameof(world));
@@ -74,7 +85,7 @@ namespace WorldBeyond.Simulation.World
             float dt = ctx.Clock.DeltaSeconds;
             long tick = ctx.Clock.Tick;
 
-            _pathfinder.ProcessRequests(PathBudgetPerTick);
+            _pathfinder.ProcessRequests(Math.Max(PathBudgetPerTick, CurrentPathBudget));
 
             // Tote Einheiten aus dem Raumindex entfernen.
             foreach (EntityId id in _tracked)
@@ -150,6 +161,11 @@ namespace WorldBeyond.Simulation.World
                 agent.TargetX = view.MoveTargetX;
                 agent.TargetZ = view.MoveTargetZ;
                 var (fx, fy) = WorldCoords.WorldToTile(view.X, view.Z);
+                fx = Clamp(fx, _world.Width);
+                fy = Clamp(fy, _world.Height);
+                // Steht die Einheit auf einer gesperrten Kachel (nachträglich bebaut), beginnt der Pfad an der nächsten
+                // begehbaren Kachel; die Einheit läuft zuerst dorthin (gesperrte Kacheln darf sie verlassen).
+                _pathfinder.TryFindNearestWalkable(fx, fy, mc, MaxEscapeRadius, out fx, out fy);
                 var (tx, ty) = WorldCoords.WorldToTile(view.MoveTargetX, view.MoveTargetZ);
                 agent.RequestId = _pathfinder.RequestPath(Clamp(fx, _world.Width), Clamp(fy, _world.Height),
                     Clamp(tx, _world.Width), Clamp(ty, _world.Height), mc);
@@ -171,8 +187,11 @@ namespace WorldBeyond.Simulation.World
                     return;
                 }
                 agent.NavVersion = _world.NavigationVersion;
-                // Wegpunkt 0 ist die Startkachel; direkt zum nächsten fahren.
-                agent.Next = agent.Waypoints.Count > 1 ? 1 : 0;
+                // Wegpunkt 0 ist die Startkachel; direkt zum nächsten fahren. Wurde der Start verlegt (Einheit steht
+                // nicht auf Wegpunkt 0), zuerst Wegpunkt 0 ansteuern.
+                var (ux, uy) = WorldCoords.WorldToTile(view.X, view.Z);
+                bool onStart = agent.Waypoints.Count > 0 && agent.Waypoints[0].x == ux && agent.Waypoints[0].y == uy;
+                agent.Next = agent.Waypoints.Count > 1 && onStart ? 1 : 0;
             }
 
             var state = new MotionState

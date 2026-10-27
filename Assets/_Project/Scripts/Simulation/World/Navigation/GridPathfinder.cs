@@ -89,7 +89,10 @@ namespace WorldBeyond.Simulation.World.Navigation
             return r.Id;
         }
 
-        // Liegt das Ziel auf einer gesperrten Kachel, wird die erste begehbare Nachbarkachel (feste Reihenfolge) im
+        // Ziele tief in Gebäudeblöcken (z. B. Formationsplätze am Ortskern) werden bis zu diesem Abstand verlegt.
+        public const int MaxGoalSearchRadius = 8;
+
+        // Liegt das Ziel auf einer gesperrten Kachel, wird die nächste begehbare Kachel (Ringe, feste Reihenfolge) im
         // Gebiet des Starts gewählt. Der Pfad endet dann dort; der Aufrufer erkennt das an der letzten Wegpunktkachel.
         bool ResolveGoal(Request r)
         {
@@ -98,7 +101,7 @@ namespace WorldBeyond.Simulation.World.Navigation
             int startRegion = _regions.RegionOfStart(r.FromX, r.FromY, r.Mc);
             if (startRegion == 0)
                 return false;
-            for (int ring = 1; ring <= 2; ring++)
+            for (int ring = 1; ring <= MaxGoalSearchRadius; ring++)
             {
                 for (int dy = -ring; dy <= ring; dy++)
                 {
@@ -111,6 +114,34 @@ namespace WorldBeyond.Simulation.World.Navigation
                         {
                             r.ToX = nx;
                             r.ToY = ny;
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Nächste begehbare Kachel in Ringen um (x, y), feste Suchreihenfolge (deterministisch). Für Einheiten, die auf einer
+        // gesperrten Kachel stehen (z. B. nachträglich bebaut): der Pfad beginnt dann dort, die Einheit läuft zuerst hin.
+        public bool TryFindNearestWalkable(int x, int y, MovementClass mc, int maxRadius, out int nx, out int ny)
+        {
+            nx = x;
+            ny = y;
+            if (_world.IsWalkable(x, y, mc))
+                return true;
+            for (int ring = 1; ring <= maxRadius; ring++)
+            {
+                for (int dy = -ring; dy <= ring; dy++)
+                {
+                    for (int dx = -ring; dx <= ring; dx++)
+                    {
+                        if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != ring)
+                            continue;
+                        if (_world.IsWalkable(x + dx, y + dy, mc))
+                        {
+                            nx = x + dx;
+                            ny = y + dy;
                             return true;
                         }
                     }

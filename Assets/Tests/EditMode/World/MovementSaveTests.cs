@@ -110,6 +110,92 @@ namespace WorldBeyond.Tests.World
         }
 
         [Test]
+        public void UnitInsideBuildingBlock_EscapesAndArrives()
+        {
+            var comp = Make();
+            var ctx = comp.Context;
+            var world = (WorldGrid)ctx.Get<IWorldGrid>();
+            ctx.UnitTypes.TryGetByKey("unit.test_walker", out UnitTypeId walker);
+            var spots = new List<TileScore>();
+            Assume.That(world.FindStartLocations(2, 10, spots), Is.EqualTo(2));
+            int sx = spots[0].X, sy = spots[0].Y;
+            var start = WorldCoords.TileToWorld(sx, sy);
+            var id = ctx.Units.Spawn(walker, 1, start.X, start.Z);
+            // Nachträglich bebaut: 3×3 Gebäude um die Einheit, auch die Nachbarkacheln sind gesperrt.
+            int built = 0;
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                    if (world.SetBuilding(sx + dx, sy + dy, new EntityId(100 + built, 1))) built++;
+            Assume.That(world.IsWalkable(sx, sy, MovementClass.Foot), Is.False);
+            Assume.That(built, Is.EqualTo(9));
+
+            var goal = WorldCoords.TileToWorld(spots[1].X, spots[1].Y);
+            ctx.Units.SetMoveTarget(id, goal.X, goal.Z);
+            int arrived = 0, failed = 0;
+            ctx.Events.Subscribe<UnitArrivedEvent>(_ => arrived++);
+            ctx.Events.Subscribe<UnitMoveFailedEvent>(_ => failed++);
+            for (int i = 0; i < 30000 && arrived + failed == 0; i++)
+                comp.Runner.StepOnce();
+            Assert.AreEqual(0, failed, "Eingeschlossene Einheit findet keinen Weg");
+            Assert.AreEqual(1, arrived);
+        }
+
+        [Test]
+        public void GoalDeepInsideBuildingBlock_IsMovedOutside_AndUnitArrives()
+        {
+            var comp = Make();
+            var ctx = comp.Context;
+            var world = (WorldGrid)ctx.Get<IWorldGrid>();
+            ctx.UnitTypes.TryGetByKey("unit.test_walker", out UnitTypeId walker);
+            var spots = new List<TileScore>();
+            Assume.That(world.FindStartLocations(2, 10, spots), Is.EqualTo(2));
+            // Nächstgelegenen Mittelpunkt zum zweiten Startplatz suchen, um den ein 5×5-Block vollständig bebaubar ist.
+            int gx = -1, gy = -1;
+            for (int r = 0; r <= 12 && gx < 0; r++)
+                for (int cy = spots[1].Y - r; cy <= spots[1].Y + r && gx < 0; cy++)
+                    for (int cx = spots[1].X - r; cx <= spots[1].X + r && gx < 0; cx++)
+                    {
+                        if (Math.Max(Math.Abs(cx - spots[1].X), Math.Abs(cy - spots[1].Y)) != r)
+                            continue;
+                        bool ok = true;
+                        for (int dy = -2; dy <= 2 && ok; dy++)
+                            for (int dx = -2; dx <= 2 && ok; dx++)
+                                ok = world.IsBuildable(cx + dx, cy + dy) && world.IsWalkable(cx + dx, cy + dy, MovementClass.Foot);
+                        if (ok)
+                        {
+                            gx = cx;
+                            gy = cy;
+                        }
+                    }
+            Assume.That(gx, Is.GreaterThanOrEqualTo(0), "Kein freier 5×5-Bauplatz gefunden");
+            int built = 0;
+            for (int dy = -2; dy <= 2; dy++)
+                for (int dx = -2; dx <= 2; dx++)
+                    if (world.SetBuilding(gx + dx, gy + dy, new EntityId(200 + built, 1))) built++;
+            // Alle Kacheln bis Ring 2 gesperrt: die alte Suche (nur direkte Nachbarn) findet hier nichts.
+            Assume.That(built, Is.EqualTo(25));
+            for (int dy = -2; dy <= 2; dy++)
+                for (int dx = -2; dx <= 2; dx++)
+                    Assume.That(world.IsWalkable(gx + dx, gy + dy, MovementClass.Foot), Is.False);
+
+            var start = WorldCoords.TileToWorld(spots[0].X, spots[0].Y);
+            var goal = WorldCoords.TileToWorld(gx, gy);
+            var id = ctx.Units.Spawn(walker, 1, start.X, start.Z);
+            ctx.Units.SetMoveTarget(id, goal.X, goal.Z);
+            int arrived = 0, failed = 0;
+            ctx.Events.Subscribe<UnitArrivedEvent>(_ => arrived++);
+            ctx.Events.Subscribe<UnitMoveFailedEvent>(_ => failed++);
+            for (int i = 0; i < 30000 && arrived + failed == 0; i++)
+                comp.Runner.StepOnce();
+            Assert.AreEqual(0, failed, "Ziel im Gebäudeblock führt zu NotFound");
+            Assert.AreEqual(1, arrived);
+            ctx.Units.TryGet(id, out UnitView v);
+            var (tx, ty) = WorldCoords.WorldToTile(v.X, v.Z);
+            Assert.IsTrue(world.IsWalkable(tx, ty, MovementClass.Foot));
+            Assert.LessOrEqual(Math.Max(Math.Abs(tx - gx), Math.Abs(ty - gy)), GridPathfinder.MaxGoalSearchRadius);
+        }
+
+        [Test]
         public void BlockedGoal_IsMovedToNeighbour_AndUnitArrivesNextToIt()
         {
             var comp = Make();

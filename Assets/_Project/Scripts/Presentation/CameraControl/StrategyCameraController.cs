@@ -13,6 +13,8 @@ namespace WorldBeyond.Presentation.CameraControl
     public sealed class StrategyCameraController : MonoBehaviour
     {
         [SerializeField] WorldRenderer worldRenderer;
+        [Tooltip("Liefert IsPointerOverUi; leer = wird in der Szene gesucht")]
+        [SerializeField] WorldSelection selection;
 
         [Header("Zoom (Meter Abstand zum Drehpunkt)")]
         [SerializeField] float minDistance = 15f;
@@ -39,6 +41,8 @@ namespace WorldBeyond.Presentation.CameraControl
         Vector2 _lastMouse;
         bool _hasMouse;
         bool _initialized;
+        bool _dragFromUi;
+        bool _wasDragging;   // Ziehen hat über der UI begonnen: bis zum Loslassen ignorieren
 
         public Camera Camera => _camera;
         public Vector3 Pivot => _pivot;
@@ -51,6 +55,8 @@ namespace WorldBeyond.Presentation.CameraControl
         {
             if (worldRenderer == null)
                 worldRenderer = FindFirstObjectByType<WorldRenderer>();
+            if (selection == null)
+                selection = FindFirstObjectByType<WorldSelection>();
             if (worldRenderer != null)
                 worldRenderer.Rebuilt += OnWorldRebuilt;
         }
@@ -126,18 +132,28 @@ namespace WorldBeyond.Presentation.CameraControl
             _hasMouse = true;
 
             // Zoom
-            float scroll = PointerInput.Scroll;
+            // Zeiger über HUD-Panels: Mausrad, Randscrollen und neues Ziehen gehören der UI, Tasten bleiben aktiv.
+            bool overUi = selection != null && selection.IsPointerOverUi != null && selection.IsPointerOverUi();
+            bool dragging = PointerInput.RightHeld || PointerInput.MiddleHeld;
+            if (!dragging)
+                _dragFromUi = false;
+            else if (overUi && !_wasDragging)
+                _dragFromUi = true;
+            _wasDragging = dragging;
+            bool mouseDrag = dragging && !_dragFromUi;
+
+            float scroll = overUi ? 0f : PointerInput.Scroll;
             if (Mathf.Abs(scroll) > 0.01f)
                 _distanceTarget = Mathf.Clamp(_distanceTarget * Mathf.Exp(-scroll * zoomStep * 2f), minDistance, MaxDistance);
 
             // Drehen
             _yawTarget += PointerInput.RotateKeys * rotateSpeed * dt;
-            if (PointerInput.MiddleHeld)
+            if (mouseDrag && PointerInput.MiddleHeld)
                 _yawTarget += mouseDelta.x * mouseRotateSpeed;
 
             // Schwenken
             Vector2 pan = PointerInput.PanKeys;
-            if (edgeScroll && !PointerInput.RightHeld && !PointerInput.MiddleHeld)
+            if (edgeScroll && !overUi && !dragging)
             {
                 if (mouse.x <= edgeSize) pan.x -= 1f;
                 else if (mouse.x >= Screen.width - edgeSize) pan.x += 1f;
@@ -149,7 +165,7 @@ namespace WorldBeyond.Presentation.CameraControl
             Vector3 right = yawRot * Vector3.right, forward = yawRot * Vector3.forward;
             Vector3 move = (right * pan.x + forward * pan.y) * (speed * dt);
 
-            if (PointerInput.RightHeld && _camera != null)
+            if (mouseDrag && PointerInput.RightHeld && _camera != null)
             {
                 // „Karte greifen“: ein Pixel entspricht ungefähr der Bodenbreite eines Pixels am Drehpunkt.
                 float metersPerPixel = 2f * _distance * Mathf.Tan(_camera.fieldOfView * 0.5f * Mathf.Deg2Rad) / Mathf.Max(1, Screen.height);

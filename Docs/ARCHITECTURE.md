@@ -141,7 +141,7 @@ Zusätzlich: Aufträge sind Daten (Typ + Ziel-ID/Position), keine Coroutines ode
 
 ### 11.3 Dateiformat
 
-JSON (Newtonsoft), Datei `<slot>.wbsave` in `Application.persistentDataPath/Saves/`. Rahmen: `format = "WorldBeyondSave"`, `formatVersion` (int), `gameVersion` (nur Info), `createdUtc`, `header` (Name, Seed, Weltgröße, Tick, Anzahl Civs/Einheiten), `settings` (Simulationsgeschwindigkeit, Pause, relevante Einstellungen), `start` (Start-Einstellungen: Seed, Weltgröße, Civ-Anzahl; damit baut der Ladevorgang die leere Simulation neu auf), `sections` (Schlüssel = `ISaveable.SaveKey`, je `{ "v": SectionVersion, "data": … }`), `checksum` (SHA-256 über die kanonisch serialisierten `sections`). Terrain: Seed + geänderte Kacheln, ab ca. 30 % Änderungen komplettes Raster (`fullGrid`), siehe World-Entwurf §9.
+JSON (Newtonsoft), Datei `<slot>.wbsave` in `Application.persistentDataPath/Saves/`. Rahmen: `format = "WorldBeyondSave"`, `formatVersion` (int), `gameVersion` (nur Info), `createdUtc`, `header` (Name, Seed, Weltgröße, Tick, Anzahl Civs/Einheiten), `settings` (Simulationsgeschwindigkeit, Pause, relevante Einstellungen), `start` (Start-Einstellungen: Seed, Weltgröße, Civ-Anzahl; damit baut der Ladevorgang die leere Simulation neu auf), `sections` (Schlüssel = `ISaveable.SaveKey`, je `{ "v": SectionVersion, "data": … }`), `checksum` (SHA-256 über die ganze kanonisch serialisierte Datei ohne das Feld `checksum`, also header, start, settings, sections; Phase 7, 4ea38bc). Terrain: Seed + geänderte Kacheln, ab ca. 30 % Änderungen komplettes Raster (`fullGrid`), siehe World-Entwurf §9.
 
 ### 11.4 Speichern
 

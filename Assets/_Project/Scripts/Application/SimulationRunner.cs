@@ -59,6 +59,15 @@ namespace WorldBeyond.Application
 
         public event Action<long> TickCompleted;
 
+        /// <summary>
+        /// Exception in einem System oder Event-Handler. Der Tick wird trotzdem abgeschlossen und die Uhr rückt vor,
+        /// damit nie ein Tick doppelt läuft (Sandbox läuft ohne Eingriff weiter). Parameter: Tick, Quelle, Exception.
+        /// </summary>
+        public event Action<long, string, Exception> SystemFailed;
+
+        /// <summary>Zahl der gemeldeten Fehler seit Start (für Debug-Overlay und Tests).</summary>
+        public int FaultCount { get; private set; }
+
         public void Register(ISimulationSystem system)
         {
             if (system == null) throw new ArgumentNullException(nameof(system));
@@ -109,9 +118,12 @@ namespace WorldBeyond.Application
                 for (int i = 0; i < systems.Length; i++)
                 {
                     var s = systems[i];
-                    if (tick % s.TickInterval == 0) s.Tick(_ctx);
+                    if (tick % s.TickInterval != 0) continue;
+                    try { s.Tick(_ctx); }
+                    catch (Exception ex) { ReportFault(tick, s.Name, ex); }
                 }
-                _ctx.Events.Flush();
+                try { _ctx.Events.Flush(); }
+                catch (Exception ex) { ReportFault(tick, "EventBus", ex); }
                 _ctx.Clock.Advance();
             }
             finally
@@ -119,6 +131,13 @@ namespace WorldBeyond.Application
                 IsTicking = false;
             }
             TickCompleted?.Invoke(_ctx.Clock.Tick);
+        }
+
+        /// <summary>Meldet einen Fehler; GameComposition leitet auch Handler-Fehler des Event-Bus hierher.</summary>
+        public void ReportFault(long tick, string source, Exception ex)
+        {
+            FaultCount++;
+            SystemFailed?.Invoke(tick, source, ex);
         }
     }
 }

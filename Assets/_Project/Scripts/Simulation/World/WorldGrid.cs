@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using WorldBeyond.Core;
 using WorldBeyond.Simulation.World.Navigation;
 
@@ -12,6 +13,9 @@ namespace WorldBeyond.Simulation.World
         TileData[] _tiles;
         // Kacheln, die sich seit der Generierung geändert haben (Spielstand speichert nur diese, ARCHITECTURE §11).
         bool[] _changedSinceGeneration;
+        // Generierter Ursprungswert jeder geänderten Kachel. Damit kann das Laden die frisch generierte Welt
+        // wiederherstellen, ohne neu zu generieren.
+        Dictionary<int, TileData> _original = new Dictionary<int, TileData>();
         int _changedCount;
 
         ISimEventBus _events;
@@ -48,6 +52,7 @@ namespace WorldBeyond.Simulation.World
             _tiles = new TileData[Width * Height];
             _changedSinceGeneration = new bool[Width * Height];
             _changedCount = 0;
+            _original = new Dictionary<int, TileData>();
             _ownershipDirty = false;
             Version++;
             NavigationVersion++;
@@ -76,6 +81,7 @@ namespace WorldBeyond.Simulation.World
         {
             int i = CheckedIndex(x, y);
             int oldOwner = _tiles[i].OwnerCivId;
+            Remember(i);
             _tiles[i] = tile;
             if (tile.ResourceAmount == 0)
                 _tiles[i].Resource = ResourceType.None;
@@ -91,6 +97,7 @@ namespace WorldBeyond.Simulation.World
                 throw new ArgumentException("Höhe muss eine endliche Zahl sein.", nameof(height));
             if (_tiles[i].Height == height)
                 return;
+            Remember(i);
             _tiles[i].Height = height;
             MarkChanged(i, x, y, TileChangeKind.Height);
         }
@@ -100,6 +107,7 @@ namespace WorldBeyond.Simulation.World
             int i = CheckedIndex(x, y);
             if (_tiles[i].Terrain == terrain)
                 return;
+            Remember(i);
             _tiles[i].Terrain = terrain;
             // Wasser braucht eine Oberfläche, Land darf keine über dem Gelände haben.
             if (MovementRules.IsWaterTerrain(terrain))
@@ -122,6 +130,7 @@ namespace WorldBeyond.Simulation.World
             TileFlags now = (old & ~clear) | set;
             if (now == old)
                 return;
+            Remember(i);
             _tiles[i].Flags = now;
             MarkChanged(i, x, y, TileChangeKind.Flags);
         }
@@ -135,6 +144,7 @@ namespace WorldBeyond.Simulation.World
             ref TileData t = ref _tiles[i];
             if (t.Resource == ResourceType.None || t.ResourceAmount == 0)
                 return false;
+            Remember(i);
 
             taken = Math.Min(amount, t.ResourceAmount);
             t.ResourceAmount = (ushort)(t.ResourceAmount - taken);
@@ -171,6 +181,7 @@ namespace WorldBeyond.Simulation.World
             }
             if (_tiles[i].Resource == type && _tiles[i].ResourceAmount == amount)
                 return;
+            Remember(i);
             _tiles[i].Resource = type;
             _tiles[i].ResourceAmount = amount;
             MarkChanged(i, x, y, TileChangeKind.Resource);
@@ -183,6 +194,7 @@ namespace WorldBeyond.Simulation.World
                 throw new ArgumentOutOfRangeException(nameof(civId), "Zivilisations-ID darf nicht negativ sein.");
             if (_tiles[i].OwnerCivId == civId)
                 return;
+            Remember(i);
             _tiles[i].OwnerCivId = civId;
             // Kein TileChangedEvent pro Kachel: Territorien ändern viele Kacheln auf einmal, gemeldet wird gebündelt.
             MarkChangedSilently(i);
@@ -199,6 +211,7 @@ namespace WorldBeyond.Simulation.World
                 return t.Building.Equals(building);
             if (!IsBuildable(x, y))
                 return false;
+            Remember(i);
             t.Building = building;
             MarkChanged(i, x, y, TileChangeKind.Building);
             return true;
@@ -209,6 +222,7 @@ namespace WorldBeyond.Simulation.World
             int i = CheckedIndex(x, y);
             if (!_tiles[i].Building.IsValid)
                 return;
+            Remember(i);
             _tiles[i].Building = EntityId.None;
             MarkChanged(i, x, y, TileChangeKind.Building);
         }
@@ -229,6 +243,13 @@ namespace WorldBeyond.Simulation.World
             if (!InBounds(x, y))
                 throw new ArgumentOutOfRangeException($"Kachel ({x}, {y}) liegt außerhalb der Welt {Width}×{Height}.");
             return y * Width + x;
+        }
+
+        // Vor jeder ersten Änderung einer Kachel aufrufen: sichert den generierten Wert.
+        void Remember(int index)
+        {
+            if (!_changedSinceGeneration[index])
+                _original[index] = _tiles[index];
         }
 
         void MarkChanged(int index, int x, int y, TileChangeKind kind)
@@ -274,6 +295,7 @@ namespace WorldBeyond.Simulation.World
             Array.Copy(source._tiles, _tiles, _tiles.Length);
             Array.Copy(source._changedSinceGeneration, _changedSinceGeneration, _tiles.Length);
             _changedCount = source._changedCount;
+            _original = new Dictionary<int, TileData>(source._original);
             _ownershipDirty = false;
             Version++;
             NavigationVersion++;
@@ -281,12 +303,29 @@ namespace WorldBeyond.Simulation.World
 
         internal bool IsChangedSinceGeneration(int index) => _changedSinceGeneration[index];
 
-        internal void MarkLoadedDelta(int index) => MarkChangedSilently(index);
+        // Beim Laden: Kachel mit gespeichertem Wert überschreiben, generierten Wert als Ursprung sichern.
+        internal void ApplyLoadedDelta(int index, in TileData tile)
+        {
+            Remember(index);
+            _tiles[index] = tile;
+            MarkChangedSilently(index);
+        }
+
+        // Kopie der Welt im Zustand direkt nach der Generierung, ohne neu zu generieren.
+        public WorldGrid CloneGenerated()
+        {
+            var generated = new WorldGrid(GenSettings);
+            Array.Copy(_tiles, generated._tiles, _tiles.Length);
+            foreach (var kv in _original)
+                generated._tiles[kv.Key] = kv.Value;
+            return generated;
+        }
 
         internal void ResetChangeTracking()
         {
             Array.Clear(_changedSinceGeneration, 0, _changedSinceGeneration.Length);
             _changedCount = 0;
+            _original.Clear();
         }
     }
 }

@@ -21,6 +21,14 @@ namespace WorldBeyond.Simulation.World
         public int SectionVersion => 1;
         public Type StateType => typeof(WorldGridState);
 
+        // Diagnose: ob das letzte erfolgreiche oder versuchte Laden die Welt neu generieren musste.
+        public bool LastRestoreRegenerated { get; private set; }
+
+        static bool SameSettings(WorldGenSettings a, WorldGenSettings b) =>
+            a != null && b != null && a.Seed == b.Seed && a.Width == b.Width && a.Height == b.Height
+            && a.SeaLevel == b.SeaLevel && a.MaxHeight == b.MaxHeight && a.LandRatio == b.LandRatio
+            && a.RiverCount == b.RiverCount && a.ForestDensity == b.ForestDensity && a.ResourceRichness == b.ResourceRichness;
+
         public object CaptureState()
         {
             var s = GenSettings;
@@ -88,7 +96,20 @@ namespace WorldBeyond.Simulation.World
                 return false;
 
             // In eine neue Instanz laden; erst bei Erfolg übernehmen (bisheriger Zustand bleibt bei Fehlern erhalten).
-            WorldGrid fresh = new WorldGenerator().Generate(settings);
+            // Stammt die aktuelle Welt aus denselben Einstellungen (typisch: frische Komposition mit Seed und Größe des
+            // Spielstands, auch nach ersten Änderungen wie Start-Siedlungen), wird der generierte Zustand aus den
+            // gesicherten Ursprungswerten wiederhergestellt statt neu generiert.
+            WorldGrid fresh;
+            if (SameSettings(GenSettings, settings))
+            {
+                fresh = CloneGenerated();
+                LastRestoreRegenerated = false;
+            }
+            else
+            {
+                fresh = new WorldGenerator().Generate(settings);
+                LastRestoreRegenerated = true;
+            }
             int n = fresh._tiles.Length;
             if (st.FullGrid)
             {
@@ -111,8 +132,7 @@ namespace WorldBeyond.Simulation.World
                     }
                     if (!FromRecord(r, palettes, out TileData tile, out error))
                         return false;
-                    fresh._tiles[r.Index] = tile;
-                    fresh.MarkLoadedDelta(r.Index);
+                    fresh.ApplyLoadedDelta(r.Index, in tile);
                 }
             }
 
@@ -298,9 +318,11 @@ namespace WorldBeyond.Simulation.World
                         error = $"world: Kachel {i} hat ungültige Werte.";
                         return false;
                     }
-                    _tiles[i] = t;
+                    // Ungeänderte Kacheln entsprechen der Generierung; geänderte sichern den generierten Wert als Ursprung.
                     if (changed)
-                        MarkLoadedDelta(i);
+                        ApplyLoadedDelta(i, in t);
+                    else
+                        _tiles[i] = t;
                 }
             }
             catch (Exception e) when (e is FormatException || e is InvalidDataException || e is EndOfStreamException || e is IOException)

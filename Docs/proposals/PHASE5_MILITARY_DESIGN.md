@@ -86,3 +86,47 @@ namespace WorldBeyond.Simulation.Military
 ## 7. Abnahmetest (Plan, nur auf dem PC ausführbar)
 
 PlayMode-Szene auf generierter Karte: Civ A (Infanterie, Humvee mit 4 Infanterie, Humvee-MG, Panzer, Raketenwerfer) gegen Civ B (Infanterie, Panzer). Prüfungen: Humvee fährt Pfad über Hügel/um Wasser; Infanterie steigt ein/aus; MG tötet Infanterie; Panzergranate trifft und senkt HP mit Panzerung; Rakete fliegt, trifft, Flächenschaden; zerstörte Einheit verschwindet, `UnitDiedEvent` mit Civ; IArmyAI greift nach `WarDeclaredEvent` an. Zusätzlich EditMode-Tests für Schaden, Ballistik, Raketenlenkung, Rekrutierungskosten.
+
+## 8. Übergabestatus M1 (Branch `claude/phase5-military`, 2026-10-26)
+
+**Geliefert (eigene Ordner, keine gemeinsamen Dateien geändert):**
+
+| Datei | Inhalt |
+|---|---|
+| `Simulation/Combat/CombatTypes.cs` | `DamageType`, `ProjectileKind` (feste Werte), `ArmorProfile`, `DamageModel` |
+| `Simulation/Combat/WeaponState.cs` | `WeaponData`, `WeaponState` (Feuerrate, Magazin, Nachladen, Reserve, Versorgung, Reichweiten) |
+| `Simulation/Combat/Ballistics.cs`, `Missile.cs` | Ballistik und Raketenflug, getestet, **in M1 noch nicht benutzt** (kommen mit ProjectileStore nach M1) |
+| `Simulation/Combat/Targeting.cs` | Sichtlinie über Höhenfunktion, Zielbewertung |
+| `Simulation/Combat/CombatService.cs` | `ICombatService` (einziger Schadensweg: `SetHp`, Tod über `Despawn(id, killer, killerCivId)`), Events `UnitDamagedEvent`, `WeaponFiredEvent`, `ExplosionEvent`, `CombatEnvironment` |
+| `Simulation/Combat/CombatSystem.cs` | taktischer Kampf (Order 400): Zielwahl gestaffelt, Sichtlinie, Hitscan mit Trefferwurf über `SimRandom`, Verfolgung, Haltungen, befohlene Ziele; `ISaveable` Sektion `combat` (LoadOrder 20) |
+| `Simulation/Combat/CombatCommands.cs` | `AttackUnitCommand`, `SetStanceCommand` |
+| `Simulation/Military/MilitaryCatalog.cs` | `MilitaryRole` (Enum für `UnitTypeData.MilitaryRole`), `MilitaryUnitData`, `IMilitaryQuery` (Kampfstärke), M1-Inhalt `unit.rifleman` + `weapon.rifle` |
+| `Simulation/Military/MilitaryModule.cs` | erzeugt und registriert alles; ein Aufruf aus `RegisterPhaseServices` |
+| `Simulation/Military/ArmyTypes.cs` | `IArmyRegistry`, `IArmyQuery` (SYSTEM_INTERFACES §9), `ArmyOrder`, `ArmyView`, Armee-Events, `ArmyObjective`, `ArmyEnvironment` |
+| `Simulation/Military/ArmyRegistry.cs` | einzige Armee-Verwaltung, IDs aus `SequentialIdAllocator`, `ISaveable` Sektion `armies` (LoadOrder 30), `ISaveReferenceCheck` |
+| `Simulation/Military/ArmyAISystem.cs` | `IArmyAI` (Order 110, alle 10 Ticks): Sandbox-Autonomie, siehe unten |
+| `Tests/EditMode/Combat/*` | 34 Mathe-Tests, 14 Kampf-Tests, 8 Armee-/Autonomie-Tests (mit `StraightLineTestMover`, nur Test-Hilfe, ersetzt nicht das MovementSystem von World) |
+
+**Sandbox-Autonomie (INTEGRATION §0 Regel 4):** Die Armee-KI fasst freie Militäreinheiten jeder Civ zu Armeen zusammen (max. 30). Im Frieden verteidigen sie die Heimat. Im Krieg wählen sie alle 5 s ein Ziel (zuerst Kriegsziele von War über `ArmyEnvironment.Objectives`, sonst die nächste feindliche Einheit). Dann marschieren sie in Formation und kämpfen über das CombatSystem. Bei Stärke < 40 % der Feindstärke am Ziel ziehen sie sich zurück, danach verteidigen sie. Unter Sollstärke fordern sie Rekruten über `ArmyEnvironment.Recruit` an (→ `IRecruitment` von Civ). Spielerbefehle über `IArmyRegistry` haben 60 s Vorrang. Bewegungsziele, die nicht von der Armee-KI stammen, die Haltung „Stellung halten“ und einzeln befohlene Angriffe werden nicht überschrieben.
+
+**Geprüft:** `dotnet test Tools/SimTests` → 97/97 bestanden (41 Fundament + 56 Phase 5), `dotnet build Tools/UnityApiCheck` (netstandard2.1) erfolgreich. Autonomietest `SandboxWarWithoutAnyPlayerCommand`: 2 × 6 Schützen, 600 m entfernt, 30 s Frieden (keine Schüsse), dann Krieg → nach 10 Spielminuten ohne einen Befehl ist eine Seite vernichtet. Gegenproben: Feindschaftsprüfung entfernt → 4 Kampf-Tests rot; Armeebildung abgeschaltet → 7 Armee-Tests rot. **Nicht geprüft:** Unity-Editor-Kompilierung, Unity Test Runner.
+
+**Bitte an Integration (gemeinsame Dateien):**
+1. In `GameComposition.RegisterPhaseServices`: `var env = new CombatEnvironment(); var armyEnv = new ArmyEnvironment(); MilitaryModule.Register(ctx, runner.Register, env, armyEnv);` und nach World/War/Civ: `env.AreHostile = warQuery.AreAtWar; env.HeightAt = world.SampleHeight; env.QueryRadius = spatialIndex.QueryRadius; armyEnv.Objectives = civ => Adapter(warQuery.GetTargetPriorities(civ))` (Kachel → Welt: `(x + 0.5) * TileSize`), `armyEnv.HomeOf` = Hauptstadt, `armyEnv.SettlementPosition`, `armyEnv.Recruit` = `IRecruitment.Request`.
+2. SYSTEM_INTERFACES §9/§10: Events `UnitDamagedEvent`, `WeaponFiredEvent`, `ExplosionEvent`, `ArmyCreated/Disbanded/OrderChangedEvent`, `IMilitaryQuery`, `CombatStance`, `IArmyQuery.TryGetArmyOf`, `ArmyView` aufnehmen.
+
+**Offen nach M1:** `ProjectileStore` (Ballistik, Raketen), Fahrzeugtypen, Versorgung, Transport, VFX/Modelle.
+
+## 9. Planung: Zerstörbare Gebäude auf Bauteil-Ebene (VISION V10, M7, noch nicht gebaut)
+
+Zweck: Ein Artillerie-Einschlag soll Gebäude an genau der getroffenen Stelle beschädigen. Military liefert dafür den Einschlag, Civ wendet ihn auf die Bauteile an.
+
+- `ExplosionEvent` (heute X, Z, Radius, Type) wird nur um Felder **ergänzt**, nichts wird umbenannt:
+  - `Y`: Höhe des Einschlags, wichtig für Stockwerke.
+  - `Strength`: Grundschaden in der Mitte.
+  - `InnerRadius`: Bereich ohne Abfall, gleiche Formel wie `DamageModel.AreaFalloff`.
+  - `Source` und `SourceCivId`: Verursacher für Chronik und Kriegsstatistik.
+  - Spätere Felder bekommen nur Standardwerte, damit alte Empfänger weiterlaufen. Events werden nicht gespeichert, das Speicherformat ändert sich also nicht.
+- `ICombatService.ApplyAreaDamage` bleibt der einzige Einstieg. Er schadet Einheiten wie bisher und veröffentlicht das erweiterte `ExplosionEvent`. Civ hört darauf und rechnet über `AreaFalloff` den Schaden pro Bauteil aus. Military kennt keine Gebäude-Interna.
+- Für Treffer ohne Fläche (Panzergranate in eine Wand) kommt später ein `StructureHitEvent` mit Punkt, Richtung, Stärke und Schadensart dazu.
+- `UnitDamagedEvent` bleibt auf Einheiten beschränkt. Für Bauteile gibt es ein eigenes Event von Civ, damit Einheiten- und Gebäudeschaden nicht vermischt werden.

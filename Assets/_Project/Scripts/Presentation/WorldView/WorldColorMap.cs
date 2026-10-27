@@ -21,6 +21,8 @@ namespace WorldBeyond.Presentation.WorldView
         public static readonly Color32 Swamp = new Color32(0x55, 0x6E, 0x3A, 255);
         public static readonly Color32 Tundra = new Color32(0x9C, 0xA4, 0x7E, 255);
         public static readonly Color32 Boreal = new Color32(0x2F, 0x5F, 0x34, 255);
+        public static readonly Color32 Tropical = new Color32(0x2C, 0x74, 0x36, 255);
+        public static readonly Color32 Mediterranean = new Color32(0x9D, 0xA8, 0x5A, 255);
         public static readonly Color32 Mountain = new Color32(0x76, 0x70, 0x68, 255);
         public static readonly Color32 Road = new Color32(0xA8, 0x8B, 0x63, 255);
         public static readonly Color32 Scorched = new Color32(0x3A, 0x33, 0x2C, 255);
@@ -93,7 +95,10 @@ namespace WorldBeyond.Presentation.WorldView
             switch (t.Terrain)
             {
                 case TerrainType.Beach: c = WorldPalette.Sand; break;
-                case TerrainType.Forest: c = t.Biome == BiomeType.Boreal || t.Biome == BiomeType.Alpine ? WorldPalette.Boreal : WorldPalette.Forest; break;
+                case TerrainType.Forest:
+                    c = t.Biome == BiomeType.Boreal || t.Biome == BiomeType.Alpine ? WorldPalette.Boreal
+                        : t.Biome == BiomeType.TropicalForest ? WorldPalette.Tropical : WorldPalette.Forest;
+                    break;
                 case TerrainType.Rock: c = WorldPalette.Rock; break;
                 case TerrainType.Mountain: c = WorldPalette.Mountain; break;
                 case TerrainType.Snow: c = WorldPalette.Snow; break;
@@ -109,6 +114,7 @@ namespace WorldBeyond.Presentation.WorldView
                         BiomeType.Tundra => WorldPalette.Tundra,
                         BiomeType.Desert => WorldPalette.Desert,
                         BiomeType.Wetland => WorldPalette.Swamp,
+                        BiomeType.Mediterranean => WorldPalette.Mediterranean,
                         _ => WorldPalette.Grass,
                     };
                     // Fruchtbarer Boden etwas satter, karger etwas heller.

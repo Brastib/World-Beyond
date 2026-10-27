@@ -1,7 +1,11 @@
 using System;
+using WorldBeyond.Application.Integration;
 using WorldBeyond.Core;
 using WorldBeyond.Simulation;
 using WorldBeyond.Simulation.Civilizations;
+using WorldBeyond.Simulation.Combat;
+using WorldBeyond.Simulation.Diplomacy;
+using WorldBeyond.Simulation.Military;
 using WorldBeyond.Simulation.Commands;
 using WorldBeyond.Simulation.Save;
 using WorldBeyond.Simulation.Units;
@@ -58,10 +62,14 @@ namespace WorldBeyond.Application
             saveables.Add(units);
 
             var runner = new SimulationRunner(ctx);
+            // Handler-Fehler melden statt mitten im Tick zu werfen (sonst liefe derselbe Tick erneut).
+            events.HandlerFailed += ex => runner.ReportFault(clock.Tick, "EventHandler", ex);
             runner.Register(new CommandProcessingSystem(commands));
 
-            contentSetup?.Invoke(ctx);
+            // Phasen zuerst: Phaseninhalte (unit.rifleman, unit.settler …) registriert nur ihr Modul.
+            // contentSetup ergänzt danach Zusatzinhalte; Tests verwenden dafür Schlüssel mit Präfix "test." (INTEGRATION §5).
             RegisterPhaseServices(ctx, runner, settings);
+            contentSetup?.Invoke(ctx);
 
             ctx.Seal();
             return new GameComposition(ctx, runner, settings);
@@ -101,6 +109,39 @@ namespace WorldBeyond.Application
             // Neue Welt startet mit CivilizationCount Zivilisationen, die sich ohne Eingriff entwickeln (Sandbox).
             var civ = CivModule.Install(ctx, runner.Register);
             civ.SpawnInitialCivilizations(settings.CivilizationCount, settings.Seed);
+
+            // Military (Phase 5): Kampf, Armeen, Armee-KI. Delegates werden unten mit World/War/Civ verbunden.
+            var combatEnv = new CombatEnvironment();
+            var armyEnv = new ArmyEnvironment();
+            MilitaryModule.Register(ctx, runner.Register, combatEnv, armyEnv);
+            var military = ctx.Get<IMilitaryQuery>();
+            civ.Recruitment.RegisterRecruitable(MilitaryRecruitment.Rifleman);
+
+            // War (Phase 4): Diplomatie und Kriegsentscheidung. Verluste abonniert DiplomacyService selbst (UnitDiedEvent).
+            var port = new DiplomacyWorldPortAdapter(civ.Civilizations, civ.Settlements, civ.Territory, civ.Economy,
+                civ.Recruitment, ctx.Units, military, world, spatial);
+            var diplomacy = new DiplomacyService(port, ctx.Events, () => ctx.Clock.Tick);
+            ctx.Register<IDiplomacyService>(diplomacy);
+            ctx.Register<IDiplomacyQuery>(diplomacy);
+            ctx.Register<IWarQuery>(diplomacy);
+            ctx.Register<ICivWarEvaluator>(new CivWarEvaluatorAdapter(new WarStrategyEvaluator(diplomacy)));
+            ctx.Saveables.Add(new DiplomacySaveable(diplomacy));
+            runner.Register(new DiplomacySystem(diplomacy));
+            // Abos nach SpawnInitialCivilizations sind unkritisch, weil Events erst beim Flush am Tickende ausgeliefert werden.
+            // Wer hier künftig synchron publiziert, muss diese Abos vor Civ setzen.
+            ctx.Events.Subscribe<SettlementCapturedEvent>(e =>
+                diplomacy.ReportSettlementCaptured(e.SettlementId, e.OldCivId, e.NewCivId,
+                    civ.Settlements.TryGet(e.SettlementId, out var s) ? s.Population : 0));
+            ctx.Events.Subscribe<CivilizationCollapsedEvent>(e => diplomacy.ReportCivilizationCollapsed(e.CivId));
+            // Erste Feindberührung für War (Frieden erst nach Kontakt): jeder Treffer zwischen Einheiten zweier Civs.
+            // Ist der Schütze bis zum Flush schon entfernt, zählt der Treffer nicht; Verluste meldet UnitDiedEvent ohnehin.
+            ctx.Events.Subscribe<UnitDamagedEvent>(e =>
+            {
+                if (ctx.Units.TryGet(e.Source, out var src) && ctx.Units.TryGet(e.Target, out var dst) && src.CivId != dst.CivId)
+                    diplomacy.ReportCombatContact(src.CivId, dst.CivId);
+            });
+
+            MilitaryWiring.Connect(combatEnv, armyEnv, diplomacy, world, spatial, civ.Civilizations, civ.Settlements, civ.Recruitment);
         }
     }
 }
