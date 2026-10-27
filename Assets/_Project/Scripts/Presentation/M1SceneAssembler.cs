@@ -24,8 +24,10 @@ namespace WorldBeyond.Presentation
 
             // Reihenfolge zählt: OnEnable der späteren Komponenten sucht die früheren per FindFirstObjectByType.
             var game = new GameObject("Game");
-            game.AddComponent<GameBootstrap>();      // Awake erzeugt die Welt
+            game.SetActive(false);                   // Awake erst nach dem Setzen der Starteinstellungen
+            game.AddComponent<GameBootstrap>().StartSettings = PrototypeWorld();
             game.AddComponent<SaveLoadController>();
+            game.SetActive(true);                    // Awake erzeugt die Welt
 
             new GameObject("World").AddComponent<WorldRenderer>();
 
@@ -55,6 +57,12 @@ namespace WorldBeyond.Presentation
 
             new GameObject("HUD").AddComponent<GameHud>();
         }
+
+        // Prototyp-Welt: Seed 99, 256², 4 Zivilisationen. Headless (dotnet) erklärt hier die KI nach rund 68 Spielminuten
+        // den ersten Krieg (Tick 40551), bei 10× also nach knapp 7 Minuten. Die Standardwelt (Seed 12345, 2 Civs)
+        // hatte in 12 Spielstunden keinen Krieg. Kriege bleiben KI-Entscheidung, hier wird nichts erzwungen.
+        static GameStartSettings PrototypeWorld() =>
+            new GameStartSettings { Seed = 99, WorldWidth = 256, WorldHeight = 256, CivilizationCount = 4 };
 
         static Light FindDirectionalLight()
         {

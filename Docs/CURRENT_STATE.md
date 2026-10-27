@@ -54,6 +54,10 @@ Siehe SYSTEM_INTERFACES §0 (Status je Schnittstelle). Implementiert (1b, ungeme
 1. Unity-Projektdateien im Repo (DevOps, `devops/unity-project`).
 2. Nutzerfreigabe für den Merge von PR #2.
 
-## 7. Nächste Aufgabe (Stand 2026-10-26 21:35 UTC)
+## 7. Nächste Aufgabe (Stand 2026-10-27 02:40 UTC)
 
-M1 ist auf `integration/m1` @b47cad3 im Code vollständig: Welt, Wachstum, autonomer Krieg mit Besetzung und Frieden (Krieg kein Zwang), Speichern/Laden bitgenau, HUD (UI-Thread). Headless: SimTests 335/335, UiTests 7/7, UnityApiCheck und UiViewCheck grün. **Nicht in Unity geprüft.** Nächster Schritt: Unity-Lauf mit Szene `World.unity` und Screenshots (DevOps), dann Phasen-PRs einzeln nach main. main enthält #2, #1, #5; PR #11 (Newtonsoft im Tests-asmdef) wartet auf den Unity-Test.
+M1 ist auf `integration/m1` im Code vollständig: Welt, Wachstum, autonomer Krieg mit Besetzung und Frieden (Krieg kein Zwang), Speichern/Laden bitgenau, HUD. **Nicht in Unity geprüft.**
+
+Neu in der Nacht 26./27.10.: Unity-6-Mehrdeutigkeit `EntityId` in WorldSelection behoben (mit Platzhaltertyp simuliert: 3 Fehler → 0). Schnellstart `M1SceneAssembler`: leere Szene + Play baut den Prototyp (Seed 99, 256², 4 Civs, erster Krieg headless bei Tick 40551 ≈ 68 Spielminuten). GameHud mit Schrift-Rückfall ohne Theme. World-Restore-Schnellpfad mit Deltas (c336928) und Befreiung von gesperrten Kacheln (9c9bf1e) gemergt.
+
+Nächster Schritt: Unity-Lauf nach `Docs/M1_UNITY_START.md` (DevOps), dann Phasen-PRs einzeln nach main. Offen: Civ (Gebäude auf Einheiten, eingemauerte Siedlungen, Karawanen-Schleife), Military (MoveFailed abfangen, Acquire-Stagger), War (Kriegsende an Feindberührung koppeln, Aufrüstungsgrenze), Civ TerritoryService.CaptureDirty. PR #11 wartet auf den Unity-Test.
