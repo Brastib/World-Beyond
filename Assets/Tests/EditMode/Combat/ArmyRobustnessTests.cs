@@ -105,7 +105,46 @@ namespace WorldBeyond.Tests.EditMode.Combat
             w.Ctx.Units.Spawn(w.Rifleman, 2, 1000f, 0f);
             war[0] = true;
             w.Ticks(3000);
-            Assert.That(queued, Is.EqualTo(env.DesiredArmySize - 1), "nur das Fehlende einmal anfordern");
+            // Feind hat 1 Schützen → Wunsch max(1,5 × 1, MinAttackUnits 4) = 4 Schützen, 1 vorhanden → 3, nur einmal angefordert
+            Assert.That(queued, Is.EqualTo(3), "nur das Fehlende einmal anfordern");
+        }
+
+        [Test]
+        public void RecruitNeedFollowsThreatAndWillingness()
+        {
+            var w = Make(out var war, out _);
+            var env = w.Ctx.Get<ArmyEnvironment>();
+            w.Ctx.Units.Spawn(w.Rifleman, 1, 0f, 0f);
+            for (int i = 0; i < 10; i++) w.Ctx.Units.Spawn(w.Rifleman, 2, 1000f, i * 3f);
+            war[0] = true;
+            w.Ticks(10);
+            var ai = w.Ctx.Get<ArmyAISystem>();
+            Assert.That(ai.RecruitNeed(1), Is.EqualTo(14), "1,5 × 10 feindliche − 1 eigene");
+            Assert.That(ai.RecruitNeed(2), Is.EqualTo(0), "überlegene Seite rüstet nicht weiter auf");
+            env.PendingRecruits = civ => civ == 1 ? 4 : 0;
+            Assert.That(ai.RecruitNeed(1), Is.EqualTo(10), "eingereihte Aufträge zählen mit");
+            env.RecruitWillingness = civ => 0.5f;
+            Assert.That(ai.RecruitNeed(1), Is.EqualTo(5), "Civ wägt Kosten ab: halbe Bereitschaft");
+            env.RecruitWillingness = civ => 0f;
+            Assert.That(ai.RecruitNeed(1), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ThreatenedHomeIsDefendedInsteadOfAttacking()
+        {
+            var w = Make(out var war, out _);
+            var env = w.Ctx.Get<ArmyEnvironment>();
+            env.Recruit = (civ, role, n) => 0;
+            env.HomeOf = civ => civ == 1 ? (true, 0f, 0f) : (true, 2000f, 0f);
+            env.Objectives = civ => civ == 1 ? new[] { new ArmyObjective(0f, 290f, 10f, 2, 8) } : Array.Empty<ArmyObjective>();
+            for (int i = 0; i < 4; i++) w.Ctx.Units.Spawn(w.Rifleman, 1, 0f, -250f + i * 3f);   // Armee unterwegs, 250 m von der Heimat
+            var raider = w.Ctx.Units.Spawn(w.Rifleman, 2, 200f, 150f);                       // Feind 250 m vor der Heimat
+            w.Ctx.Combat_SetHold(raider);
+            war[0] = true;
+            w.Ticks(60);
+            var view = w.Ctx.Get<IArmyQuery>().GetArmies(1)[0];
+            Assert.That(view.Order.Kind, Is.EqualTo(ArmyOrderKind.Defend), "Heimat bedroht → verteidigen");
+            Assert.That(view.Order.X, Is.EqualTo(0f).Within(0.01f));
         }
 
         [Test]
