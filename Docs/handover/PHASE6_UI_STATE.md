@@ -33,3 +33,9 @@ Eine Komponente `WorldBeyond.Presentation.UI.GameHud` (UI Toolkit, baut ihr UIDo
 - Design-Tokens liegen in `UiTheme.cs` statt `Tokens.uss` (Abweichung von ARCHITECTURE §10, damit keine ungeprüften UI-Assets nötig sind).
 - Mausrad über einem Panel zoomt weiterhin die Kamera (StrategyCameraController fragt `IsPointerOverUi` nicht ab; Besitzer World).
 - Feed-Panel scrollt nicht; ältere Einträge sind gespeichert, aber nicht sichtbar.
+
+## Nach dem ersten Unity-Lauf (2026-10-27, integration/m1 @b008d8c)
+
+- Weiße Scheibe/Streifen auf dem Wasser: Ersatz-Wassermaterial jetzt matt (Glätte 0,4, Specular Highlights und Environment Reflections aus). In Unity ungeprüft. Falls Bloom im URP-Volume der Szene den Rest erzeugt: Schwelle anheben (Volume liegt in der Szene, nicht im Code).
+- Warnung "No Theme Style Sheet": GameHud setzt ein leeres ThemeStyleSheet und die eingebaute Schrift. In Unity ungeprüft.
+- Notiert, kein M1-Blocker: Flüsse wirken treppig, weil Wasser kachelweise als Vierecke gebaut wird (ChunkMeshBuilder.BuildWater). Möglich später: Flussverlauf als geglättete Linie/Spline mit eigener Breite.

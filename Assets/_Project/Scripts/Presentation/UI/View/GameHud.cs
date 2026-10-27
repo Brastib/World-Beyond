@@ -38,6 +38,7 @@ namespace WorldBeyond.Presentation.UI
         GameComposition _comp;
         UIDocument _document;
         PanelSettings _panelSettings;
+        ThemeStyleSheet _emptyTheme;
         VisualElement _root, _civList, _feedList, _infoPanel, _infoLines, _savePanel, _saveRows, _toastBox;
         Label _dateLabel, _infoTitle, _infoSubtitle, _toastText, _saveMessage;
         UiTheme.UiButton _civToggle;
@@ -90,6 +91,8 @@ namespace WorldBeyond.Presentation.UI
             _comp = null;
             if (_document != null) Destroy(_document.gameObject);
             if (_panelSettings != null) Destroy(_panelSettings);
+            if (_emptyTheme != null) Destroy(_emptyTheme);
+            _emptyTheme = null;
             _document = null;
             _panelSettings = null;
             _speedButtons.Clear();
@@ -142,7 +145,14 @@ namespace WorldBeyond.Presentation.UI
             _panelSettings.match = 0.5f;
             _panelSettings.referenceResolution = new Vector2Int(
                 Mathf.RoundToInt(referenceResolution.x / uiScale), Mathf.RoundToInt(referenceResolution.y / uiScale));
-            if (theme != null) _panelSettings.themeStyleSheet = theme;
+            // Ohne Theme warnt Unity ("No Theme Style Sheet set"). Die HUD nutzt nur eigene Stile, deshalb genügt ein leeres Theme;
+            // die Schrift wird unten ausdrücklich gesetzt, weil sonst das Theme sie liefern würde.
+            if (theme == null)
+            {
+                _emptyTheme = ScriptableObject.CreateInstance<ThemeStyleSheet>();
+                _emptyTheme.name = "GameHudEmptyTheme";
+            }
+            _panelSettings.themeStyleSheet = theme != null ? theme : _emptyTheme;
 
             // Inaktiv anlegen, damit UIDocument erst mit gesetzten PanelSettings aktiviert wird.
             var go = new GameObject("GameHud Document");
@@ -157,9 +167,9 @@ namespace WorldBeyond.Presentation.UI
             _root.style.flexGrow = 1f;
             if (theme == null)
             {
-                // Ohne Theme-Stylesheet fehlt UI Toolkit zur Laufzeit die Standardschrift; eingebaute Schrift als Rückfall.
-                Font font = UnityEngine.Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                if (font != null) _root.style.unityFontDefinition = FontDefinition.FromFont(font);
+                // Das leere Theme liefert keine Standardschrift; eingebaute Schrift als Rückfall.
+                Font builtinFont = DefaultFont();
+                if (builtinFont != null) _root.style.unityFontDefinition = FontDefinition.FromFont(builtinFont);
             }
             _root.Add(BuildTimeBar());
             _root.Add(BuildCivPanel());
@@ -167,6 +177,22 @@ namespace WorldBeyond.Presentation.UI
             _root.Add(BuildInfoPanel());
             _root.Add(BuildSaveMenu());
             _root.Add(BuildToast());
+        }
+
+        // Eingebaute Unity-Schrift: ab Unity 2022.2 "LegacyRuntime.ttf", davor "Arial.ttf". Bis Barlow/IBM Plex importiert sind.
+        static Font DefaultFont()
+        {
+            foreach (string name in new[] { "LegacyRuntime.ttf", "Arial.ttf" })
+            {
+                try
+                {
+                    var f = UnityEngine.Resources.GetBuiltinResource<Font>(name);
+                    if (f != null) return f;
+                }
+                catch (System.ArgumentException) { }
+            }
+            Debug.LogWarning("GameHud: Keine eingebaute Schrift gefunden; Texte nutzen den Rückfall von UI Toolkit.");
+            return null;
         }
 
         VisualElement BuildTimeBar()

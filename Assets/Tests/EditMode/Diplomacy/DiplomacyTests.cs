@@ -336,6 +336,23 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.IsFalse(W.RecruitRequests.Any(r => r.civ == 1), "an der Obergrenze keine weitere Rekrutierung");
         }
 
+        // Integration 2026-10-27 (Leistung): absolute Obergrenze je Civ, auch bei großer Bevölkerung.
+        [Test]
+        public void Recruitment_HasAbsoluteCap()
+        {
+            W.AddCiv(1, 0, 0, strength: 100, population: 100000); W.AddCiv(2, 20, 0, strength: 5000, population: 100000);
+            W.Civs[1].ArmyUnits = 78;                         // 10 % wären 10 000, absolut erlaubt sind 80
+            D.DeclareWar(2, 1);
+            _rig.RunSeconds(5);
+            var mine = W.RecruitRequests.Where(r => r.civ == 1).ToList();
+            Assert.IsTrue(mine.Any(), "unter der absoluten Grenze wird rekrutiert");
+            Assert.LessOrEqual(mine.Sum(r => r.count), 2, "höchstens bis MaxArmyUnitsAbsolute");
+            W.Civs[1].ArmyUnits = D.Settings.MaxArmyUnitsAbsolute;
+            W.RecruitRequests.Clear();
+            _rig.RunSeconds(120);
+            Assert.IsFalse(W.RecruitRequests.Any(r => r.civ == 1), "an der absoluten Grenze keine weitere Rekrutierung");
+        }
+
         // Probe-Merge: Aufträge sind noch nicht ausgebildet → ohne Mitzählen wurde über die Obergrenze hinaus rekrutiert.
         [Test]
         public void Recruitment_CountsPendingRequests_TowardsCap()

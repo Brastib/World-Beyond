@@ -83,6 +83,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         // Zählt Einheiten inklusive eingereihter Aufträge (Port GetArmyUnitCount). Platzhalter.
         public float MaxArmyUnitsPerPop = 0.10f;          // Bevölkerung 300 → höchstens 30 Einheiten
         public int MinArmyUnitsCap = 2;                   // auch ein kleiner Stamm darf sich verteidigen
+        public int MaxArmyUnitsAbsolute = 80;             // absolute Obergrenze je Civ (Leistung, Platzhalter; Civ-Recruitment gleich)
         // Bis der Adapter eingereihte Aufträge mitzählt: angenommene Anfragen zählen so lange selbst als „unterwegs“.
         // 0 schaltet das ab (wenn GetArmyUnitCount die Warteschlange enthält).
         public long RecruitPendingTicks = 1200;
