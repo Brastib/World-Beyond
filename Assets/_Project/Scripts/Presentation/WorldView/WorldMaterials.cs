@@ -33,6 +33,20 @@ namespace WorldBeyond.Presentation.WorldView
             return m;
         }
 
+        // Kein Sonnen-Glanzpunkt und keine Himmelsspiegelung (Wasser: sonst grell weiße Scheibe bzw. Streifen bei
+        // flachem Sonnenstand, Unity-Lauf 2026-10-27). Wirkt auf URP Lit und Built-in Standard.
+        public static void DisableSpecular(Material m)
+        {
+            if (m == null)
+                return;
+            SetFloatIfPresent(m, "_SpecularHighlights", 0f);
+            SetFloatIfPresent(m, "_EnvironmentReflections", 0f);   // URP
+            SetFloatIfPresent(m, "_GlossyReflections", 0f);        // Standard
+            m.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+            m.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+            m.EnableKeyword("_GLOSSYREFLECTIONS_OFF");
+        }
+
         static void SetFloatIfPresent(Material m, string property, float value)
         {
             if (m.HasProperty(property))
