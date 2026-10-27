@@ -78,6 +78,26 @@ namespace WorldBeyond.Tests.EditMode.Combat
         }
 
         [Test]
+        public void EnemyAppearingInSightIsAcquiredWithinStagger()
+        {
+            // Ohne Ziel sucht eine Einheit nur alle 5 Ticks (Leistung); ein neuer Feind darf höchstens so lange unbemerkt bleiben.
+            for (int offset = 0; offset < 5; offset++)
+            {
+                var w = new CombatWorld();
+                var me = w.Ctx.Units.Spawn(w.Rifleman, 1, 0f, 0f);
+                w.Ctx.Combat_SetHold(me);
+                w.Ticks(10 + offset);
+                Assert.That(w.Combat.GetTarget(me).IsValid, Is.False);
+                var enemy = w.Ctx.Units.Spawn(w.Rifleman, 2, 120f, 0f);
+                w.Ctx.Combat_SetHold(enemy);
+                int waited = 0;
+                while (!w.Combat.GetTarget(me).IsValid && waited < 20) { w.Ticks(1); waited++; }
+                Assert.That(w.Combat.GetTarget(me), Is.EqualTo(enemy));
+                Assert.That(waited, Is.LessThanOrEqualTo(5), $"Versatz {offset}");
+            }
+        }
+
+        [Test]
         public void NoFightWithoutHostility()
         {
             var w = new CombatWorld();
