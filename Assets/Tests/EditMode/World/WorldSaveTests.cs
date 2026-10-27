@@ -82,17 +82,50 @@ namespace WorldBeyond.Tests.World
             AssertSameTiles(g, same);
             Assert.AreEqual(g.ChangedTileCount, same.ChangedTileCount);
 
-            // Bereits veränderte Welt mit gleichem Seed: muss neu generieren, sonst blieben fremde Änderungen stehen.
+            // Bereits veränderte Welt mit gleichem Seed (z. B. Start-Siedlungen): Ursprungswerte stellen die Generierung
+            // wieder her, fremde Änderungen verschwinden, ohne neu zu generieren.
             var changed = Gen();
             changed.SetHeight(30, 30, 90f);
+            changed.SetHeight(20, 20, 5f);
+            changed.SetOwner(10, 10, 3);
+            changed.SetFlags(12, 12, TileFlags.Road, TileFlags.None);
+            changed.SetResource(13, 13, ResourceType.Gold, 9);
+            changed.TryHarvest(13, 13, 2, out _);
+            changed.SetTerrain(14, 14, TerrainType.Desert);
             Assert.IsTrue(changed.TryRestoreState(st, out error), error);
-            Assert.IsTrue(changed.LastRestoreRegenerated);
+            Assert.IsFalse(changed.LastRestoreRegenerated);
             AssertSameTiles(g, changed);
+            Assert.AreEqual(g.ChangedTileCount, changed.ChangedTileCount);
+
+            // Zweimal hintereinander laden: Ursprungswerte der geladenen Deltas müssen stimmen.
+            Assert.IsTrue(changed.TryRestoreState(st, out error), error);
+            Assert.IsFalse(changed.LastRestoreRegenerated);
+            AssertSameTiles(g, changed);
+            AssertSameTiles(Gen(), changed.CloneGenerated());
 
             var other = Gen(seed: 6);
             Assert.IsTrue(other.TryRestoreState(st, out error), error);
             Assert.IsTrue(other.LastRestoreRegenerated);
             AssertSameTiles(g, other);
+        }
+
+        [Test]
+        public void FullGrid_Restore_KeepsGeneratedOriginals()
+        {
+            var g = Gen(size: 48);
+            for (int y = 0; y < 48; y++)
+                for (int x = 0; x < 30; x++)
+                    g.SetOwner(x, y, 1 + (x % 3));
+            g.SetHeight(40, 40, 66f);
+            var st = (WorldGridState)g.CaptureState();
+            Assume.That(st.FullGrid);
+
+            var target = Gen(size: 48);
+            target.SetOwner(1, 1, 9);
+            Assert.IsTrue(target.TryRestoreState(st, out string error), error);
+            Assert.IsFalse(target.LastRestoreRegenerated);
+            AssertSameTiles(g, target);
+            AssertSameTiles(Gen(size: 48), target.CloneGenerated());
         }
 
         [Test]
