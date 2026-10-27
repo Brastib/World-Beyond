@@ -38,6 +38,7 @@ namespace WorldBeyond.Simulation.Civilizations
                 LastSettlementId = _s.SettlementIds.LastIssued,
                 Buildings = _s.Buildings.Capture(),
                 Caravans = _transport.Capture(),
+                BlockedRoutes = _transport.CaptureBlocked(),
                 Territory = _territory.CaptureDirty(),
             };
             var civs = new List<CivDto>();
@@ -80,7 +81,7 @@ namespace WorldBeyond.Simulation.Civilizations
             // 2. Gebäude (eigener EntityStore) und Karawanen einspielen; bei Fehler alten Zustand behalten.
             var oldBuildings = _s.Buildings.Capture();
             if (!_s.Buildings.TryRestore(s.Buildings, out error)) return false;
-            if (!_transport.TryRestore(s.Caravans, out error)) { _s.Buildings.TryRestore(oldBuildings, out _); return false; }
+            if (!_transport.TryRestore(s.Caravans, s.BlockedRoutes, out error)) { _s.Buildings.TryRestore(oldBuildings, out _); return false; }
             foreach (var st in sets)
                 foreach (var b in st.Buildings)
                 {
@@ -257,6 +258,7 @@ namespace WorldBeyond.Simulation.Civilizations
         public SettlementDto[] Settlements;
         public BuildingStoreState Buildings;
         public CaravanDto[] Caravans;
+        public RouteBlockDto[] BlockedRoutes;   // fehlt in älteren Spielständen: dann keine Sperren
         public TerritoryDirtyDto Territory;
     }
 

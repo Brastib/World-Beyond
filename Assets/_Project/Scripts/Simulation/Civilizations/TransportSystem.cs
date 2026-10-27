@@ -30,6 +30,12 @@ namespace WorldBeyond.Simulation.Civilizations
         private readonly Dictionary<EntityId, Caravan> _caravans = new Dictionary<EntityId, Caravan>();
         private readonly List<EntityId> _order = new List<EntityId>();   // feste Reihenfolge für Speichern
 
+        /// <summary>Nach einer gescheiterten Fahrt bleibt die Strecke so lange gesperrt (Prüf-Befund: Karawanen-Schleife).</summary>
+        public const long RouteCooldownTicks = 5 * CivTime.TicksPerYear;
+
+        // Gesperrte Strecken: Schlüssel (kleinere Id, größere Id) → gesperrt bis Tick. Liste sortiert nach Schlüssel.
+        private readonly List<RouteBlockDto> _blocked = new List<RouteBlockDto>();
+
         public TransportSystem(CivState state, Recruitment recruitment)
         {
             _s = state; _recruitment = recruitment;
@@ -47,6 +53,8 @@ namespace WorldBeyond.Simulation.Civilizations
 
         public void Tick(SimContext ctx)
         {
+            long now = _s.Ctx.Clock.Tick;
+            _blocked.RemoveAll(b => b.UntilTick <= now);
             foreach (int civId in _s.CivOrder)
             {
                 var civ = _s.Civs[civId];
@@ -67,14 +75,23 @@ namespace WorldBeyond.Simulation.Civilizations
             foreach (int sid in list)
             {
                 var st = _s.Settlements[sid];
-                double need = Need(st, good);
-                double have = st.Stock[(int)good];
-                double lack = need * 0.5 - have;              // weniger als ein halbes Jahr Bedarf
-                double surplus = have - need * 1.5 - 10;      // mehr als anderthalb Jahre Bedarf
+                double lack = Need(st, good) * 0.5 - st.Stock[(int)good];   // weniger als ein halbes Jahr Bedarf
                 if (lack > worstLack && !HasIncoming(st.Id, good)) { worstLack = lack; needy = st; }
+            }
+            if (needy == null) return false;
+            foreach (int sid in list)
+            {
+                var st = _s.Settlements[sid];
+                if (st == needy || IsBlocked(st.Id, needy.Id)) continue;   // gesperrte Strecke: anderer Lieferant
+                double surplus = st.Stock[(int)good] - Need(st, good) * 1.5 - 10;   // mehr als anderthalb Jahre Bedarf
                 if (surplus > bestSurplus) { bestSurplus = surplus; rich = st; }
             }
-            if (needy == null || rich == null || needy == rich) return false;
+            if (rich == null) return false;
+            if (!Reachable(rich, needy))   // getrennte Landstücke oder eingeschlossen: keine Karawane, die sofort scheitert
+            {
+                Block(rich.Id, needy.Id);
+                return false;
+            }
             int amount = (int)Math.Min(MaxCargo, Math.Min(bestSurplus, worstLack + 10));
             if (amount < 5) return false;
             var target = needy;
@@ -87,6 +104,39 @@ namespace WorldBeyond.Simulation.Civilizations
             if (res != RecruitResult.Queued) return false;
             _s.Ctx.Events.Publish(new CivDecisionEvent { CivId = civId, SettlementId = rich.Id, Decision = $"Karawane mit {amount} {good} nach {needy.Name}", Reason = $"{needy.Name} hat zu wenig {good}." });
             return true;
+        }
+
+        private bool Reachable(Settlement from, Settlement to)
+        {
+            if (!_s.Ctx.TryGet<IPathfinder>(out var pf)) return true;
+            var (ax, az) = _s.ArrivalPoint(from, MovementClass.Foot);
+            var (bx, bz) = _s.ArrivalPoint(to, MovementClass.Foot);
+            var (fx, fy) = WorldCoords.WorldToTile(ax, az);
+            var (tx, ty) = WorldCoords.WorldToTile(bx, bz);
+            return pf.AreConnected(fx, fy, tx, ty, MovementClass.Foot);
+        }
+
+        public bool IsBlocked(int settlementA, int settlementB) => FindBlock(settlementA, settlementB) >= 0;
+
+        public int BlockedRouteCount => _blocked.Count;
+
+        private int FindBlock(int a, int b)
+        {
+            if (a > b) (a, b) = (b, a);
+            for (int i = 0; i < _blocked.Count; i++)
+                if (_blocked[i].A == a && _blocked[i].B == b) return i;
+            return -1;
+        }
+
+        private void Block(int a, int b)
+        {
+            if (a > b) (a, b) = (b, a);
+            long until = _s.Ctx.Clock.Tick + RouteCooldownTicks;
+            int i = FindBlock(a, b);
+            if (i >= 0) { _blocked[i].UntilTick = until; return; }
+            int at = 0;
+            while (at < _blocked.Count && (_blocked[at].A < a || (_blocked[at].A == a && _blocked[at].B < b))) at++;
+            _blocked.Insert(at, new RouteBlockDto { A = a, B = b, UntilTick = until });
         }
 
         private static double Need(Settlement st, ResourceType good)
@@ -152,7 +202,9 @@ namespace WorldBeyond.Simulation.Civilizations
 
         private void OnMoveFailed(UnitMoveFailedEvent e)
         {
-            if (_caravans.TryGetValue(e.Unit, out var c)) Redirect(c);
+            if (!_caravans.TryGetValue(e.Unit, out var c)) return;
+            if (c.TargetSettlementId != c.OriginSettlementId) Block(c.OriginSettlementId, c.TargetSettlementId);
+            Redirect(c);
         }
 
         private void OnDied(UnitDiedEvent e)
@@ -200,8 +252,22 @@ namespace WorldBeyond.Simulation.Civilizations
             return list;
         }
 
-        internal bool TryRestore(CaravanDto[] dtos, out string error)
+        internal RouteBlockDto[] CaptureBlocked()
         {
+            var list = new RouteBlockDto[_blocked.Count];
+            for (int i = 0; i < list.Length; i++) list[i] = new RouteBlockDto { A = _blocked[i].A, B = _blocked[i].B, UntilTick = _blocked[i].UntilTick };
+            return list;
+        }
+
+        internal bool TryRestore(CaravanDto[] dtos, RouteBlockDto[] blocked, out string error)
+        {
+            _blocked.Clear();
+            foreach (var b in blocked ?? Array.Empty<RouteBlockDto>())
+            {
+                if (b == null) continue;
+                Block(b.A, b.B);
+                _blocked[FindBlock(b.A, b.B)].UntilTick = b.UntilTick;
+            }
             _caravans.Clear();
             _order.Clear();
             foreach (var d in dtos ?? Array.Empty<CaravanDto>())
@@ -242,5 +308,13 @@ namespace WorldBeyond.Simulation.Civilizations
         public int Origin, Target;
         public string Resource;
         public int Amount;
+    }
+
+    /// <summary>Gesperrte Karawanenstrecke (Siedlungs-Ids A &lt; B) bis zum angegebenen Tick.</summary>
+    [Serializable]
+    public sealed class RouteBlockDto
+    {
+        public int A, B;
+        public long UntilTick;
     }
 }
