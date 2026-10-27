@@ -96,13 +96,13 @@ namespace WorldBeyond.Simulation.World
                 return false;
 
             // In eine neue Instanz laden; erst bei Erfolg übernehmen (bisheriger Zustand bleibt bei Fehlern erhalten).
-            // Ist die aktuelle Welt unverändert aus denselben Einstellungen erzeugt (typisch: frische Komposition mit
-            // Seed und Größe des Spielstands), wird kopiert statt neu generiert.
+            // Stammt die aktuelle Welt aus denselben Einstellungen (typisch: frische Komposition mit Seed und Größe des
+            // Spielstands, auch nach ersten Änderungen wie Start-Siedlungen), wird der generierte Zustand aus den
+            // gesicherten Ursprungswerten wiederhergestellt statt neu generiert.
             WorldGrid fresh;
-            if (_changedCount == 0 && SameSettings(GenSettings, settings))
+            if (SameSettings(GenSettings, settings))
             {
-                fresh = new WorldGrid(settings);
-                Array.Copy(_tiles, fresh._tiles, _tiles.Length);
+                fresh = CloneGenerated();
                 LastRestoreRegenerated = false;
             }
             else
@@ -132,8 +132,7 @@ namespace WorldBeyond.Simulation.World
                     }
                     if (!FromRecord(r, palettes, out TileData tile, out error))
                         return false;
-                    fresh._tiles[r.Index] = tile;
-                    fresh.MarkLoadedDelta(r.Index);
+                    fresh.ApplyLoadedDelta(r.Index, in tile);
                 }
             }
 
@@ -319,9 +318,11 @@ namespace WorldBeyond.Simulation.World
                         error = $"world: Kachel {i} hat ungültige Werte.";
                         return false;
                     }
-                    _tiles[i] = t;
+                    // Ungeänderte Kacheln entsprechen der Generierung; geänderte sichern den generierten Wert als Ursprung.
                     if (changed)
-                        MarkLoadedDelta(i);
+                        ApplyLoadedDelta(i, in t);
+                    else
+                        _tiles[i] = t;
                 }
             }
             catch (Exception e) when (e is FormatException || e is InvalidDataException || e is EndOfStreamException || e is IOException)
