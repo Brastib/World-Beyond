@@ -87,8 +87,8 @@ namespace WorldBeyond.Simulation.Diplomacy
         //          LaborCostWeight × a/(1−a) + LaborSteepWeight × ((a − LaborSteepFrom)/(1−a))² ab der Schwelle (steil, ohne harte Grenze)
         //        + Nahrung/Ressourcenmangel (FoodCostWeight × ResourceNeed) + Kriegsmüdigkeit (ExhaustionCostWeight × Erschöpfung/100).
         public float LaborCostWeight = 2f;
-        public float LaborSteepFrom = 0.12f;              // ab etwa 12 % unter Waffen steigen die Kosten steil
-        public float LaborSteepWeight = 40f;              // 20 % → ≈ 0,9 Kosten, 25 % → ≈ 1,9 (mehr als jeder Nutzen)
+        public float LaborSteepFrom = 0.06f;              // ab etwa 6 % unter Waffen steigen die Kosten steil
+        public float LaborSteepWeight = 150f;             // 10 % → ≈ 0,5, 12 % → ≈ 1,0, 15 % → ≈ 2,0 (mehr als jeder Nutzen, max. 1,75)
         public float FoodCostWeight = 0.5f;
         public float ExhaustionCostWeight = 0.5f;
         // Bis der Adapter eingereihte Aufträge mitzählt: angenommene Anfragen zählen so lange selbst als „unterwegs“.

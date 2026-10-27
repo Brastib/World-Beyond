@@ -130,8 +130,8 @@ namespace WorldBeyond.Simulation.Diplomacy
         public float ScoreFor(int civId)
         {
             var side = SideOf(civId);
-            if (side == WarSide.Attacker) return WarScore;
-            if (side == WarSide.Defender) return -WarScore;
+            if (side == WarSide.Attacker) return WarScore + 0f;
+            if (side == WarSide.Defender) return -WarScore + 0f;   // + 0f: keine −0 im Log/Spielstand
             return 0f;
         }
     }
@@ -184,7 +184,7 @@ namespace WorldBeyond.Simulation.Diplomacy
     {
         public readonly string Name;
         public readonly float Value;
-        public DecisionFactor(string name, float value) { Name = name; Value = value; }
+        public DecisionFactor(string name, float value) { Name = name; Value = value + 0f; }   // + 0f: −0 → +0 (stabiler Spielstand)
     }
 
     // Protokoll einer KI-Entscheidung, damit Kriege nachvollziehbar sind (UI, Ereignis-Feed, Debug).

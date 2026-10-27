@@ -144,7 +144,7 @@ namespace WorldBeyond.Simulation.Diplomacy
             }
             goals = Clamp(goals, -Settings.GoalWeightMax, Settings.GoalWeightMax);
 
-            war.WarScore = Clamp(conquest + casualty + points + goals, -100f, 100f);
+            war.WarScore = Clamp(conquest + casualty + points + goals, -100f, 100f) + 0f;
 
             float minutes = WarClockMinutes(war);
             att.Exhaustion = Exhaustion(att, minutes);
