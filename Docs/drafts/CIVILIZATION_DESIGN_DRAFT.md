@@ -293,3 +293,39 @@ Nutzerwunsch vom 2026-10-27: Jeder Stamm baut eigene Häuser. Wie sie aussehen, 
 - S3: Stilentwicklung über Techniken und Kontakt.
 
 Nach M1, vor oder zusammen mit V15, weil S2 die Haushalte aus V15 nutzt.
+
+## 19. Zielbild Siedlungsaufbau (Nutzer-Referenzbilder vom 2026-10-27)
+
+Der Nutzer hat drei Referenzbilder geschickt: eine Bergstadt mit Kirchplatz, eine kriegszerstörte Stadt und ein Palisadendorf mit Feldern. Gemeint sind Siedlungsaufbau und Gebäudevielfalt, nicht der Grafikstil. Die Grafik bleibt beim eigenen Stil laut Asset-Katalog.
+
+**Ziel:** Die Siedlungen sollen dicht und gewachsen wirken, nicht wie ein Raster.
+- **Kern:** Ein Platz mit Wahrzeichen bildet die Mitte. Das Wahrzeichen ist je nach Epoche und Kultur ein Heiligtum, Tempel oder Kirche, ein Brunnen oder eine Statue. Um den Platz stehen Markt und wichtige Bauten.
+- **Straßen:** Es gibt Hauptstraßen vom Tor zum Platz und Gassen dazwischen, statt eines starren Rasters (heute jede 6. Kachel). Die Begehbarkeit bleibt garantiert, also keine eingemauerten Bereiche. Das ist die Bedingung aus dem Straßenraster-Fix.
+- **Wohnen:**
+  - Im Kern dicht: Reihenhäuser, die sich Wände teilen, ab der Kleinstadt mehrgeschossig.
+  - Nach außen lockerer: Höfe und Hütten.
+  - Die Hausform kommt aus §18 (CivStyle und HouseSpec).
+- **Umland:**
+  - Felder, Obstgärten, Weiden mit Vieh und Zäunen, Wind- und Wassermühlen, Scheunen.
+  - Handwerk liegt nahe an seinem Rohstoff.
+  - Das Umland liegt außerhalb der Befestigung.
+- **Befestigung:**
+  - Die KI baut sie selbst, wenn Bedrohung oder Krieg es verlangt: Palisade mit Wachtürmen und Toren, später Steinmauer.
+  - Wächst die Stadt, entstehen Viertel vor der Mauer, später ein neuer Ring.
+- **Kriegsschäden:**
+  - Gebäude haben einen Zustand: intakt, beschädigt, brennend, Ruine, Schutt. Der Zustand wird gespeichert.
+  - Ruinen werden wieder aufgebaut oder bleiben liegen, wenn der Ort verarmt oder verlassen ist.
+  - Schaden an Gebäuden ist heute nicht vorgesehen, Combat trifft nur Einheiten. Die Schnittstelle muss mit Combat und War abgestimmt werden: Civ hält den Gebäudezustand, Combat und War melden Treffer.
+- **Gebäudevielfalt:** Wo noch nicht vorhanden, kommen hinzu:
+  - Heiligtum, Tempel und Kirche,
+  - Markt, Brunnen,
+  - Mühle, Scheune, Stall,
+  - Wachturm, Tor, Palisade, Mauer,
+  - Denkmal.
+  - Schlüssel und Bausteine kommen aus dem Asset-Katalog.
+
+**Etappen** (nach M1, verzahnt mit §17/§18):
+- L1: Zonen je Siedlung (Kern, Wohnen, Handwerk, Umland) und Platz mit Wahrzeichen. Tests: Das Wahrzeichen steht im Kern und Felder stehen außerhalb.
+- L2: Straßenhierarchie statt Raster. Test: Alle Gebäude sind erreichbar, für mehrere Seeds.
+- L3: Befestigung durch die KI, mit Ringwachstum.
+- L4: Gebäudezustand und Kriegsschäden, mit Wiederaufbau. Erst nach Abstimmung mit Combat und War.
