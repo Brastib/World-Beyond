@@ -1,6 +1,6 @@
 # World Beyond – Eigener Asset-Stil, Pflanzen und Umweltkopplung (Vorschlag)
 
-Status: **Vorschlag [E]**, nichts davon ist implementiert. Stand: 2026-10-26.
+Status: **Vorschlag [E]**, nichts davon ist implementiert. Stand: 2026-10-27.
 Verfasst vom Thread „Asset-Katalog für alle Pflanzen & Modelle aufbauen“.
 Grundlage: Nutzernachricht vom 2026-10-26 13:20 UTC (siehe §0), PROJECT_MASTER §8, ARCHITECTURE §3/§16, VISION (V5, V9, V10), UI_STYLE_GUIDE Teil A, INTEGRATION §0/§3, Code-Stand `integration/m1` @9ccfe77 und `phase2-world-engine` @921fdbb.
 Zugehöriger Katalog: `Docs/proposals/ASSET_CATALOG.md` (jedes Modell, jede Pflanze, jeder Effekt mit Status).
@@ -200,6 +200,15 @@ Die Darstellung nutzt dafür denselben Bruch-Baukasten wie bei Artillerie, nur l
 - Ergebnis: Die Grundstruktur trägt. Die drei Klassen unterscheiden sich sichtbar, das Haus ist innen hohl und begehbar (Schnittansicht), der Schnee-Zustand liegt auf Dach und Simsen. 1 500 bis 3 200 Dreiecke je Haus, also weit unter jedem Budget.
 - Abstand zu R2: keine Traufbretter, Faschen und Zierleisten; Materialien nur prozedural (keine gebackenen Texturen, Putz und Ziegel wirken glatt); „arm“ ist noch ein kleines Haus und keine Hütte; nur moderne Epoche; keine Bruchstücke und keine Innenausstattung; Grundriss fest statt aus dem Bauwunsch.
 - Bewertung: Offline-Render (Blender Cycles), kein Spielbild. Der Test zeigt, dass der Baukasten-Weg per Skript funktioniert. R2-Qualität braucht die oben genannten Bauteile mit Bevel, gebackene Materialien und den Vergleich im Spiel-Licht.
+
+**Machbarkeitstest Haus v2: viele Häuser aus Bauwünschen (2026-10-27, Nutzer: „deutlich mehr Häuser, je nach Bedürfnis der Bewohner“):** Das Skript liest jetzt einen Bauwunsch (Vermögen sehr arm/arm/mittel/reich, Haushaltsgröße, Beruf Händler/Handwerker/Bauer, Klima gemäßigt/kalt/trocken, Seed) und leitet daraus nach festen Bauregeln ab:
+- Wohnfläche aus Personen × Fläche je Person (5/9/20/38 m² nach Vermögen, mit Mindestgröße), Geschosszahl (arme Großfamilie baut länger statt höher), Wanddicke, Sockel, Geschosshöhe.
+- Dach und Material aus Klima und Vermögen: steiles Dach und Holz bei Kälte, Flachdach mit Attika, dicken Lehmwänden und kleinen Fenstern bei Hitze, Pultdach aus Wellblech und Bretterwände beim Notbau.
+- Anbauten aus dem Beruf: Laden mit Schaufenster und Markise, Werkstatt mit Tor und Pultdach, Stall/Scheune mit Tor; bei Reichtum Anbau mit Glasfront und Terrasse.
+- Farben, Dachdeckung und Fensterrahmen aus dem Seed.
+Ergebnis: 14 Bauwünsche ergeben 14 verschiedene Häuser von 10 m² (Notbau) bis 228 m² (Gutshof), 340 bis 2 200 Dreiecke je Haus; eine Dorfstraße mit 11 Häusern hat zusammen rund 13 500 Dreiecke. Bilder und Skript: `/mnt/project-files/WorldBeyond/prototypes/haus_v2/` (nicht im Repo, nicht im Spiel).
+- Ehrliche Grenzen: Die Bauwünsche sind im Test von Hand geschrieben; im Spiel kommen sie von den NPCs (M4, Systembereich, nicht Teil des Katalogs). Gleiche Grenzen wie v1 bei Detail und Material (Abstand zu R2). Nur Fassaden der modernen Epoche, keine Innenaufteilung nach Räumen, keine Epochen-Bauweisen, keine Bruchstücke.
+- Folge für „viele Häuser“: Häuser müssen günstig bleiben, damit ganze Städte sichtbar sind. Zielwerte: LOD0 höchstens ca. 5 000 Dreiecke je Haus trotz R2-Detail (Detail über gebackene Normal-Karten statt Geometrie), Bauteile als Instanzen, ab mittlerer Entfernung LOD1/LOD2, in der Ferne Impostor oder Sammel-Meshes je Stadtviertel. Neue Typen und Bausteine stehen im Katalog §4 (`bld.home.*`, `bld.part.*`).
 
 Blender kann auch für Pflanzen helfen (Blattatlanten rendern, Impostor-Bilder backen). Der Baumgenerator selbst bleibt aber PlantForge in Unity (§4.1), weil Zustände und Wind dort zusammenhängen.
 

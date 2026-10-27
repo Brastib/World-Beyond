@@ -1,6 +1,6 @@
 # World Beyond – ASSET-KATALOG (alle Modelle, Pflanzen, Effekte)
 
-Status: **Vorschlag [E]**, gepflegt vom Bereich „Art/Assets“ (Thread „Asset-Katalog für alle Pflanzen & Modelle aufbauen“). Stand: 2026-10-26.
+Status: **Vorschlag [E]**, gepflegt vom Bereich „Art/Assets“ (Thread „Asset-Katalog für alle Pflanzen & Modelle aufbauen“). Stand: 2026-10-27.
 Stil, Herstellung und Umweltkopplung: `Docs/proposals/ASSETS_STYLE_ENVIRONMENT.md`.
 Lizenzen importierter Fremddateien stehen weiterhin **nur** in `Assets/ThirdParty/ASSET_CREDITS.md`. Dieser Katalog zählt dagegen **alles auf, was im Spiel sichtbar sein soll**, egal ob selbst gemacht oder importiert.
 
@@ -61,7 +61,7 @@ Jede Variante, die ein Generator oder ein NPC aus einem Archetyp erzeugt, muss d
 
 Die Prüfung läuft automatisch im Generator. Zusätzlich wird für jeden Archetyp eine Stichprobe von Varianten im Spiel-Licht gerendert und vom Nutzer geprüft, bevor der Archetyp auf „abgenommen“ steht. Wie sich Objekte im laufenden Spiel physikalisch verhalten (Umfallen, Einsturz, Trümmer), gehört zum zuständigen Systembereich und wurde weitergegeben. Der Katalog liefert dafür je Objekt Gewicht, Schwerpunkt, Standfläche und Kollisionsform.
 
-## 1. Zähler (Stand 2026-10-26)
+## 1. Zähler (Stand 2026-10-27)
 
 | Bereich | Einträge | geplant | Platzhalter | in Arbeit | implementiert | abgenommen |
 |---|---|---|---|---|---|---|
@@ -73,13 +73,13 @@ Die Prüfung läuft automatisch im Generator. Zusätzlich wird für jeden Archet
 | Wasserpflanzen (§2.6) | 6 | 6 | 0 | 0 | 0 | 0 |
 | Nutzpflanzen (§2.7) | 17 | 17 | 0 | 0 | 0 | 0 |
 | Fels, Gelände, Wasser (§3) | 26 | 13 | 13 (über P-003, P-004, P-005) | 0 | 0 | 0 |
-| Gebäude (§4) | 29 | 29 | 0 | 0 | 0 | 0 |
+| Gebäude (§4) | 51 | 51 | 0 | 0 | 0 | 0 |
 | Personen, Einheiten, Fahrzeuge (§5) | 21 | 21 | 0 | 0 | 0 | 0 |
 | Tiere (§6) | 10 | 10 | 0 | 0 | 0 | 0 |
 | Effekte, Decals (§7) | 26 | 26 | 0 | 0 | 0 | 0 |
 | Requisiten (§8) | 14 | 14 | 0 | 0 | 0 | 0 |
 | Innenausstattung (§8.1) | 14 | 14 | 0 | 0 | 0 | 0 |
-| **Summe** | **271** | **256** | **15** (5 Platzhalter-Dateien P-001–P-005) | **0** | **0** | **0** |
+| **Summe** | **293** | **278** | **15** (5 Platzhalter-Dateien P-001–P-005) | **0** | **0** | **0** |
 
 Pflanzen-Gattungen gesamt (§2.2–2.7): **104** (Etappe P2). Ziel P3: 250–400 Gattungen, P4: Arten als Datensätze.
 
@@ -328,6 +328,38 @@ Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude
 | bld.home.rowhouse | Reihen-, Miets-, Hochhaus | Stadtbevölkerung | Insula, Mietskaserne, Hochhaus | A | A7 / M4 | geplant |
 | bld.home.villa | Villa | reich | Römische Villa, Stadtpalais, moderne Villa | A | A7 / M4 | geplant (Machbarkeitstest v1 in Blender 2026-10-27, nicht im Spiel) |
 | bld.home.manor | Herrenhaus, Palast, Anwesen | sehr reich, Herrscher | Gutshof, Burg/Schloss, Anwesen | A | A7 / M4 | geplant |
+
+**Wohnhaus-Typen nach Beruf, Lebensweise und Klima** (Nutzer 2026-10-27: „deutlich mehr Häuser, je nach Bedürfnis der Bewohner“). Ein Typ wird mit einer Vermögensklasse oben kombiniert: Ein armer und ein reicher Bauer bauen beide ein Bauernhaus, aber verschieden groß und aus anderem Material. Der Bauwunsch des NPC (M4) wählt Typ und Klasse; Bauregeln-Prototyp: Haus v2 (`ASSETS_STYLE_ENVIRONMENT.md` §4.4).
+
+| ID | Typ | für wen | Merkmale | ab Epoche | Etappe | Status |
+|---|---|---|---|---|---|---|
+| bld.home.pithouse | Grubenhaus | Frühzeit-Siedler | halb eingetieft, Dach aus Stangen und Reet/Soden | F | A7 / M4 | geplant |
+| bld.home.longhouse | Langhaus | Großfamilie, Sippe | lang, Mensch und Vieh unter einem Dach, Firstpfosten | F | A7 / M4 | geplant |
+| bld.home.tent | Zelt, Jurte | Nomaden, Hirten | zerlegbar, Filz/Fell über Gerüst | F | A7 / M4 | geplant |
+| bld.home.stilt | Pfahlbau | Ufer, Sumpf, Tropen | auf Pfählen, steiles Dach, Steg | F | A7 / M4 | geplant |
+| bld.home.adobe | Lehmhaus mit Flachdach | heißes, trockenes Klima | dicke Lehmwände, kleine Fenster, Attika, Wasserspeier | F | A7 / M4 | geplant (Bauregel in Haus v2, nicht im Spiel) |
+| bld.home.loghouse | Blockhaus | kaltes Klima, Waldgebiete | liegende Stämme, steiles Dach gegen Schneelast | F | A7 / M4 | geplant (Bauregel in Haus v2, nicht im Spiel) |
+| bld.home.fisher | Fischerhaus | Fischer | am Ufer, Netzgestell, Bootsschuppen | F | A7 / M4 | geplant |
+| bld.home.farmhouse | Bauernhaus mit Stall oder Scheune | Bauern | Wohnteil + Stall/Scheune mit Tor, Hofplatz | F | A7 / M4 | geplant (Bauregel in Haus v2, nicht im Spiel) |
+| bld.home.craft | Handwerkerhaus mit Werkstatt | Handwerker (Schmied, Tischler, Töpfer …) | Werkstatt-Anbau mit breitem Tor, Werkhof | A | A7 / M4 | geplant (Bauregel in Haus v2, nicht im Spiel) |
+| bld.home.shophouse | Wohn- und Geschäftshaus | Händler | Laden im Erdgeschoss mit Schaufenster und Markise, Wohnung oben | A | A7 / M4 | geplant (Bauregel in Haus v2, nicht im Spiel) |
+| bld.home.courtyard | Hof- oder Atriumhaus | Mittelmeer, trockenes Klima, Wohlhabende | Räume um einen Innenhof, wenige Außenfenster | A | A7 / M4 | geplant |
+
+**Bedürfnis-Bausteine** (werden an jedes Haus angebaut, wenn der Bauherr sie braucht und bezahlen kann; ein Haus kann später wachsen, wenn die Familie wächst):
+
+| ID | Baustein | ausgelöst durch | Etappe | Status |
+|---|---|---|---|---|
+| bld.part.room | zusätzliches Zimmer, Geschoss | Haushaltsgröße (Fläche je Person nach Vermögen) | A7 / M4 | geplant (Bauregel in Haus v2) |
+| bld.part.extension | späterer Anbau | Familie wächst, Vermögen steigt | A7 / M4 | geplant |
+| bld.part.workshop | Werkstatt-Anbau | Handwerksberuf | A7 / M4 | geplant (Bauregel in Haus v2) |
+| bld.part.shopfront | Laden-Erdgeschoss, Schaufenster, Markise | Handel | A7 / M4 | geplant (Bauregel in Haus v2) |
+| bld.part.barn | Stall, Scheune | Vieh, Ernte | A7 / M4 | geplant (Bauregel in Haus v2) |
+| bld.part.cellar | Keller, Vorratsraum | Vorräte, kaltes Klima | A7 / M4 | geplant |
+| bld.part.yard | Garten, Zaun, Hofmauer | Selbstversorgung, Sicherheit, Wohlstand | A7 / M4 | geplant |
+| bld.part.water | Brunnen, Zisterne | kein Wasser in der Nähe | A7 / M4 | geplant |
+| bld.part.terrace | Terrasse, Wintergarten, Anbau mit Glasfront | Wohlstand | A7 / M4 | geplant (Bauregel in Haus v2) |
+| bld.part.climate | Klima-Teile: steiles Dach, Flachdach mit Attika, dicke Wände, Fensterläden, Vordach | Klima des Bauplatzes | A7 / M4 | geplant (Bauregel in Haus v2) |
+| bld.part.makeshift | Notbau-Teile: Bretter, Wellblech, Plane, Pultdach | sehr wenig Geld, Notlage, Flucht | A7 / M4 | geplant (Bauregel in Haus v2) |
 
 ## 5. Personen, Einheiten, Fahrzeuge
 
