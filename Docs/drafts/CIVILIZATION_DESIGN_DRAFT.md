@@ -235,6 +235,14 @@ Nutzerwunsch vom 2026-10-27: Menschen, die sich in einer Siedlung nicht wohlfüh
 - Civ stellt `ISettlementQuery`-Sicht `Contentment` bereit (neues Feld in SettlementView; die Änderung an der gemeinsamen Schnittstelle macht Integration).
 - Truppenmoral kann die Zufriedenheit des Herkunftsortes einbeziehen. Die Gewichtung entscheidet Military.
 
+**Bevölkerungsgruppen nach VISION V18** (Nutzergrundsatz vom 2026-10-27: Die KI steuert jeden Menschen nach Eigenschaften und Gefühlen):
+- Jede Siedlung führt ihre Einwohner in Gruppen mit Eigenschaftsverteilungen statt als eine einzige Zahl. Beispiele für Eigenschaften: Mut, Patriotismus, Gemeinsinn, Unzufriedenheit.
+- Die Gruppen werden abgestuft simuliert: Nah beim Spieler kann man sie später in einzelne NPCs auflösen, fern bleiben sie gebündelt.
+- Freiwillige, Aushebung und Desertion kommen aus diesen Gruppen. Patrioten melden sich freiwillig. Ängstliche drücken sich, fliehen oder desertieren.
+- Die Gruppen sind an die Zufriedenheit gekoppelt. Gleichgesinnte schließen sich zusammen, zu Demos, Abwanderung oder einem Aufstand.
+- Das löst die heutige pauschale Desertion bei Nahrungsmangel ab (`ArmyUpkeepSystem`).
+- Gebaut wird erst nach M1, zusammen mit V15.
+
 **Etappen:**
 - V15a: Zufriedenheit berechnen und anzeigen, Abwanderung erweitern, Tests.
 - V15b: Neugründung durch Unzufriedene.
@@ -258,10 +266,21 @@ Nutzerwunsch vom 2026-10-27: Jeder Stamm baut eigene Häuser. Wie sie aussehen, 
 - Tochtersiedlungen übernehmen den Stil mit kleinen Abweichungen (regionale Varianten). Neue Völker aus Abspaltungen (§17) beginnen mit dem Stil ihrer Herkunft und entwickeln sich dann eigenständig.
 - Kontakt mit anderen Völkern über Handel und Eroberung kann einzelne Merkmale übertragen.
 
-**Haus je Haushalt:**
-- Jedes Wohnhaus bekommt einen Bauwunsch: Archetyp (`bld.home.*`) nach Beruf, Wohlstand und Klima, dazu Anbauten (`bld.part.*`) nach den Bedürfnissen des Haushalts (Werkstatt, Stall, Keller, Brunnen, Laden …).
-- Dazu kommt der Volksstil (Material, Dach, Schmuck).
+**Haus je Haushalt** (korrigiert nach Abstimmung mit dem Katalog am 2026-10-27):
+- `HouseSpec` besteht aus drei Teilen:
+  - einer Vermögensklasse `bld.home.*` (shack, cottage, townhouse, rowhouse, villa, manor),
+  - einer Liste von Anbauten `bld.part.*` nach Beruf und Bedürfnis (workshop, shopfront, barn, cellar, water …),
+  - einem Seed.
+- Es gibt keine Haustypen nach Beruf oder Klima. Die Form bestimmt der Stil des Stammes (`CivStyle`).
 - Der Bauwunsch wird beim Bau festgelegt und bei Umbau, Anbau oder Verfall aktualisiert.
+
+**Verbindliche Parameter** (Asset-Katalog, ASSET_CATALOG.md §4 „Baustil-Parameter“, Stand f8006f2):
+- Enums: WallMaterial, WallFinish, RoofMaterial, RoofShape, FloorPlan, Elevation, WindowShape, WindowClosure, Ornament.
+- Zahlen: RoofPitchDeg, OverhangM.
+- Farben: WallColor, AccentColor.
+- Enum-Namen werden 1:1 übernommen. Neue Werte werden nur angehängt, nie umbenannt.
+- Baustoffe richten sich nach Biom und Klima, die Mindestneigung nach der Dachdeckung.
+- Technik-Gates: masonry, construction, industrialization.
 
 **Schnittstelle**, abzustimmen mit dem Asset-Katalog und mit Art & UI:
 - `ICivStyleQuery.GetCivStyle(civId)` und `GetHouseSpec(buildingId)`. Ergebnis ist ein reiner Datensatz aus Katalog-Schlüsseln und Zahlen, kein Unity-Typ.
