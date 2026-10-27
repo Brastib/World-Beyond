@@ -15,6 +15,7 @@ namespace WorldBeyond.Simulation.Civilizations
     {
         public const int MaxCargo = 60;
         public const int MaxCaravansPerCiv = 4;
+        public const double MinBuildStock = 60;
 
         internal sealed class Caravan
         {
@@ -142,7 +143,9 @@ namespace WorldBeyond.Simulation.Civilizations
         private static double Need(Settlement st, ResourceType good)
         {
             if (good == ResourceType.Food) return SettlementSimulationSystem.FoodNeedPerYear(st);
-            return st.Population * 1.0;   // grober Baubedarf
+            // Grober Baubedarf. Untergrenze: Kleine Orte ohne Wald oder Steinbruch (Hanglage) brauchen Holz für Hütten,
+            // sonst bleiben sie für immer bei voller Hütte stehen (Seed 12345: Lager mit 12 Holz, Hütte kostet 15).
+            return Math.Max(st.Population * 1.0, MinBuildStock);
         }
 
         private bool HasIncoming(int settlementId, ResourceType good)
