@@ -58,8 +58,8 @@ namespace WorldBeyond.Presentation
             new GameObject("HUD").AddComponent<GameHud>();
         }
 
-        // Prototyp-Welt: Seed 99, 256², 4 Zivilisationen. Headless (dotnet) erklärt hier die KI nach rund 68 Spielminuten
-        // den ersten Krieg (Tick 40551), bei 10× also nach knapp 7 Minuten. Die Standardwelt (Seed 12345, 2 Civs)
+        // Prototyp-Welt: Seed 99, 256², 4 Zivilisationen. Headless (dotnet, Stand 171f835) erklärt hier die KI nach rund 45 Spielminuten
+        // den ersten Krieg (Tick 27051, je Civ 3 Siedlungen), bei 10× also nach etwa 4,5 Minuten. Die Standardwelt (Seed 12345, 2 Civs)
         // hatte in 12 Spielstunden keinen Krieg. Kriege bleiben KI-Entscheidung, hier wird nichts erzwungen.
         static GameStartSettings PrototypeWorld() =>
             new GameStartSettings { Seed = 99, WorldWidth = 256, WorldHeight = 256, CivilizationCount = 4 };
