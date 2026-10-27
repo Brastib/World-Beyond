@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using WorldBeyond.Core;
 using WorldBeyond.Simulation.Combat;
 using WorldBeyond.Simulation.Units;
 
@@ -37,6 +38,9 @@ namespace WorldBeyond.Simulation.Military
     {
         bool TryGet(UnitTypeId type, out MilitaryUnitData data);
         float GetCombatStrength(UnitTypeId type);   // 0 für Nicht-Militär
+        int GetAliveMilitaryCount(int civId);       // lebende Militäreinheiten der Civ
+        int GetQueuedMilitaryCount(int civId);      // eingereihte, noch nicht fertige Aufträge (ArmyEnvironment.PendingRecruits; 0 ohne Anschluss)
+        int GetMilitaryCount(int civId);            // lebend + eingereiht (für die Aufrüstungsgrenze von War)
     }
 
     /// <summary>
@@ -70,6 +74,43 @@ namespace WorldBeyond.Simulation.Military
         public bool TryGetWeapon(string key, out WeaponData weapon) => _weapons.TryGetValue(key ?? "", out weapon);
 
         public float GetCombatStrength(UnitTypeId type) => TryGet(type, out var d) ? d.CombatStrength : 0f;
+
+        // ---------------- Zählung je Civ (einmal je Tick gezählt, dann gepuffert) ----------------
+        private IUnitQuery _census;
+        private SimClock _censusClock;
+        private Func<Func<int, int>> _pending;
+        private readonly Dictionary<int, int> _aliveByCiv = new Dictionary<int, int>();
+        private readonly List<EntityId> _censusIds = new List<EntityId>();
+        private long _censusTick = long.MinValue;
+
+        internal void BindCensus(IUnitQuery units, SimClock clock, Func<Func<int, int>> pending)
+        {
+            _census = units; _censusClock = clock; _pending = pending;
+        }
+
+        public int GetAliveMilitaryCount(int civId)
+        {
+            if (_census == null) return 0;
+            long tick = _censusClock?.Tick ?? 0;
+            if (tick != _censusTick || _censusClock == null)
+            {
+                _censusTick = tick;
+                _aliveByCiv.Clear();
+                _census.CopyAliveIds(_censusIds);
+                foreach (var id in _censusIds)
+                    if (_census.TryGet(id, out var u) && _byType.ContainsKey(u.Type.Value))
+                        _aliveByCiv[u.CivId] = _aliveByCiv.TryGetValue(u.CivId, out int n) ? n + 1 : 1;
+            }
+            return _aliveByCiv.TryGetValue(civId, out int c) ? c : 0;
+        }
+
+        public int GetQueuedMilitaryCount(int civId)
+        {
+            var f = _pending?.Invoke();
+            return f == null ? 0 : Math.Max(0, f(civId));
+        }
+
+        public int GetMilitaryCount(int civId) => GetAliveMilitaryCount(civId) + GetQueuedMilitaryCount(civId);
     }
 
     /// <summary>M1-Inhalt (INTEGRATION.md §4): ein Infanterietyp mit Hitscan-Gewehr. Weitere Typen nach M1.</summary>

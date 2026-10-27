@@ -103,6 +103,7 @@ namespace WorldBeyond.Simulation.Military
         public Func<int, (bool ok, float x, float z)> HomeOf;                // Hauptstadt der Civ
         public Func<int, (bool ok, float x, float z)> SettlementPosition;   // Siedlungsmittelpunkt
         public Func<int, MilitaryRole, int, int> Recruit;                    // IRecruitment.Request → Anzahl eingereiht
+        public Func<int, int> PendingRecruits;                               // eingereihte, noch nicht fertige Militäraufträge je Civ (Civ-Warteschlange)
         public int DesiredArmySize = 8;
 
         // Besetzung von Siedlungen (SettlementCaptureSystem)
