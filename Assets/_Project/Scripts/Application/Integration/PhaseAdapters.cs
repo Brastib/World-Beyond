@@ -66,6 +66,11 @@ namespace WorldBeyond.Application.Integration
             return sum;
         }
 
+        // Lebende plus eingereihte Militäreinheiten (Military zählt). Die Warteschlange kommt über ArmyEnvironment.PendingRecruits,
+        // das erst verdrahtet ist, wenn Civ eine öffentliche Abfrage liefert; bis dahin zählt War angenommene Anfragen selbst
+        // (DiplomacySettings.RecruitPendingTicks).
+        public int GetArmyUnitCount(int civId) => _military.GetMilitaryCount(civId);
+
         public float GetUnitCombatStrength(int unitTypeId) => _military.GetCombatStrength(new UnitTypeId(unitTypeId));
 
         public int GetPopulation(int civId) => _civs.TryGet(civId, out var c) ? c.Population : 0;

@@ -280,6 +280,7 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
         {
             W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
             D.DeclareWar(2, 1);
+            D.ReportCombatContact(1, 2);
             var white = D.ProposePeace(1, 2, PeaceTerm.White());
             Assert.IsFalse(white.Accepted, "der klar Überlegene nimmt frisch im Krieg keinen weißen Frieden an");
             Assert.IsNotNull(D.FindWar(1, 2));
@@ -293,12 +294,14 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
         {
             W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 100);
             D.DeclareWar(2, 1);
+            D.ReportCombatContact(1, 2);
             Assert.IsTrue(D.ProposePeace(1, 2, PeaceTerm.White()).Accepted);
         }
 
-        // Stärke 10:1 ohne Eroberung: kein Ping-Pong mit weißem Frieden nach wenigen Minuten.
+        // Stärke 10:1 ohne Eroberung: kein weißer Frieden. Der aussichtslos Unterlegene gibt früh mit einem Zugeständnis nach
+        // (QA-Befund Nachtprüfung: sonst rüstet er sich bis zum Bevölkerungsverlust auf).
         [Test]
-        public void Autonomy_TenToOne_WarLasts_AndEndsWithConcession()
+        public void Autonomy_TenToOne_EndsWithConcession_NotWhitePeace()
         {
             W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 1000);
             W.SetBorder(1, 2, 80);
@@ -313,8 +316,67 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             var peace = _rig.Bus.Of<PeaceSignedEvent>();
             Assert.AreEqual(1, peace.Count, "Frieden entsteht ohne Eingriff");
             Assert.AreNotEqual(PeaceTermType.WhitePeace, peace[0].Term, "der Unterlegene muss etwas abgeben");
-            Assert.GreaterOrEqual(seconds, 5 * 60, "Krieg dauert länger als das bisherige Ping-Pong (1–4 min)");
-            Assert.IsTrue(D.RecentDecisions.Any(x => x.Action == DiplomaticActionType.RejectPeace && x.CivId == 2));
+            Assert.IsTrue(D.RecentDecisions.Any(x => x.Action == DiplomaticActionType.AcceptPeace && x.CivId == 2));
+        }
+
+        // QA-Befund Nachtprüfung (Seed 99): Civ3 rüstete im Krieg gegen eine 12× größere Civ von Stärke 13 auf 163 auf.
+        [Test]
+        public void Recruitment_IsCappedByPopulation_EvenAtWar()
+        {
+            W.AddCiv(1, 0, 0, strength: 40, population: 300); W.AddCiv(2, 20, 0, strength: 2000, population: 4000);
+            W.Civs[1].ArmyUnits = 28;                         // Obergrenze 300 × 0,10 = 30 Einheiten
+            D.DeclareWar(2, 1);
+            _rig.RunSeconds(5);
+            var mine = W.RecruitRequests.Where(r => r.civ == 1).ToList();
+            Assert.IsTrue(mine.Any(), "unter der Obergrenze wird verteidigt");
+            Assert.IsTrue(mine.All(r => r.count <= 2), "höchstens bis zur Obergrenze");
+            W.Civs[1].ArmyUnits = 30;                         // inkl. eingereihter Aufträge erreicht
+            W.RecruitRequests.Clear();
+            _rig.RunSeconds(120);
+            Assert.IsFalse(W.RecruitRequests.Any(r => r.civ == 1), "an der Obergrenze keine weitere Rekrutierung");
+        }
+
+        // Probe-Merge: Aufträge sind noch nicht ausgebildet → ohne Mitzählen wurde über die Obergrenze hinaus rekrutiert.
+        [Test]
+        public void Recruitment_CountsPendingRequests_TowardsCap()
+        {
+            W.AddCiv(1, 0, 0, strength: 40, population: 300); W.AddCiv(2, 20, 0, strength: 2000, population: 4000);
+            W.Civs[1].ArmyUnits = 26;                         // Einheiten erscheinen im Test nie
+            D.DeclareWar(2, 1);
+            _rig.RunSeconds(60);
+            Assert.LessOrEqual(W.RecruitRequests.Where(r => r.civ == 1).Sum(r => r.count), 4, "Obergrenze 30 inkl. angefragter Rekruten");
+        }
+
+        // Integration 2026-10-27: Kriegsende an das Kampfgeschehen koppeln.
+        [Test]
+        public void Peace_NotBeforeContact_OrMinWarTicks()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 100);
+            D.DeclareWar(2, 1);
+            Assert.IsFalse(D.ProposePeace(1, 2, PeaceTerm.White()).Accepted, "ohne Feindberührung zu früh");
+            _rig.Tick += D.Settings.PeaceMinWarTicks;
+            Assert.IsTrue(D.ProposePeace(1, 2, PeaceTerm.White()).Accepted, "nach PeaceMinWarTicks auch ohne Berührung möglich");
+
+            Assert.IsTrue(D.ForceWar(2, 1, out _));
+            Assert.IsFalse(D.PeaceTalksOpen(D.FindWar(1, 2)));
+            D.ReportUnitLost(1, 2, 5f);                       // erster Verlust durch den Gegner = Feindberührung
+            Assert.IsTrue(D.PeaceTalksOpen(D.FindWar(1, 2)));
+        }
+
+        [Test]
+        public void Exhaustion_BeforeContact_RunsAtReducedRate()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 100);
+            D.DeclareWar(2, 1);
+            var war = D.FindWar(1, 2);
+            _rig.Tick += 20 * 600;                            // 20 Minuten ohne Berührung
+            D.Update();
+            Assert.AreEqual(20f * D.Settings.ExhaustionPerMinute * D.Settings.PreContactExhaustionFactor, war.AttackerStats.Exhaustion, 0.01f);
+            D.ReportCombatContact(1, 2);
+            _rig.Tick += 10 * 600;                            // danach volle Rate
+            D.Update();
+            Assert.AreEqual((10f + 10f) * D.Settings.ExhaustionPerMinute, war.AttackerStats.Exhaustion, 0.01f, "20 min halb + 10 min voll");
+            Assert.Greater(war.FirstContactTick, war.StartTick);
         }
 
         // Nutzervorgabe: Krieg nur, wenn die KI ihn wirklich für nötig hält. Stärke allein ist kein Grund.
@@ -338,6 +400,7 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             float before = _rig.Ai.ScoreWar(2, 1).Utility;
             Assert.Greater(before, 0f);
             D.DeclareWar(2, 1);
+            D.ReportCombatContact(1, 2);
             Assert.IsTrue(D.ProposePeace(1, 2, PeaceTerm.Tribute(1, 0.2f)).Accepted);
             float full = D.Settings.WarWearinessPerWar;
             Assert.AreEqual(full, D.WarWeariness(2, 1), 1e-4f);
@@ -358,6 +421,7 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             W.Civs[2].Aggression = 1f;                       // aggressiv, aber ohne Bedarf
             D.Settings.GrievancePerEdgePerSecond = 0f;        // kein neuer Groll
             D.DeclareWar(2, 1);
+            D.ReportCombatContact(1, 2);
             Assert.IsTrue(D.ProposePeace(1, 2, PeaceTerm.Tribute(1, 0.2f)).Accepted);
             _rig.RunSeconds(120 * 60);
             Assert.AreEqual(0, D.ActiveWars.Count, "ohne neuen Anlass kein neuer Krieg (Stärke 10:1 und Aggressivität allein reichen nicht)");

@@ -133,6 +133,13 @@ namespace WorldBeyond.Application
                 diplomacy.ReportSettlementCaptured(e.SettlementId, e.OldCivId, e.NewCivId,
                     civ.Settlements.TryGet(e.SettlementId, out var s) ? s.Population : 0));
             ctx.Events.Subscribe<CivilizationCollapsedEvent>(e => diplomacy.ReportCivilizationCollapsed(e.CivId));
+            // Erste Feindberührung für War (Frieden erst nach Kontakt): jeder Treffer zwischen Einheiten zweier Civs.
+            // Ist der Schütze bis zum Flush schon entfernt, zählt der Treffer nicht; Verluste meldet UnitDiedEvent ohnehin.
+            ctx.Events.Subscribe<UnitDamagedEvent>(e =>
+            {
+                if (ctx.Units.TryGet(e.Source, out var src) && ctx.Units.TryGet(e.Target, out var dst) && src.CivId != dst.CivId)
+                    diplomacy.ReportCombatContact(src.CivId, dst.CivId);
+            });
 
             MilitaryWiring.Connect(combatEnv, armyEnv, diplomacy, world, spatial, civ.Civilizations, civ.Settlements, civ.Recruitment);
         }

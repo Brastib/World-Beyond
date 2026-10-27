@@ -201,7 +201,8 @@ namespace WorldBeyond.Simulation.Diplomacy
         { Id = p.Id, Type = p.Type, X = p.X, Y = p.Y, Value = p.Value, ControllerCiv = p.ControllerCiv };
 
         static CivAiMemory Copy(CivAiMemory m) => new CivAiMemory
-        { CivId = m.CivId, LastWarTick = m.LastWarTick, LastPeaceProposalTick = m.LastPeaceProposalTick, LastAllianceTick = m.LastAllianceTick, LastRecruitTick = m.LastRecruitTick };
+        { CivId = m.CivId, LastWarTick = m.LastWarTick, LastPeaceProposalTick = m.LastPeaceProposalTick, LastAllianceTick = m.LastAllianceTick, LastRecruitTick = m.LastRecruitTick,
+          PendingRecruits = m.PendingRecruits, PendingRecruitsTick = m.PendingRecruitsTick };
 
         static DiplomaticDecision Copy(DiplomaticDecision d)
         {
@@ -221,7 +222,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         {
             var c = new War
             {
-                Id = w.Id, AttackerLeader = w.AttackerLeader, DefenderLeader = w.DefenderLeader, StartTick = w.StartTick, EndTick = w.EndTick,
+                Id = w.Id, AttackerLeader = w.AttackerLeader, DefenderLeader = w.DefenderLeader, StartTick = w.StartTick, EndTick = w.EndTick, FirstContactTick = w.FirstContactTick,
                 CasusBelli = w.CasusBelli, WarScore = w.WarScore, Active = w.Active, Suspended = w.Suspended, EndReason = w.EndReason,
                 AttackerStats = Copy(w.AttackerStats ?? new WarSideStats()), DefenderStats = Copy(w.DefenderStats ?? new WarSideStats()),
             };
