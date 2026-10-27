@@ -241,3 +241,36 @@ Nutzerwunsch vom 2026-10-27: Menschen, die sich in einer Siedlung nicht wohlfüh
 - V15c: Aufstand und Abspaltung, gemeinsam mit War und Military.
 
 Jede Etappe bekommt Langzeittests mit 3 Seeds: Es dürfen keine Völker zerfallen, ohne dass es einen Grund dafür gibt. Die Wirkung muss im Entscheidungsprotokoll nachvollziehbar sein.
+
+## 18. Plan: Eigener Baustil je Volk, von der Spiel-KI festgelegt
+
+Nutzerwunsch vom 2026-10-27: Jeder Stamm baut eigene Häuser. Wie sie aussehen, entscheidet die Spiel-KI; wir machen nur die Vorgaben. Die Arbeit ist geteilt: Der Asset-Katalog liefert Bausteine und Bauregeln (`bld.home.*`, `bld.part.*`, Materialien). Civ entscheidet, was jedes Volk und jeder Haushalt daraus wählt, und wie sich das mit der Zeit entwickelt.
+
+**Baustil je Volk** (`CivStyle`, gespeichert, deterministisch aus Seed und Umwelt):
+- **Hauptmaterial:** Holz, Stein, Lehm, Reet/Soden oder Filz/Fell. Es folgt aus dem, was um den Hauptort tatsächlich vorkommt (Wald, Stein, Fruchtbarkeit, Klima und Biom). So bauen Völker im Wald Blockhäuser und Völker in Trockengebieten Lehmhäuser.
+- **Dachform** (steil, flach, Walm, Pult, Kuppel) und Neigung. Die Neigung folgt dem Klima: Schnee verlangt ein steiles Dach, Trockenheit erlaubt ein flaches. Die Dachform hat zusätzlich eine kulturelle Zufallskomponente aus dem Volks-Seed.
+- **Grundform:** rund, rechteckig, Langhaus oder Hofhaus.
+- **Schmuck:** keiner, Schnitzerei, Bemalung oder Ornamentband.
+- **Akzentfarbe:** eigene Palette, getrennt von der Reichsfarbe.
+
+**Entwicklung:**
+- Mit neuen Techniken ändert sich der Stil, zum Beispiel ab Bauwesen mit Steinsockel und ab Ziegel mit Ziegeldach. Die Wahl trifft das Volk, nicht ein festes Epochenbild.
+- Tochtersiedlungen übernehmen den Stil mit kleinen Abweichungen (regionale Varianten). Neue Völker aus Abspaltungen (§17) beginnen mit dem Stil ihrer Herkunft und entwickeln sich dann eigenständig.
+- Kontakt mit anderen Völkern über Handel und Eroberung kann einzelne Merkmale übertragen.
+
+**Haus je Haushalt:**
+- Jedes Wohnhaus bekommt einen Bauwunsch: Archetyp (`bld.home.*`) nach Beruf, Wohlstand und Klima, dazu Anbauten (`bld.part.*`) nach den Bedürfnissen des Haushalts (Werkstatt, Stall, Keller, Brunnen, Laden …).
+- Dazu kommt der Volksstil (Material, Dach, Schmuck).
+- Der Bauwunsch wird beim Bau festgelegt und bei Umbau, Anbau oder Verfall aktualisiert.
+
+**Schnittstelle**, abzustimmen mit dem Asset-Katalog und mit Art & UI:
+- `ICivStyleQuery.GetCivStyle(civId)` und `GetHouseSpec(buildingId)`. Ergebnis ist ein reiner Datensatz aus Katalog-Schlüsseln und Zahlen, kein Unity-Typ.
+- Neu registriert in ctx durch Civ. Für die Änderung an der gemeinsamen Schnittstellendoku ist Integration zuständig.
+- Die Darstellung (Presentation) baut daraus das Modell. Fehlt ein Baustein, nimmt sie den Platzhalter.
+
+**Etappen:**
+- S1: CivStyle (Material, Dach, Grundform, Schmuck, Farbe) aus Umwelt und Seed, mit Speichern/Laden und Tests (unterschiedliche Völker bauen unterschiedlich, Determinismus).
+- S2: HouseSpec je Wohnhaus aus Beruf, Wohlstand und Klima.
+- S3: Stilentwicklung über Techniken und Kontakt.
+
+Nach M1, vor oder zusammen mit V15, weil S2 die Haushalte aus V15 nutzt.
