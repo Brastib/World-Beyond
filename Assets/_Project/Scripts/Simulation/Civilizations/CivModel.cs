@@ -26,6 +26,7 @@ namespace WorldBeyond.Simulation.Civilizations
 
         // KI
         public long NextAiTick;
+        public double DesertionOwed;                  // angesammelte Bruchteile Deserteure (ArmyUpkeepSystem)
         public int ExpansionCooldownUntilYear;
     }
 

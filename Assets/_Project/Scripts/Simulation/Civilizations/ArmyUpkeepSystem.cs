@@ -21,7 +21,6 @@ namespace WorldBeyond.Simulation.Civilizations
         private readonly CivState _s;
         private readonly List<EntityId> _units = new List<EntityId>();
         private readonly List<EntityId> _ofCiv = new List<EntityId>();
-        private readonly Dictionary<int, double> _owed = new Dictionary<int, double>();   // Bruchteile je Civ, nicht gespeichert
 
         public ArmyUpkeepSystem(CivState state) => _s = state;
 
@@ -50,10 +49,9 @@ namespace WorldBeyond.Simulation.Civilizations
 
                 // Unversorgt: erwarteter Anteil desertiert; Bruchteile sammeln, damit auch kleine Heere schrumpfen.
                 double unfed = _ofCiv.Count * (1.0 - paid / need);
-                _owed.TryGetValue(civId, out double owed);
-                owed += unfed * DesertionPerYear * dt;
+                double owed = civ.DesertionOwed + unfed * DesertionPerYear * dt;   // im Spielstand (Determinismus nach Laden)
                 int leave = Math.Min(_ofCiv.Count, (int)Math.Floor(owed));
-                _owed[civId] = owed - leave;
+                civ.DesertionOwed = owed - leave;
                 var home = _s.Settlement(civ.CapitalSettlementId);
                 for (int i = 0; i < leave; i++)
                 {
