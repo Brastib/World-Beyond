@@ -401,6 +401,18 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.That(D.GetRecruitWillingness(1), Is.InRange(0f, 1f));
         }
 
+        // Abstimmung mit Military: genau eine Stelle rekrutiert.
+        [Test]
+        public void SelfRecruitOff_NoRequests_ButWillingnessStillComputed()
+        {
+            D.Settings.SelfRecruit = false;
+            W.AddCiv(1, 0, 0, strength: 50, population: 1000); W.AddCiv(2, 20, 0, strength: 300, population: 1000);
+            D.DeclareWar(2, 1);
+            _rig.RunSeconds(60);
+            Assert.IsFalse(W.RecruitRequests.Any(r => r.civ == 1));
+            Assert.GreaterOrEqual(D.GetRecruitWillingness(1), D.Settings.RecruitThreshold);
+        }
+
         // Integration 2026-10-27: Kriegsende an das Kampfgeschehen koppeln.
         [Test]
         public void Peace_NotBeforeContact_OrMinWarTicks()

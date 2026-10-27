@@ -79,6 +79,9 @@ namespace WorldBeyond.Simulation.Diplomacy
         public float PeaceArmyStrengthPerPop = 0.05f;     // Grundarmee: Bevölkerung 1000, Haltung 0,5 → Stärke 50
         public float AssumedUnitStrength = 5f;            // Schätzwert pro Einheit für die Anzahl einer Anfrage
         public int MaxRecruitPerRequest = 5;
+        // Genau eine Stelle rekrutiert: false, sobald Military über ArmyEnvironment.RecruitWillingness
+        // (IWarQuery.GetRecruitWillingness) selbst bestellt. Die Bereitschaft wird weiter berechnet.
+        public bool SelfRecruit = true;
         // Keine feste Armeegrenze (Nutzerentscheidung 2026-10-27): Die KI wägt jeden Rekruten gegen seine Kosten ab.
         // Kosten = Arbeitskraft (Armeeanteil a an der Bevölkerung: LaborCostWeight × a/(1−a), steigt gegen 100 % unbegrenzt)
         //        + Nahrung/Ressourcenmangel (FoodCostWeight × ResourceNeed) + Kriegsmüdigkeit (ExhaustionCostWeight × Erschöpfung/100).
