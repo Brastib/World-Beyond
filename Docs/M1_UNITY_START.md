@@ -84,5 +84,5 @@ Screenshots: Übersicht, Nahansicht Siedlung, HUD mit Feed, Kampf (falls gesehen
 - Offen bei War/Military: Aufrüstung ohne Obergrenze im langen Krieg. Nach vielen Spielstunden wird die
   Simulation dadurch langsam (QA: Seed 99, 357 Einheiten).
 - Eigene Szene statt Schnellstart: Objekte wie in Abschnitt 4.3 anlegen. Alle Verweise finden sich selbst
-  (FindFirstObjectByType). Ohne Schnellstart gilt die Standardwelt (Seed 12345, 2 Civs, headless in
+  (FindAnyObjectByType). Ohne Schnellstart gilt die Standardwelt (Seed 12345, 2 Civs, headless in
   12 Spielstunden ohne Krieg).

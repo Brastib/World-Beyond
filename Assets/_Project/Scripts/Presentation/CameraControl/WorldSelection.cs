@@ -48,9 +48,9 @@ namespace WorldBeyond.Presentation.CameraControl
         void OnEnable()
         {
             if (bootstrap == null)
-                bootstrap = FindFirstObjectByType<GameBootstrap>();
+                bootstrap = FindAnyObjectByType<GameBootstrap>();
             if (worldRenderer == null)
-                worldRenderer = FindFirstObjectByType<WorldRenderer>();
+                worldRenderer = FindAnyObjectByType<WorldRenderer>();
             if (bootstrap != null)
                 bootstrap.CompositionChanged += OnCompositionChanged;
         }

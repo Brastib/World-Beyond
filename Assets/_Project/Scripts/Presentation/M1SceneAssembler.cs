@@ -17,12 +17,12 @@ namespace WorldBeyond.Presentation
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void AssembleIfMissing()
         {
-            if (Object.FindFirstObjectByType<GameBootstrap>() != null)
+            if (Object.FindAnyObjectByType<GameBootstrap>() != null)
                 return;
 
             Debug.Log("M1SceneAssembler: Szene ohne GameBootstrap, baue Prototyp-Szene zur Laufzeit auf.");
 
-            // Reihenfolge zählt: OnEnable der späteren Komponenten sucht die früheren per FindFirstObjectByType.
+            // Reihenfolge zählt: OnEnable der späteren Komponenten sucht die früheren per FindAnyObjectByType.
             var game = new GameObject("Game");
             game.SetActive(false);                   // Awake erst nach dem Setzen der Starteinstellungen
             game.AddComponent<GameBootstrap>().StartSettings = PrototypeWorld();
@@ -66,7 +66,11 @@ namespace WorldBeyond.Presentation
 
         static Light FindDirectionalLight()
         {
+#if UNITY_6000_6_OR_NEWER
+            foreach (Light l in Object.FindObjectsByType<Light>())   // Unity 6.6: Überladung mit SortMode ist veraltet (CS0618)
+#else
             foreach (Light l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
+#endif
             {
                 if (l.type == LightType.Directional)
                     return l;

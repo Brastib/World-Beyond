@@ -60,7 +60,7 @@ namespace WorldBeyond.Presentation.WorldView
         void OnEnable()
         {
             if (bootstrap == null)
-                bootstrap = FindFirstObjectByType<GameBootstrap>();
+                bootstrap = FindAnyObjectByType<GameBootstrap>();
             if (bootstrap == null)
             {
                 Debug.LogError("WorldRenderer: kein GameBootstrap in der Szene.", this);

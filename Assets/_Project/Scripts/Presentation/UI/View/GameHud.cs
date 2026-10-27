@@ -14,7 +14,7 @@ namespace WorldBeyond.Presentation.UI
     // Ereignis-Feed, Auswahl-Info, Speichern/Laden. Liest nur über Queries; ändert den Zustand nur über
     // ISimulationRunner.Speed und ISaveLoadService. Nichts davon hält die Simulation an, außer der Pause-Knopf.
     // Baut ein UIDocument zur Laufzeit (eigene PanelSettings), damit keine UI-Assets im Projekt nötig sind.
-    // Szene: auf ein GameObject legen; Verweise werden sonst per FindFirstObjectByType gesucht.
+    // Szene: auf ein GameObject legen; Verweise werden sonst per FindAnyObjectByType gesucht.
     public sealed class GameHud : MonoBehaviour
     {
         [SerializeField] GameBootstrap bootstrap;
@@ -56,11 +56,11 @@ namespace WorldBeyond.Presentation.UI
 
         void OnEnable()
         {
-            if (bootstrap == null) bootstrap = FindFirstObjectByType<GameBootstrap>();
+            if (bootstrap == null) bootstrap = FindAnyObjectByType<GameBootstrap>();
             if (saveLoad == null && bootstrap != null) saveLoad = bootstrap.GetComponent<SaveLoadController>();
-            if (saveLoad == null) saveLoad = FindFirstObjectByType<SaveLoadController>();
-            if (selection == null) selection = FindFirstObjectByType<WorldSelection>();
-            if (cameraController == null) cameraController = FindFirstObjectByType<StrategyCameraController>();
+            if (saveLoad == null) saveLoad = FindAnyObjectByType<SaveLoadController>();
+            if (selection == null) selection = FindAnyObjectByType<WorldSelection>();
+            if (cameraController == null) cameraController = FindAnyObjectByType<StrategyCameraController>();
 
             BuildDocument();
             if (bootstrap != null)
