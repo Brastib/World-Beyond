@@ -62,6 +62,17 @@ namespace WorldBeyond.Simulation.Civilizations
             return n;
         }
 
+        /// <summary>
+        /// Keine feste Armeegrenze (Nutzerentscheidung); wie viele die KI einzieht, wägt War ab. Die Siedlung gibt aber nur
+        /// Leute her, ohne die sie sich noch selbst ernährt: Nach dem Abzug bleiben genug Erwachsene für alle heutigen Bauern
+        /// und Fischer. Sonst rekrutierte die Kriegs-KI Völker von 50 auf 10 Einwohner herunter (Probe-Merge 2026-10-27).
+        /// </summary>
+        private static bool CanSpareFromFields(Settlement st, int leaving)
+        {
+            int foodWorkers = st.Workers[(int)JobKind.Farmer] + st.Workers[(int)JobKind.Fisher];
+            return st.Adults - leaving >= foodWorkers + 1;
+        }
+
         private bool IsMilitary(string unitTypeKey) =>
             _s.Ctx.UnitTypes.TryGetByKey(unitTypeKey, out var id) && _s.Ctx.UnitTypes.TryGet(id, out var t) && t.Role >= UnitRole.Infantry;
 
@@ -79,6 +90,7 @@ namespace WorldBeyond.Simulation.Civilizations
                 if (_table.TryGetValue(o.UnitTypeKey, out var od)) pendingPop += od.PopulationCost * o.Remaining;
             // Mindestens 2 Erwachsene bleiben zurück, damit die Siedlung nicht durch Rekrutierung ausstirbt.
             if (st.Adults - pendingPop - data.PopulationCost * count < 2) return RecruitResult.NotEnoughPopulation;
+            if (IsMilitary(unitTypeKey) && !CanSpareFromFields(st, pendingPop + data.PopulationCost * count)) return RecruitResult.NotEnoughPopulation;
             if (!Economy.TrySpendAt(settlementId, data.Cost.Times(count))) return RecruitResult.NotEnoughResources;
             var order = new RecruitOrder { UnitTypeKey = unitTypeKey, Remaining = count, YearsPerUnit = data.BuildYears };
             configure?.Invoke(order);
