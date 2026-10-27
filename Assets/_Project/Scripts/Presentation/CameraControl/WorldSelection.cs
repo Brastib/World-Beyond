@@ -6,6 +6,8 @@ using WorldBeyond.Core;
 using WorldBeyond.Presentation.WorldView;
 using WorldBeyond.Simulation.Units;
 using WorldBeyond.Simulation.World;
+// Unity 6 hat einen eigenen Typ UnityEngine.EntityId; ohne Alias ist EntityId hier mehrdeutig (CS0104).
+using EntityId = WorldBeyond.Core.EntityId;
 
 namespace WorldBeyond.Presentation.CameraControl
 {
