@@ -110,6 +110,37 @@ namespace WorldBeyond.Tests.World
         }
 
         [Test]
+        public void UnitInsideBuildingBlock_EscapesAndArrives()
+        {
+            var comp = Make();
+            var ctx = comp.Context;
+            var world = (WorldGrid)ctx.Get<IWorldGrid>();
+            ctx.UnitTypes.TryGetByKey("unit.test_walker", out UnitTypeId walker);
+            var spots = new List<TileScore>();
+            Assume.That(world.FindStartLocations(2, 10, spots), Is.EqualTo(2));
+            int sx = spots[0].X, sy = spots[0].Y;
+            var start = WorldCoords.TileToWorld(sx, sy);
+            var id = ctx.Units.Spawn(walker, 1, start.X, start.Z);
+            // Nachträglich bebaut: 3×3 Gebäude um die Einheit, auch die Nachbarkacheln sind gesperrt.
+            int built = 0;
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                    if (world.SetBuilding(sx + dx, sy + dy, new EntityId(100 + built, 1))) built++;
+            Assume.That(world.IsWalkable(sx, sy, MovementClass.Foot), Is.False);
+            Assume.That(built, Is.EqualTo(9));
+
+            var goal = WorldCoords.TileToWorld(spots[1].X, spots[1].Y);
+            ctx.Units.SetMoveTarget(id, goal.X, goal.Z);
+            int arrived = 0, failed = 0;
+            ctx.Events.Subscribe<UnitArrivedEvent>(_ => arrived++);
+            ctx.Events.Subscribe<UnitMoveFailedEvent>(_ => failed++);
+            for (int i = 0; i < 30000 && arrived + failed == 0; i++)
+                comp.Runner.StepOnce();
+            Assert.AreEqual(0, failed, "Eingeschlossene Einheit findet keinen Weg");
+            Assert.AreEqual(1, arrived);
+        }
+
+        [Test]
         public void BlockedGoal_IsMovedToNeighbour_AndUnitArrivesNextToIt()
         {
             var comp = Make();

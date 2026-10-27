@@ -119,6 +119,34 @@ namespace WorldBeyond.Simulation.World.Navigation
             return false;
         }
 
+        // Nächste begehbare Kachel in Ringen um (x, y), feste Suchreihenfolge (deterministisch). Für Einheiten, die auf einer
+        // gesperrten Kachel stehen (z. B. nachträglich bebaut): der Pfad beginnt dann dort, die Einheit läuft zuerst hin.
+        public bool TryFindNearestWalkable(int x, int y, MovementClass mc, int maxRadius, out int nx, out int ny)
+        {
+            nx = x;
+            ny = y;
+            if (_world.IsWalkable(x, y, mc))
+                return true;
+            for (int ring = 1; ring <= maxRadius; ring++)
+            {
+                for (int dy = -ring; dy <= ring; dy++)
+                {
+                    for (int dx = -ring; dx <= ring; dx++)
+                    {
+                        if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != ring)
+                            continue;
+                        if (_world.IsWalkable(x + dx, y + dy, mc))
+                        {
+                            nx = x + dx;
+                            ny = y + dy;
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
         // Für das Speichern: Anfrage-IDs in Abarbeitungsreihenfolge (aktive zuerst) und Fortschritt der aktiven Suche.
         internal void GetQueueOrder(List<int> ids, out int activeExpansions)
         {
