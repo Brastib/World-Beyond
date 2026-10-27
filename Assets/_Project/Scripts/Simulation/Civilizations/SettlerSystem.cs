@@ -28,20 +28,8 @@ namespace WorldBeyond.Simulation.Civilizations
         {
             x = y = -1; score = 0f;
             var pathfinder = _s.Ctx.TryGet<IPathfinder>(out var pf) ? pf : null;
-            var world = _s.World;
-            _s.World.FindBestTiles(fromX, fromY, radius, (int tx, int ty, in TileData t) =>
-            {
-                if (t.OwnerCivId != 0 && t.OwnerCivId != civId) return 0f;
-                if (world.IsWater(tx, ty) || t.Building.IsValid) return 0f;
-                if (IsReserved(civId, tx, ty)) return 0f;
-                if (!_settlements.CanFoundAt(civId, tx, ty, out _)) return 0f;
-                float v = SiteValue(tx, ty);
-                if (v <= 0f) return 0f;
-                int dx = tx - fromX, dy = ty - fromY;
-                float dist = (float)Math.Sqrt(dx * dx + dy * dy);
-                v *= 1f / (1f + Math.Abs(dist - IdealDistance) / IdealDistance);
-                return v;
-            }, 8, _results);
+            _civId = civId; _fromX = fromX; _fromY = fromY;
+            _s.World.FindBestTiles(fromX, fromY, radius, _scorer ??= ScoreSite, 8, _results);
 
             // Erreichbarkeit vom begehbaren Rand der Herkunft aus prüfen: Ortskern und Nachbargebäude blockieren die Bewegung.
             int px = fromX, py = fromY;
@@ -58,6 +46,33 @@ namespace WorldBeyond.Simulation.Civilizations
                 return true;
             }
             return false;
+        }
+
+        private int _civId, _fromX, _fromY;
+        private TileScorer _scorer;
+
+        // Nur Kernplätze, deren Kern ganz im Baublock liegt: Straßenplätze werden gar nicht erst bewertet,
+        // die teure Standortbewertung läuft so für knapp die Hälfte der Kacheln (Leistungsmessung: Planungsspitzen).
+        private static bool IsCoreSlot(int x, int y)
+        {
+            int mx = (x % SettlementRegistry.StreetSpacing + SettlementRegistry.StreetSpacing) % SettlementRegistry.StreetSpacing;
+            int my = (y % SettlementRegistry.StreetSpacing + SettlementRegistry.StreetSpacing) % SettlementRegistry.StreetSpacing;
+            return mx <= 3 && my <= 3;   // 2×2-Kern ganz im Baublock (Spalten 0–4)
+        }
+
+        private float ScoreSite(int tx, int ty, in TileData t)
+        {
+            if (!IsCoreSlot(tx, ty)) return 0f;
+            if (t.OwnerCivId != 0 && t.OwnerCivId != _civId) return 0f;
+            if (_s.World.IsWater(tx, ty) || t.Building.IsValid) return 0f;
+            if (IsReserved(_civId, tx, ty)) return 0f;
+            if (!_settlements.CanFoundAt(_civId, tx, ty, out _)) return 0f;
+            float v = SiteValue(tx, ty);
+            if (v <= 0f) return 0f;
+            int dx = tx - _fromX, dy = ty - _fromY;
+            float dist = (float)Math.Sqrt(dx * dx + dy * dy);
+            v *= 1f / (1f + Math.Abs(dist - IdealDistance) / IdealDistance);
+            return v;
         }
 
         private int FindAtCore(int x, int y)

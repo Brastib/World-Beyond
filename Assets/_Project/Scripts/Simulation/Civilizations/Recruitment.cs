@@ -37,22 +37,6 @@ namespace WorldBeyond.Simulation.Civilizations
             return unitTypeKey != null && _table.TryGetValue(unitTypeKey, out data);
         }
 
-        /// <summary>
-        /// Höchstens dieser Anteil der Einwohner steht unter Waffen (vorindustrielle Heere: wenige Prozent, im Krieg bis ~10 %).
-        /// Ohne Grenze rekrutierte die Kriegs-KI kleine Völker bis auf wenige Erwachsene herunter (Probe-Merge Seed 42).
-        /// </summary>
-        public const double MaxMilitaryShare = 0.1;
-        public const int MinMilitaryCap = 2;
-        /// <summary>PLATZHALTER bis M2 (Logistik, Versorgung): absolute Obergrenze je Civ, begrenzt auch die Rechenzeit.</summary>
-        public const int MaxMilitaryAbsolute = 80;
-
-        public int MaxMilitary(int civId)
-        {
-            double pop = 0;
-            foreach (int sid in _s.SettlementListOf(civId)) pop += _s.Settlements[sid].Population;
-            return Math.Min(MaxMilitaryAbsolute, Math.Max(MinMilitaryCap, (int)(pop * MaxMilitaryShare)));
-        }
-
         private readonly List<EntityId> _unitIds = new List<EntityId>();
 
         /// <summary>Lebende Kampfeinheiten der Civ plus Kampfeinheiten in den Ausbildungsschlangen ihrer Siedlungen.</summary>
@@ -95,7 +79,6 @@ namespace WorldBeyond.Simulation.Civilizations
                 if (_table.TryGetValue(o.UnitTypeKey, out var od)) pendingPop += od.PopulationCost * o.Remaining;
             // Mindestens 2 Erwachsene bleiben zurück, damit die Siedlung nicht durch Rekrutierung ausstirbt.
             if (st.Adults - pendingPop - data.PopulationCost * count < 2) return RecruitResult.NotEnoughPopulation;
-            if (IsMilitary(unitTypeKey) && MilitaryCount(civId) + count > MaxMilitary(civId)) return RecruitResult.NotEnoughPopulation;
             if (!Economy.TrySpendAt(settlementId, data.Cost.Times(count))) return RecruitResult.NotEnoughResources;
             var order = new RecruitOrder { UnitTypeKey = unitTypeKey, Remaining = count, YearsPerUnit = data.BuildYears };
             configure?.Invoke(order);

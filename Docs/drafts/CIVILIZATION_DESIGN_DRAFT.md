@@ -210,3 +210,86 @@ Bekannte Grenzen:
 - Arbeiter sind Zahlen je Siedlung (Berufe, Bau, Abbau), keine einzeln laufenden Figuren. Siedler und Karawanen sind echte Einheiten auf der Karte.
 - Migration zwischen Siedlungen derselben Civ ist abstrakt (sofortiger Wechsel bei Wohnraummangel), nicht als laufende Einheiten.
 - Der World-Test `TenMinutes_WithoutPlayerCommands_UnitsKeepMoving` setzt seine Test-Einheiten auf die Startplätze, auf denen jetzt Ortskerne stehen. Er ist grün, sollte aber `CivilizationCount = 0` setzen (beim World-Thread angefragt).
+
+## 17. Plan V15 (nach der M1-Abnahme): Zufriedenheit, Abwanderung, Neugründung, Aufstände
+
+Nutzerwunsch vom 2026-10-27: Menschen, die sich in einer Siedlung nicht wohlfühlen, können gehen und eigene Orte gründen oder einen Aufstand anzetteln. Moral im Krieg soll eine Rolle spielen. Alle Werte unten sind Startwerte für Langzeittests, keine festen Spielregeln.
+
+**Zufriedenheit je Siedlung** (`Settlement.Contentment`, 0..1, gespeichert). Sie folgt jedes Jahr gedämpft (etwa 20 % pro Jahr) einem Zielwert aus diesen Einflüssen:
+- Versorgung: Nahrungsvorrat in Jahren und Hunger.
+- Wohnraum: Belegung über 90 % senkt den Wert.
+- Arbeit: der Anteil Arbeitsloser.
+- Abgaben und Rekrutierung: Eingezogene der letzten Jahre im Verhältnis zur Einwohnerzahl.
+- Krieg: Kriegsmüdigkeit des Volkes über `IWarQuery.GetCivWarExhaustion`, dazu Verluste aus diesem Ort.
+- Sicherheit: Feinde in der Nähe, Plünderung, Eroberung.
+- Kultur und Herkunft: Ein eroberter Ort eines anderen Volkes startet niedrig.
+- Positiv wirken Bauten wie Tempel, Markt und Bibliothek, sobald es sie gibt.
+
+**Folgen, in drei Stufen:**
+1. **Abwanderung** (Zufriedenheit unter etwa 0,4): Familien ziehen in zufriedenere eigene Orte. Das gibt es heute schon für Überbelegung und Hunger und wird nur um den Zufriedenheitsgrund erweitert.
+2. **Neugründung** (unter etwa 0,3 über mehrere Jahre): Eine Gruppe (Gründergruppe 10 oder mehr) zieht als echte Siedler-Einheit los. Sie gründet einen Ort desselben Volkes. Liegt das Ziel weit weg oder ist die Kultur fremd, entsteht ein neues Volk über `ICivilizationRegistry.TryCreate`. Ein neues Volk braucht Abstimmung mit War, weil es Beziehungen und Meinungen erbt.
+3. **Aufstand** (unter etwa 0,2): Der Ort sagt sich los und wird ein eigenes Volk. Liegen Truppen dort, kann es zu Kampf kommen. Ablauf und Kampf stimmen wir mit War, dem AI Team und Military ab. Civ liefert das Ereignis `SettlementRevoltEvent` und die Abspaltung über `TransferSettlement` an ein neues Volk.
+
+**Schnittstelle zu Moral und Kriegsmüdigkeit** (abzustimmen mit Combat/Military und War):
+- Civ liest `GetCivWarExhaustion(civId)` als Eingang.
+- Civ stellt `ISettlementQuery`-Sicht `Contentment` bereit (neues Feld in SettlementView; die Änderung an der gemeinsamen Schnittstelle macht Integration).
+- Truppenmoral kann die Zufriedenheit des Herkunftsortes einbeziehen. Die Gewichtung entscheidet Military.
+
+**Bevölkerungsgruppen nach VISION V18** (Nutzergrundsatz vom 2026-10-27: Die KI steuert jeden Menschen nach Eigenschaften und Gefühlen):
+- Jede Siedlung führt ihre Einwohner in Gruppen mit Eigenschaftsverteilungen statt als eine einzige Zahl. Beispiele für Eigenschaften: Mut, Patriotismus, Gemeinsinn, Unzufriedenheit.
+- Die Gruppen werden abgestuft simuliert: Nah beim Spieler kann man sie später in einzelne NPCs auflösen, fern bleiben sie gebündelt.
+- Freiwillige, Aushebung und Desertion kommen aus diesen Gruppen. Patrioten melden sich freiwillig. Ängstliche drücken sich, fliehen oder desertieren.
+- Die Gruppen sind an die Zufriedenheit gekoppelt. Gleichgesinnte schließen sich zusammen, zu Demos, Abwanderung oder einem Aufstand.
+- Das löst die heutige pauschale Desertion bei Nahrungsmangel ab (`ArmyUpkeepSystem`).
+- Gebaut wird erst nach M1, zusammen mit V15.
+
+**Etappen:**
+- V15a: Zufriedenheit berechnen und anzeigen, Abwanderung erweitern, Tests.
+- V15b: Neugründung durch Unzufriedene.
+- V15c: Aufstand und Abspaltung, gemeinsam mit War und Military.
+
+Jede Etappe bekommt Langzeittests mit 3 Seeds: Es dürfen keine Völker zerfallen, ohne dass es einen Grund dafür gibt. Die Wirkung muss im Entscheidungsprotokoll nachvollziehbar sein.
+
+## 18. Plan: Eigener Baustil je Volk, von der Spiel-KI festgelegt
+
+Nutzerwunsch vom 2026-10-27: Jeder Stamm baut eigene Häuser. Wie sie aussehen, entscheidet die Spiel-KI; wir machen nur die Vorgaben. Die Arbeit ist geteilt: Der Asset-Katalog liefert Bausteine und Bauregeln (`bld.home.*`, `bld.part.*`, Materialien). Civ entscheidet, was jedes Volk und jeder Haushalt daraus wählt, und wie sich das mit der Zeit entwickelt.
+
+**Baustil je Volk** (`CivStyle`, gespeichert, deterministisch aus Seed und Umwelt):
+- **Hauptmaterial:** Holz, Stein, Lehm, Reet/Soden oder Filz/Fell. Es folgt aus dem, was um den Hauptort tatsächlich vorkommt (Wald, Stein, Fruchtbarkeit, Klima und Biom). So bauen Völker im Wald Blockhäuser und Völker in Trockengebieten Lehmhäuser.
+- **Dachform** (steil, flach, Walm, Pult, Kuppel) und Neigung. Die Neigung folgt dem Klima: Schnee verlangt ein steiles Dach, Trockenheit erlaubt ein flaches. Die Dachform hat zusätzlich eine kulturelle Zufallskomponente aus dem Volks-Seed.
+- **Grundform:** rund, rechteckig, Langhaus oder Hofhaus.
+- **Schmuck:** keiner, Schnitzerei, Bemalung oder Ornamentband.
+- **Akzentfarbe:** eigene Palette, getrennt von der Reichsfarbe.
+
+**Entwicklung:**
+- Mit neuen Techniken ändert sich der Stil, zum Beispiel ab Bauwesen mit Steinsockel und ab Ziegel mit Ziegeldach. Die Wahl trifft das Volk, nicht ein festes Epochenbild.
+- Tochtersiedlungen übernehmen den Stil mit kleinen Abweichungen (regionale Varianten). Neue Völker aus Abspaltungen (§17) beginnen mit dem Stil ihrer Herkunft und entwickeln sich dann eigenständig.
+- Kontakt mit anderen Völkern über Handel und Eroberung kann einzelne Merkmale übertragen.
+
+**Haus je Haushalt** (korrigiert nach Abstimmung mit dem Katalog am 2026-10-27):
+- `HouseSpec` besteht aus drei Teilen:
+  - einer Vermögensklasse `bld.home.*` (shack, cottage, townhouse, rowhouse, villa, manor),
+  - einer Liste von Anbauten `bld.part.*` nach Beruf und Bedürfnis (workshop, shopfront, barn, cellar, water …),
+  - einem Seed.
+- Es gibt keine Haustypen nach Beruf oder Klima. Die Form bestimmt der Stil des Stammes (`CivStyle`).
+- Der Bauwunsch wird beim Bau festgelegt und bei Umbau, Anbau oder Verfall aktualisiert.
+
+**Verbindliche Parameter** (Asset-Katalog, ASSET_CATALOG.md §4 „Baustil-Parameter“, Stand f8006f2):
+- Enums: WallMaterial, WallFinish, RoofMaterial, RoofShape, FloorPlan, Elevation, WindowShape, WindowClosure, Ornament.
+- Zahlen: RoofPitchDeg, OverhangM.
+- Farben: WallColor, AccentColor.
+- Enum-Namen werden 1:1 übernommen. Neue Werte werden nur angehängt, nie umbenannt.
+- Baustoffe richten sich nach Biom und Klima, die Mindestneigung nach der Dachdeckung.
+- Technik-Gates: masonry, construction, industrialization.
+
+**Schnittstelle**, abzustimmen mit dem Asset-Katalog und mit Art & UI:
+- `ICivStyleQuery.GetCivStyle(civId)` und `GetHouseSpec(buildingId)`. Ergebnis ist ein reiner Datensatz aus Katalog-Schlüsseln und Zahlen, kein Unity-Typ.
+- Neu registriert in ctx durch Civ. Für die Änderung an der gemeinsamen Schnittstellendoku ist Integration zuständig.
+- Die Darstellung (Presentation) baut daraus das Modell. Fehlt ein Baustein, nimmt sie den Platzhalter.
+
+**Etappen:**
+- S1: CivStyle (Material, Dach, Grundform, Schmuck, Farbe) aus Umwelt und Seed, mit Speichern/Laden und Tests (unterschiedliche Völker bauen unterschiedlich, Determinismus).
+- S2: HouseSpec je Wohnhaus aus Beruf, Wohlstand und Klima.
+- S3: Stilentwicklung über Techniken und Kontakt.
+
+Nach M1, vor oder zusammen mit V15, weil S2 die Haushalte aus V15 nutzt.

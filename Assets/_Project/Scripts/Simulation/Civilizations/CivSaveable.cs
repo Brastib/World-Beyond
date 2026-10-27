@@ -150,7 +150,7 @@ namespace WorldBeyond.Simulation.Civilizations
                 Id = c.Id, Name = c.Name, Color = c.Color, CultureSeed = c.CultureSeed, Traits = c.Traits, Alive = c.Alive,
                 Capital = c.CapitalSettlementId, CreatedTick = c.CreatedTick, NameCounter = c.NameCounter,
                 Researched = keys.ToArray(), CurrentResearch = _s.Content.Techs.KeyOf(c.CurrentResearch), ResearchPoints = c.ResearchPoints,
-                Epoch = c.Epoch.ToString(), NextAiTick = c.NextAiTick,
+                Epoch = c.Epoch.ToString(), NextAiTick = c.NextAiTick, DesertionOwed = c.DesertionOwed,
             };
         }
 
@@ -162,7 +162,7 @@ namespace WorldBeyond.Simulation.Civilizations
             {
                 Id = d.Id, Name = d.Name ?? "", Color = d.Color, CultureSeed = d.CultureSeed, Traits = d.Traits, Alive = d.Alive,
                 CapitalSettlementId = d.Capital, CreatedTick = d.CreatedTick, NameCounter = d.NameCounter,
-                Researched = new bool[_s.TechSlots], ResearchPoints = d.ResearchPoints, Epoch = epoch, NextAiTick = d.NextAiTick,
+                Researched = new bool[_s.TechSlots], ResearchPoints = d.ResearchPoints, Epoch = epoch, NextAiTick = d.NextAiTick, DesertionOwed = Math.Max(0, d.DesertionOwed),
             };
             foreach (var k in d.Researched ?? Array.Empty<string>())
             {
@@ -279,6 +279,7 @@ namespace WorldBeyond.Simulation.Civilizations
         public double ResearchPoints;
         public string Epoch;
         public long NextAiTick;
+        public double DesertionOwed;   // fehlt in älteren Spielständen: 0
     }
 
     [Serializable]
