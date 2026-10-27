@@ -309,11 +309,12 @@ namespace WorldBeyond.Simulation.Military
         }
 
         // Abwägung statt fester Zahl (VISION §2 Regel 6): Ziel ist eigene Stärke ≥ feindliche Stärke × Superiority.
-        // Ohne feindliche Truppen genügt eine kleine Eroberungstruppe. Kosten, Unterhalt und Kriegsmüdigkeit wägt die Civ
+        // Ohne feindliche Truppen (auch im Frieden) genügt eine kleine Grundarmee. Kosten, Unterhalt und Kriegsmüdigkeit wägt die Civ
         // über RecruitWillingness (0..1) ab; was sie sich nicht leisten kann, lehnt IRecruitment ohnehin ab.
         private void MaybeRecruit(int civ, long tick)
         {
-            if (_env.Recruit == null || !HasEnemy(civ)) return;
+            // Auch im Frieden: Grundarmee (MinAttackUnits), soweit die Civ bereit ist (War rekrutiert seit 0a07383 nicht mehr selbst).
+            if (_env.Recruit == null) return;
             if (_lastRecruit.TryGetValue(civ, out long last) && tick - last < RecruitIntervalTicks) return;
             int missing = RecruitNeed(civ);
             if (missing <= 0) return;
