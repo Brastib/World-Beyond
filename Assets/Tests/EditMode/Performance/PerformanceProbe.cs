@@ -13,13 +13,13 @@ using WorldBeyond.Simulation.World.Navigation;
 
 namespace WorldBeyond.Tests.Performance
 {
-    // Reproduzierbarer Messlauf für Phase 7 (TEST_PLAN T-7-06/T-7-07). Läuft nur mit gesetzter Umgebungsvariable WB_PERF=1,
-    // weil "dotnet test --filter" mit NUnit 3.6.1 nicht greift und [Explicit] dann nicht gezielt startbar ist:
-    // WB_PERF=1 dotnet test Tools/SimTests -c Release --logger "console;verbosity=detailed"
+    // Reproduzierbarer Messlauf für Phase 7 (TEST_PLAN T-7-06/T-7-07). Explicit: läuft nur bei gezieltem Aufruf, z. B.
+    // dotnet test Tools/SimTests -c Release --filter "FullyQualifiedName~PerformanceProbe" --logger "console;verbosity=detailed"
     // Misst Weltaufbau, Zeit und Allokationen je System und Tick, Speichern und Laden. Prüft nur Konsistenz, keine Zeitgrenzen,
     // weil die Werte vom Rechner abhängen.
     public class PerformanceProbe
     {
+        [Explicit]
         [TestCase(256, 2, 0, 3000, 1UL)]
         [TestCase(512, 4, 0, 3000, 2026UL)]
         [TestCase(512, 4, 2000, 1500, 2026UL)]
@@ -27,7 +27,6 @@ namespace WorldBeyond.Tests.Performance
         [TestCase(512, 4, 1000, 1500, 2026UL, true)]
         public void Measure(int size, int civs, int extraUnits, int ticks, ulong seed, bool allAtWar = false)
         {
-            if (Environment.GetEnvironmentVariable("WB_PERF") != "1") Assert.Ignore("Messlauf nur mit WB_PERF=1.");
             var settings = new GameStartSettings { Seed = seed, WorldWidth = size, WorldHeight = size, CivilizationCount = civs };
 
             long alloc0 = GC.GetAllocatedBytesForCurrentThread();
