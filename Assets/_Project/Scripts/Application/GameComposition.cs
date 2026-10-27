@@ -120,7 +120,8 @@ namespace WorldBeyond.Application
             // War (Phase 4): Diplomatie und Kriegsentscheidung. Verluste abonniert DiplomacyService selbst (UnitDiedEvent).
             var port = new DiplomacyWorldPortAdapter(civ.Civilizations, civ.Settlements, civ.Territory, civ.Economy,
                 civ.Recruitment, ctx.Units, military, world, spatial);
-            var diplomacy = new DiplomacyService(port, ctx.Events, () => ctx.Clock.Tick);
+            // GetArmyUnitCount enthält die Ausbildungsschlangen (Military + Civ), War muss Anfragen nicht selbst mitzählen.
+            var diplomacy = new DiplomacyService(port, ctx.Events, () => ctx.Clock.Tick, new DiplomacySettings { RecruitPendingTicks = 0 });
             ctx.Register<IDiplomacyService>(diplomacy);
             ctx.Register<IDiplomacyQuery>(diplomacy);
             ctx.Register<IWarQuery>(diplomacy);
@@ -142,6 +143,8 @@ namespace WorldBeyond.Application
             });
 
             MilitaryWiring.Connect(combatEnv, armyEnv, diplomacy, world, spatial, civ.Civilizations, civ.Settlements, civ.Recruitment);
+            // Eingereihte Militäraufträge (nur Ausbildungsschlangen) für die Aufrüstungsgrenze der Armee-KI und von War.
+            armyEnv.PendingRecruits = civId => civ.Recruitment.QueuedMilitaryCount(civId);
         }
     }
 }
