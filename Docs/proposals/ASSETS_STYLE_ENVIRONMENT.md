@@ -97,6 +97,10 @@ Zu sehen: ca. 35 freistehende Wohnhäuser (Einfamilienhäuser, Moderne/Industrie
 4. **Vielfalt ohne Zufallsbrei**: Jede Variante folgt einer Bauregel (Grundrissform, Dachform, Fensterraster, Materialpalette der Kultur/Epoche). Zufall wählt nur innerhalb dieser Regeln.
 5. **Dasselbe Licht und dieselbe Farbkalibrierung wie R1**: Haus und Baum nebeneinander im Style Board, ein Screenshot für beide.
 
+### 3.1c Referenzen R3 und R4: Zielqualität je Epoche (Nutzer, 2026-10-27 16:34 UTC)
+
+Dateien: `/mnt/project-files/WorldBeyond/references/R3_epochen_gebaeude_requisiten_nutzer_2026-10-27.png` (Häuser, Mauern, Gegenstände) und `R4_epochen_fahrzeuge_werkzeuge_nutzer_2026-10-27.png` (Fahrzeuge, Belagerungsgeräte, Werkzeuge), jeweils Frühzeit bis Galaxie. Nicht im Repo (Urheber unbekannt, wirken KI-erzeugt). Nutzer: „So gut sollen die Sachen im Spiel aussehen.“ Daraus gilt für alle Epochen dieselbe Messlatte wie R1/R2: echte Materialien mit Abnutzung (Holzmaserung, Rost, Kratzer, Schmutz an Kanten), glaubwürdige Konstruktion (Nägel, Seile, Bolzen, Scharniere sichtbar), weiches, warmes Licht. Die Bilder zeigen je Epoche *ein* Beispiel; im Spiel setzt die Spiel-KI jedes Stammes ihren eigenen Stil aus Bauteilen zusammen (Katalog §4). Abgleich mit dem Katalog und die Lücke bei den Epochen nach der Moderne: Katalog §4.3.
+
 ### 3.2 R1-Niveau gilt für alle Assets (Nutzer, 2026-10-26 16:36 UTC)
 
 Nicht nur Bäume: Gebäude, Felsen, Gelände, Menschen, Fahrzeuge und Effekte bekommen dieselbe Qualitätsstufe und dasselbe Aussehen. Konkret für jedes Asset:
@@ -210,6 +214,12 @@ Ergebnis: 14 Bauwünsche ergeben 14 verschiedene Häuser von 10 m² (Notbau) bis
 - **Logikfehler, vom Nutzer gefunden (2026-10-27 13:05 UTC):** Haus v2 baut alle Häuser im selben, festen Stil (mitteleuropäisch, modern), und Katalog-Stand b057072 hatte feste Haustypen (Langhaus, Jurte, Bauernhaus …). Richtig ist: **Jeder Stamm hat eigene Häuser, und die Spiel-KI entscheidet, wie sie aussehen. Wir liefern nur Vorgaben.** Korrigiert im Katalog §4 („Baustil je Stamm“): drei Ebenen (harte Vorgaben von uns, Baustil je Stamm von der Spiel-KI, Einzelhaus vom NPC-Bauherrn), Bauteil-Sätze `bld.kit.*` statt fester Typen, verbindliche Parameter-Namen für Civ (`CivStyle`, Civ-Entwurf §18). Prototyp dazu: Haus v3.
 - Ehrliche Grenzen: Die Bauwünsche sind im Test von Hand geschrieben; im Spiel kommen sie von den NPCs (M4, Systembereich, nicht Teil des Katalogs). Gleiche Grenzen wie v1 bei Detail und Material (Abstand zu R2). Nur Fassaden der modernen Epoche, keine Innenaufteilung nach Räumen, keine Epochen-Bauweisen, keine Bruchstücke.
 - Folge für „viele Häuser“: Häuser müssen günstig bleiben, damit ganze Städte sichtbar sind. Zielwerte: LOD0 höchstens ca. 5 000 Dreiecke je Haus trotz R2-Detail (Detail über gebackene Normal-Karten statt Geometrie), Bauteile als Instanzen, ab mittlerer Entfernung LOD1/LOD2, in der Ferne Impostor oder Sammel-Meshes je Stadtviertel. Neue Typen und Bausteine stehen im Katalog §4 (`bld.home.*`, `bld.part.*`).
+
+**Machbarkeitstest Haus v3: Baustil je Stamm (2026-10-27):** Gleiche 8 Bauwünsche, drei Stämme. Ein Regelwerk wählt den Stil jedes Stammes aus Seed, Biom und bekannter Technik genau nach den Regeln in Katalog §4 (Baustoffe je Biom, Technik-Gates, Mindestneigung, Klima). Im Spiel trifft diese Wahl die Spiel-KI des Stammes (Civ, `CivStyle`); im Test ersetzt sie ein Zufallszug innerhalb der Regeln. Ergebnis:
+- Stamm A (Temperate, Steinbau und Bauwesen bekannt): Blockwände, Ziegeldach 32°, Glasfenster, Farbband, Schornsteine.
+- Stamm B (Boreal, keine Technik): Flechtwerk mit Lehm, Schindeldach 46° (Schneelast), offene breite Fenster, Farbband am Sockel, keine Schornsteine.
+- Stamm C (Desert, Steinbau bekannt): Lehmhäuser mit Flachdach und Attika, kleine offene Fenster, keine Holzbretter (kein Wald im Biom).
+Je Dorf 8 Häuser mit 8 000 bis 11 000 Dreiecken. Bilder und Skript: `/mnt/project-files/WorldBeyond/prototypes/haus_v3/` (nicht im Repo, nicht im Spiel). Noch nicht gebaut: Fachwerk, Zelt/Fell, Walm-, Kegel- und Kuppeldach, Rund- und Hofhaus, Pfahlbau, Schnitzerei. Diese Werte sind im Katalog erlaubt, fehlen aber als Bauteile; bis dahin schließt der Prototyp sie aus.
 
 Blender kann auch für Pflanzen helfen (Blattatlanten rendern, Impostor-Bilder backen). Der Baumgenerator selbst bleibt aber PlantForge in Unity (§4.1), weil Zustände und Wind dort zusammenhängen.
 

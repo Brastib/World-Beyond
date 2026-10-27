@@ -73,13 +73,14 @@ Die Prüfung läuft automatisch im Generator. Zusätzlich wird für jeden Archet
 | Wasserpflanzen (§2.6) | 6 | 6 | 0 | 0 | 0 | 0 |
 | Nutzpflanzen (§2.7) | 17 | 17 | 0 | 0 | 0 | 0 |
 | Fels, Gelände, Wasser (§3) | 26 | 13 | 13 (über P-003, P-004, P-005) | 0 | 0 | 0 |
-| Gebäude (§4) | 56 | 56 | 0 | 0 | 0 | 0 |
-| Personen, Einheiten, Fahrzeuge (§5) | 21 | 21 | 0 | 0 | 0 | 0 |
+| Gebäude (§4) | 59 | 59 | 0 | 0 | 0 | 0 |
+| Personen, Einheiten, Fahrzeuge (§5) | 36 | 36 | 0 | 0 | 0 | 0 |
 | Tiere (§6) | 10 | 10 | 0 | 0 | 0 | 0 |
 | Effekte, Decals (§7) | 26 | 26 | 0 | 0 | 0 | 0 |
 | Requisiten (§8) | 14 | 14 | 0 | 0 | 0 | 0 |
 | Innenausstattung (§8.1) | 14 | 14 | 0 | 0 | 0 | 0 |
-| **Summe** | **298** | **283** | **15** (5 Platzhalter-Dateien P-001–P-005) | **0** | **0** | **0** |
+| Werkzeuge, Epochen-Gegenstände (§8.2) | 30 | 30 | 0 | 0 | 0 | 0 |
+| **Summe** | **346** | **331** | **15** (5 Platzhalter-Dateien P-001–P-005) | **0** | **0** | **0** |
 
 Pflanzen-Gattungen gesamt (§2.2–2.7): **104** (Etappe P2). Ziel P3: 250–400 Gattungen, P4: Arten als Datensätze.
 
@@ -354,12 +355,15 @@ Der Katalog zählt deshalb nur, was wir wirklich bauen müssen: **Bauteil-Sätze
 | bld.kit.opening | Öffnungen | Türen, Fenster, Bögen, Läden, Gitter, Vorhänge je Baustoff | F | A7 | geplant (Probe in Haus v1–v3) |
 | bld.kit.support | Tragwerk | Pfähle, Stützen, Säulen, Balken, Plattformen, Stege | F | A7 | geplant |
 | bld.kit.ornament | Schmuck | Schnitzerei, Bemalung, Giebelzier, Farbflächen (Muster und Farben setzt der Stil) | F | A7 | geplant |
+| bld.kit.wall.green | Holz-Hybrid, begrünte Fassade, Solardach | Holzfassade, Pflanzflächen, Solarmodule | NZ | A7 | geplant (Zielqualität R3) |
+| bld.kit.wall.composite | Metall- und Verbundpaneele | Paneele, Schleusen, Rundfenster, Kuppelsegmente | RF | A7 | geplant (Zielqualität R3) |
+| bld.kit.wall.regolith | gedruckte oder gestampfte Planetenerde | Schichtwände, Sonnensegel, Druckschleusen | PL | A7 | geplant (Zielqualität R3) |
 
 **Baustil-Parameter: verbindliche Namen für Civ (`CivStyle`) und Presentation** (Stand 2026-10-27; Civ übernimmt die Namen 1:1, nur anhängen, nie umbenennen). Der Stil eines Stammes ist ein Seed plus diese Werte. Presentation setzt daraus mit den Bauteil-Sätzen oben das Haus zusammen.
 
 | Parameter | erlaubte Werte | Bauteil-Satz |
 |---|---|---|
-| `WallMaterial` | `Pole`, `Log`, `Textile`, `Adobe`, `TimberFrame`, `Stone`, `Brick`, `Modern` | bld.kit.wall.pole, .log, .textile, .adobe, .timberframe, .stone, .brick, .modern |
+| `WallMaterial` | `Pole`, `Log`, `Textile`, `Adobe`, `TimberFrame`, `Stone`, `Brick`, `Modern`; vorgemerkt für späte Epochen (§4.3): `Green`, `Composite`, `Regolith` | bld.kit.wall.pole, .log, .textile, .adobe, .timberframe, .stone, .brick, .modern, .green, .composite, .regolith |
 | `WallFinish` | `Raw`, `Plaster`, `Painted` | Teil von bld.kit.wall.* |
 | `RoofMaterial` | `Thatch`, `Sod`, `Hide`, `Shingle`, `Tile`, `Slate`, `Metal`, `FlatEarth`, `Concrete` | bld.kit.roof.thatch (Thatch, Sod), .wall.textile (Hide), .shingle, .tile (Tile, Slate), .metal, .flat (FlatEarth, Concrete) |
 | `RoofShape` | `Gable`, `Hip`, `Shed`, `Flat`, `Cone`, `Dome` | bld.kit.roof.* |
@@ -412,6 +416,14 @@ Der Katalog zählt deshalb nur, was wir wirklich bauen müssen: **Bauteil-Sätze
 | bld.part.climate | Klima-Teile: steiles Dach, Flachdach mit Attika, dicke Wände, Fensterläden, Vordach | Klima des Bauplatzes | A7 / M4 | geplant (Bauregel in Haus v2) |
 | bld.part.makeshift | Notbau-Teile: Äste, Bretter, Rinde, Plane, Pultdach (Wellblech erst mit `tech.industrialization`) | sehr wenig Geld, Notlage, Flucht | A7 / M4 | geplant (Bauregel in Haus v2) |
 
+### 4.3 Zielqualität je Epoche, Referenzen R3/R4 (Nutzer 2026-10-27 16:34 UTC)
+
+Der Nutzer hat zwei Übersichten geschickt: R3 zeigt Häuser, Mauern und Gegenstände, R4 Fahrzeuge, Belagerungsgeräte und Werkzeuge, jeweils für Frühzeit, Antike, Mittelalter, Industrie, Moderne, Nahe Zukunft, Raumfahrt, Planeten und Galaxie. Die Dateien liegen nur in `/mnt/project-files/WorldBeyond/references/` (Urheber und Lizenz unbekannt, wirken KI-erzeugt, nicht ins Repo und nicht ins Spiel). Sie gelten als **Zielqualität**: realistische Materialien, Abnutzung, Details, warmes, weiches Licht wie R1/R2. Sie sind **keine Vorlage für feste Modelle**: Häuser setzt die Spiel-KI des Stammes aus den Bauteil-Sätzen zusammen (§4), Gegenstände sind Archetypen (§0.6).
+
+Abgleich mit dem Katalog: Alle Häuser und Mauern aus R3 lassen sich mit den Bauteil-Sätzen `bld.kit.*` beschreiben (Flechtwerk und Reet, Stein und Ziegel, Fachwerk, Ziegelmauerwerk, Putz und Beton). Für die späten Epochen sind drei Sätze neu (`bld.kit.wall.green`, `.composite`, `.regolith`). Gegenstände und Fahrzeuge aus R3/R4, die noch fehlten, stehen jetzt in §5 und §8.2.
+
+**Logik-Lücke (weitergegeben 2026-10-27):** Die Simulation kennt nur die Epochen `Primitive` bis `Modern` (`Epoch`-Enum). Nahe Zukunft (NZ), Raumfahrt (RF), Planeten (PL) und Galaxie (GX) gibt es dort noch nicht. Die Katalogzeilen mit diesen Epochen sind deshalb nur vorgemerkt und werden erst gebaut, wenn Civ/Integration die Epochen anlegen.
+
 ## 5. Personen, Einheiten, Fahrzeuge
 
 | ID | Name | Sim-Schlüssel | Weg | Etappe | Status | Bemerkung |
@@ -437,6 +449,21 @@ Der Katalog zählt deshalb nur, was wir wirklich bauen müssen: **Bauteil-Sätze
 | veh.helicopter | Hubschrauber | (Phase 5) | MB | A7 | geplant | |
 | veh.boat_military | Militärboot | (Phase 5) | MB | A7 | geplant | |
 | veh.ambulance | Sanitätsfahrzeug | (Phase 5) | MB | A7 | geplant | |
+| veh.covered_wagon | Planwagen | – (neu, ab M) | MB | A7 | geplant | Zielqualität R4 |
+| veh.catapult | Katapult (Torsion) | – (neu, ab A) | MB | A7 | geplant | Zielqualität R4 |
+| veh.trebuchet | Tribok | – (neu, ab M) | MB | A7 | geplant | Zielqualität R4 |
+| veh.traction_engine | Dampf-Zugmaschine | – (neu, ab I) | MB | A7 | geplant | Zielqualität R4 |
+| veh.cannon | Feldkanone | – (neu, ab I) | MB | A7 | geplant | Zielqualität R4 |
+| veh.pickup | Pick-up, Kleintransporter | – (neu, ab Mo) | MB | A7 | geplant | Zielqualität R4 |
+| veh.bicycle | Fahrrad | – (neu, ab I) | MB | A7 | geplant | Zielqualität R4 |
+| veh.rover_drone | unbemannter Geländeroboter | – (neu, ab NZ) | MB | A7 | geplant | Zielqualität R4 |
+| veh.turret_rocket | Raketen-Abwehrturm | – (neu, ab NZ) | MB | A7 | geplant | Zielqualität R4 |
+| veh.planet_rover | Planeten-Rover (bemannt) | – (neu, ab RF) | MB | A7 | geplant | Zielqualität R4 |
+| veh.defense_dome | Abwehrturm auf Sockel | – (neu, ab RF) | MB | A7 | geplant | Zielqualität R4 |
+| veh.ore_hauler | Erz-Muldenkipper | – (neu, ab PL) | MB | A7 | geplant | Zielqualität R4 |
+| veh.planet_artillery | Planeten-Geschütz auf Fahrgestell | – (neu, ab PL) | MB | A7 | geplant | Zielqualität R4 |
+| veh.starship | Raumschiff (Transporter) | – (neu, ab GX) | MB | A7 | geplant | Zielqualität R4 |
+| veh.defense_pylon | Abwehrpylon | – (neu, ab GX) | MB | A7 | geplant | Zielqualität R4 |
 
 ## 6. Tiere (später, Bezug Wildnahrung `ResourceType.Food`)
 
@@ -523,6 +550,44 @@ Jeden Eintrag gibt es je Epoche und je Vermögensklasse (arm / mittel / reich) i
 | int.workbench | Arbeitsplatz je Beruf | Werkbank, Webstuhl, Schreibtisch | A7 / M4 | geplant |
 | int.decor | Schmuck, Wohlstand | Felle → Teppich, Wandbehang → Bilder, Statuen | A7 / M4 | geplant |
 | int.debris | Innentrümmer | eingestürzte Decke, umgestürzte Möbel, Brandreste | A7 / M7 | geplant |
+
+
+### 8.2 Werkzeuge und Gegenstände je Epoche (Zielqualität R3/R4, Nutzer 2026-10-27)
+
+Jede Zeile ist ein Archetyp (§0.6), den NPCs in ihrer Epoche und mit den Baustoffen ihres Stammes herstellen; Aussehen und Abnutzung folgen dem Stamm, nicht einem festen Modell. Was es schon als Innenausstattung gibt (Truhe, Lampe, Hocker, Ofen), steht in §8.1. Epochen NZ, RF, PL, GX siehe §4.3.
+
+| ID | Gegenstand | Entwicklung | ab Epoche | Etappe | Status |
+|---|---|---|---|---|---|
+| tool.axe | Beil, Axt | Steinbeil → Bronzeaxt → Stahlaxt | F | A7 | geplant |
+| tool.spear | Speer, Spieß | Holz-/Knochenspitze → Eisenspitze | F | A7 | geplant |
+| tool.hammer | Hammer | Steinhammer → Holzhammer → Schmiedehammer | F | A7 | geplant |
+| tool.sickle | Sichel, Sense | Bronzesichel → Sense | A | A7 | geplant |
+| tool.shovel | Grabstock, Spaten, Schaufel | Grabstock → Eisenspaten | F | A7 | geplant |
+| tool.pickaxe | Spitzhacke | Eisen → Stahl | M | A7 | geplant |
+| tool.wrench | Rohrzange, Schraubenschlüssel | geschmiedet → Chrom-Vanadium | I | A7 | geplant |
+| tool.toolbox | Werkzeugkiste, -koffer | Holzkiste → Metallkoffer → Kunststoffkoffer | I | A7 | geplant |
+| tool.power_drill | Akku-Bohrschrauber | – | Mo | A7 | geplant |
+| tool.scanner | Handscanner, Diagnosegerät | – | NZ | A7 | geplant |
+| tool.tablet | Tablet, Datenpad | – | Mo | A7 | geplant |
+| tool.mining_drill | Bohr- und Schneidgerät (Bergbau) | Pressluft → Plasma | RF | A7 | geplant |
+| prop.pottery | Topf, Amphore, Krug | – | F | A7 | geplant |
+| prop.basket | Korb, Flechtkorb | – | F | A7 | geplant |
+| prop.barrel | Fass | – | M | A7 | geplant |
+| prop.palisade | Palisade, Flechtzaun | – | F | A7 | geplant |
+| prop.wall_segment | freistehende Mauer je Baustoff (Bauteil-Satz) | – | F | A7 | geplant |
+| prop.bench | Sitzbank | – | I | A7 | geplant |
+| prop.trash_bin | Mülltonne | – | Mo | A7 | geplant |
+| prop.gas_cylinder | Gasflasche | – | I | A7 | geplant |
+| prop.ibc_tank | Tankbehälter (IBC), Wassertank | – | I | A7 | geplant |
+| prop.planter | Pflanzkübel, Hochbeet | – | A | A7 | geplant |
+| prop.delivery_robot | Lieferroboter | – | NZ | A7 | geplant |
+| prop.battery_unit | Hausbatterie, Energiespeicher | – | NZ | A7 | geplant |
+| prop.fabricator | 3D-Drucker, Fabrikator | – | NZ | A7 | geplant |
+| prop.cargo_case | Transportkiste (Raumfahrt) | – | RF | A7 | geplant |
+| prop.canister | Kanister, Energiezelle | – | RF | A7 | geplant |
+| prop.greenhouse_box | Pflanzkasten mit Haube | – | PL | A7 | geplant |
+| prop.cargo_cart | Lastkarren mit Rädern | – | PL | A7 | geplant |
+| prop.service_drone | Service-Drohne, Roboter | – | GX | A7 | geplant |
 
 UI-Icons und Schriften: siehe `Docs/UI_STYLE_GUIDE.md` B §2/§5 (nicht hier gezählt).
 
