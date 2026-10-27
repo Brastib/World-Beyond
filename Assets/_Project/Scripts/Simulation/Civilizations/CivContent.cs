@@ -249,7 +249,8 @@ namespace WorldBeyond.Simulation.Civilizations
                 Key = TownCenter, DisplayName = "Ortskern", Category = BuildingCategory.Center, SizeX = 2, SizeY = 2,
                 Housing = 8, Storage = 150, BuildWorkYears = 0.01f, MaxPerSettlement = 1,
             });
-            B(new BuildingTypeData { Key = "building.hut", DisplayName = "Hütte", Category = BuildingCategory.Housing, Housing = 6, BuildWorkYears = 1.5f, Cost = new ResourceCost { Wood = 15 } });
+            // Hütte = Haus einer Familie (Nutzerwunsch: deutlich mehr einzelne Häuser statt weniger großer).
+            B(new BuildingTypeData { Key = "building.hut", DisplayName = "Hütte", Category = BuildingCategory.Housing, Housing = 4, BuildWorkYears = 0.8f, Cost = new ResourceCost { Wood = 8 } });
             B(new BuildingTypeData { Key = "building.house", DisplayName = "Steinhaus", Category = BuildingCategory.Housing, Housing = 12, BuildWorkYears = 3f, Cost = new ResourceCost { Wood = 15, Stone = 20 }, RequiredTechKey = "tech.construction", MinTier = SettlementTier.Village });
             B(new BuildingTypeData { Key = "building.apartment", DisplayName = "Mietshaus", Category = BuildingCategory.Housing, Housing = 40, SizeX = 2, SizeY = 2, BuildWorkYears = 8f, Cost = new ResourceCost { Stone = 60, Metal = 20, Tools = 5 }, RequiredTechKey = "tech.industrialization", MinTier = SettlementTier.City });
             B(new BuildingTypeData { Key = "building.farm", DisplayName = "Farm", Category = BuildingCategory.Supply, SizeX = 2, SizeY = 2, BuildWorkYears = 1.5f, Cost = new ResourceCost { Wood = 20 }, Job = JobKind.Farmer, JobSlots = 4, Produces = ResourceType.Food, OutputPerWorkerYear = 3.6f, UsesFertility = true, CatchmentRadius = 2 });

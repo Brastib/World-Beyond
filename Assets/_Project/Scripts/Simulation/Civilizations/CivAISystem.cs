@@ -107,7 +107,7 @@ namespace WorldBeyond.Simulation.Civilizations
             // 2. Wohnraum
             // Früh genug bauen: Geburten werden ab ~2 freien Plätzen gebremst; kleine Orte blieben sonst knapp darunter stehen.
             if (pop > st.HousingCapacity - Math.Max(3.0, st.HousingCapacity * 0.15))
-                if (TryBuild(civ, st, BestAvailable(civ, st, "building.apartment", "building.house", "building.hut"), "Wohnraum fast voll")) return;
+                if (TryBuild(civ, st, HousingFor(civ, st), "Wohnraum fast voll")) return;
             // 3. Lager
             foreach (var r in Resources.Stockable)
                 if (st.Stock[(int)r] >= st.StorageCapacity * 0.9 && SettlementSimulationSystem.StockTarget(st, r) > st.StorageCapacity * 0.9)
@@ -157,6 +157,38 @@ namespace WorldBeyond.Simulation.Civilizations
             }
             return slots;
         }
+
+        /// <summary>
+        /// Haustyp nach Lage der Bewohner: Steinhäuser nur, wenn der Ort Stein übrig hat und satt ist (Wohlstand);
+        /// sonst baut jede Familie ihre Hütte.
+        /// </summary>
+        // Wohnen bei der Arbeit: Arbeitsgebäude (keine Wohnhäuser, Ortskerne, Lager) im Umkreis von 3 Kacheln, je Kachel gezählt.
+        private int NearbyWorkplaces(int x, int y)
+        {
+            var world = _s.World;
+            int n = 0;
+            for (int yy = y - 3; yy <= y + 3; yy++)
+                for (int xx = x - 3; xx <= x + 3; xx++)
+                {
+                    if (!world.InBounds(xx, yy)) continue;
+                    var b = world.Get(xx, yy).Building;
+                    if (!b.IsValid) continue;
+                    var r = _s.Buildings.GetRecord(b);
+                    if (r == null) continue;
+                    var c = _s.Content.Buildings.Get(r.Type).Category;
+                    if (c != BuildingCategory.Housing && c != BuildingCategory.Center && c != BuildingCategory.Storage) n++;
+                }
+            return n;
+        }
+
+        private string HousingFor(Civilization civ, Settlement st)
+        {
+            double need = SettlementSimulationSystem.FoodNeedPerYear(st);
+            bool wealthy = st.Stock[(int)ResourceType.Stone] >= WealthyStone && st.Stock[(int)ResourceType.Food] >= need;
+            return wealthy ? BestAvailable(civ, st, "building.apartment", "building.house", "building.hut") : BestAvailable(civ, st, "building.hut");
+        }
+
+        public const double WealthyStone = 60;
 
         private string BestAvailable(Civilization civ, Settlement st, params string[] keys)
         {
@@ -231,6 +263,7 @@ namespace WorldBeyond.Simulation.Civilizations
         private float PlacementValue(BuildingTypeData d, int x, int y)
         {
             var world = _s.World;
+            if (d.Category == BuildingCategory.Housing) return 1f + NearbyWorkplaces(x, y) * 0.5f;
             int rad = d.HarvestFrom != ResourceType.None || d.NeedsWater || d.UsesFertility ? d.CatchmentRadius : 0;
             if (rad == 0) return 1f;
             float v = 0f;

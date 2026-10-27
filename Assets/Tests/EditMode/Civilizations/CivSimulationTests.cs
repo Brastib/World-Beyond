@@ -207,5 +207,26 @@ namespace WorldBeyond.Tests.Civilizations
             Assert.AreEqual(Recruitment.MaxMilitaryAbsolute, rec.MaxMilitary(1), "absolute Obergrenze");
             Assert.AreEqual(80, Recruitment.MaxMilitaryAbsolute);
         }
+
+        // Nutzerwunsch: deutlich mehr einzelne Häuser. Eine Hütte ist das Haus einer Familie (4 Personen), Häuser stehen
+        // bei den Arbeitsplätzen. Bei voller Belegung käme eine Hütte auf vier Einwohner; Ortskerne und Puffer abgezogen.
+        [Test]
+        public void Settlements_HaveAHousePerFamily()
+        {
+            var r = CivRun.Create(1UL);
+            r.Years(75);
+            var bq = r.Ctx.Get<IBuildingQuery>();
+            var ids = new List<EntityId>();
+            int houses = 0, pop = 0;
+            foreach (int sid in r.Settlements.AllSettlementIds)
+            {
+                pop += r.Settlements.Get(sid).Population;
+                r.Settlements.CopyBuildings(sid, ids);
+                foreach (var b in ids)
+                    if (bq.TryGet(b, out var v) && r.State.Content.Buildings.Get(v.Type).Category == BuildingCategory.Housing) houses++;
+            }
+            TestContext.WriteLine($"{houses} Wohnhäuser für {pop} Einwohner");
+            Assert.GreaterOrEqual(houses, pop / 6, "mindestens ein Haus je sechs Einwohner");
+        }
     }
 }
