@@ -342,6 +342,40 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.Less(_rig.Ai.RecruitCost(1, 10, 300), _rig.Ai.RecruitCost(1, 150, 300));
         }
 
+        // Civ-Befund (Seed 1): 120–145 Soldaten bei 80 Einwohnern. Bevölkerung zählt Soldaten nicht mit.
+        [Test]
+        public void Recruitment_LaborShare_CountsSoldiers_AndRisesSteeply()
+        {
+            W.AddCiv(1, 0, 0, strength: 100, population: 80); W.AddCiv(2, 20, 0, strength: 100, population: 80);
+            float at10 = _rig.Ai.RecruitCost(1, 9, 80);       // ≈ 10 %
+            float at20 = _rig.Ai.RecruitCost(1, 20, 80);      // 20 %
+            float at30 = _rig.Ai.RecruitCost(1, 34, 80);      // ≈ 30 %
+            float huge = _rig.Ai.RecruitCost(1, 145, 80);     // Befund
+            Assert.Less(at10, 0.3f, "kleine Armee ist billig");
+            Assert.Greater(at20 - at10, 3f * (at10 - _rig.Ai.RecruitCost(1, 0, 80)), "ab der Schwelle steil");
+            Assert.Greater(at30, 1.75f, "teurer als jeder mögliche Nutzen");
+            Assert.Greater(huge, at30);
+            Assert.IsFalse(float.IsInfinity(huge) || float.IsNaN(huge));
+        }
+
+        // Szenario: verzweifelter Verteidiger stellt nicht mehr als etwa ein Viertel seiner Leute unter Waffen.
+        [Test]
+        public void Recruitment_DesperateDefender_StaysBelowQuarter()
+        {
+            W.AddCiv(1, 0, 0, strength: 50, population: 80); W.AddCiv(2, 20, 0, strength: 5000, population: 4000);
+            D.DeclareWar(2, 1);
+            int army = 0;
+            for (int s = 0; s < 600; s++)
+            {
+                W.Civs[1].ArmyUnits = army;
+                W.RecruitRequests.Clear();
+                _rig.RunSeconds(1);
+                army += W.RecruitRequests.Where(r => r.civ == 1).Sum(r => r.count);   // jede Anfrage wird sofort Einheit
+            }
+            Assert.Greater(army, 0);
+            Assert.Less(army / (float)(army + 80), 0.25f);
+        }
+
         [Test]
         public void Recruitment_FoodShortage_And_Exhaustion_RaiseCost()
         {
