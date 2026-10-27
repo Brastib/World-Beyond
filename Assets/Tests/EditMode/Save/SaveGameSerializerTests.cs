@@ -85,6 +85,51 @@ namespace WorldBeyond.Tests.EditMode.Save
             }
         }
 
+        // Unity-Fund 2026-10-27: Laden meldete "beschädigt", weil die Prüfsumme beim Speichern über die Werte im Speicher
+        // (float) gebildet wurde und beim Laden über die eingelesenen (double), die Unitys Newtonsoft anders formatiert.
+        // Headless lässt sich das mit decimal nachstellen: 1.10m wird als "1.10" geschrieben, eingelesen als double "1.1".
+        [Test]
+        public void Serialize_ValueFormattedDifferentlyAfterReading_StillLoads()
+        {
+            var data = Sample();
+            data.Sections["test.mixed"] = new SaveSection { Version = 1, Data = new JObject { ["d"] = 1.10m, ["f"] = 0.1f, ["g"] = 1e-7f } };
+            var json = _serializer.Serialize(data);
+            Assert.IsTrue(_serializer.TryDeserialize(json, out var back, out var error, out var detail), error + ": " + detail);
+            Assert.AreEqual(1.1, (double)back.Sections["test.mixed"].Data["d"], 1e-12);
+        }
+
+        [TestCase("de-DE")]
+        [TestCase("fr-FR")]
+        [TestCase("en-US")]
+        public void Serialize_ManyNonRepresentableFloats_UnderCulture_Loads(string culture)
+        {
+            var before = System.Globalization.CultureInfo.CurrentCulture;
+            try
+            {
+                System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo(culture);
+                var rng = new System.Random(4711);
+                var floats = new JArray();
+                var doubles = new JArray();
+                for (int i = 0; i < 2000; i++)
+                {
+                    floats.Add((float)(rng.NextDouble() * 1000 - 500) / 3f);
+                    doubles.Add((rng.NextDouble() - 0.5) * System.Math.Pow(10, rng.Next(-12, 12)));
+                }
+                floats.Add(float.MaxValue); floats.Add(float.Epsilon); floats.Add(-0f); floats.Add(16777217f);
+                var data = Sample();
+                data.Sections["test.floats"] = new SaveSection { Version = 1, Data = new JObject { ["f"] = floats, ["d"] = doubles } };
+                var json = _serializer.Serialize(data);
+                Assert.IsTrue(_serializer.TryDeserialize(json, out var back, out var error, out var detail), error + ": " + detail);
+                var f = (JArray)back.Sections["test.floats"].Data["f"];
+                for (int i = 0; i < 2000; i++) Assert.AreEqual((float)floats[i], (float)(double)f[i], $"float {i}");
+                Assert.AreEqual(json, _serializer.Serialize(back), "Laden und erneutes Speichern muss denselben Text liefern");
+            }
+            finally
+            {
+                System.Globalization.CultureInfo.CurrentCulture = before;
+            }
+        }
+
         [Test]
         public void Checksum_ChangesWhenArrayOrderChanges()
         {

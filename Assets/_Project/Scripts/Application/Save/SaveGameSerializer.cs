@@ -32,10 +32,29 @@ namespace WorldBeyond.Application.Save
             if (data == null) throw new ArgumentNullException(nameof(data));
             var root = JObject.FromObject(data, CreateJsonSerializer());
             root.Remove("checksum");
-            var checksum = ComputeFileChecksum(root);
-            root["checksum"] = checksum;
+            // Prüfsumme über genau die Werte, die das Laden sieht: Im Speicher stehen float-Werte, nach dem Einlesen double.
+            // Unitys Newtonsoft/Mono formatiert beide nicht immer gleich, dann passte die Prüfsumme beim Laden nicht.
+            // Deshalb schreiben und wieder einlesen, bis sich der Text nicht mehr ändert, und erst dann hashen.
+            string text = root.ToString(Formatting.None);
+            JObject parsed = ParseObject(text);
+            for (int i = 0; i < 4; i++)
+            {
+                string again = parsed.ToString(Formatting.None);
+                if (string.Equals(again, text, StringComparison.Ordinal)) break;
+                text = again;
+                parsed = ParseObject(text);
+            }
+            var checksum = ComputeFileChecksum(parsed);
+            parsed["checksum"] = checksum;
             data.Checksum = checksum;
-            return root.ToString(Formatting.None);
+            return parsed.ToString(Formatting.None);
+        }
+
+        // Gleiche Lese-Einstellungen wie TryParseFrame.
+        private static JObject ParseObject(string json)
+        {
+            using (var reader = new JsonTextReader(new StringReader(json)) { DateParseHandling = DateParseHandling.None, FloatParseHandling = FloatParseHandling.Double })
+                return (JObject)JToken.ReadFrom(reader);
         }
 
         public bool TryDeserialize(string json, out SaveGameData data, out SaveLoadError error, out string detail)

@@ -108,6 +108,9 @@ namespace WorldBeyond.Application.Save
             if (!TryCapture(comp, slotName, out var data, out var detail)) return new SaveResult(SaveLoadError.CaptureFailed, detail);
 
             string json = _serializer.Serialize(data);
+            // Selbstprüfung: Nie einen Spielstand schreiben, den das Laden als beschädigt ablehnen würde.
+            if (!_serializer.TryParseFrame(json, out _, out var verifyError, out var verifyDetail))
+                return new SaveResult(SaveLoadError.CaptureFailed, $"Selbstprüfung nach dem Serialisieren fehlgeschlagen ({verifyError}): {verifyDetail}");
             int? preserve = _migratedFrom.TryGetValue(slotName, out int oldVersion) ? oldVersion : (int?)null;
             if (!_store.TryWrite(slotName, json, preserve, out var error, out detail)) return new SaveResult(error, detail);
             _migratedFrom.Remove(slotName);
