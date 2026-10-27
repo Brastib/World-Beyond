@@ -312,7 +312,7 @@ namespace WorldBeyond.Tests.World
         static GameComposition Make(out UnitTypeId rifleman, out UnitTypeId tank, out WorldGrid world)
         {
             UnitTypeId r = default, t = default;
-            var comp = GameComposition.Create(new GameStartSettings { Seed = 4, WorldWidth = 96, WorldHeight = 96 }, ctx =>
+            var comp = GameComposition.Create(new GameStartSettings { Seed = 4, WorldWidth = 96, WorldHeight = 96, CivilizationCount = 0 }, ctx =>
             {
                 r = ctx.UnitTypes.Register(new UnitTypeData { Key = "unit.test_rifleman", Movement = MovementClass.Foot, MaxSpeed = 1.5f, TurnRateDeg = 720f, Acceleration = 10f });
                 t = ctx.UnitTypes.Register(new UnitTypeData { Key = "unit.test_tank", Movement = MovementClass.Tracked, MaxSpeed = 8f, TurnRateDeg = 40f, Acceleration = 2f, Radius = 3f });
