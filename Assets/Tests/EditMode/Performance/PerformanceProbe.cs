@@ -14,7 +14,7 @@ using WorldBeyond.Simulation.World.Navigation;
 namespace WorldBeyond.Tests.Performance
 {
     // Reproduzierbarer Messlauf für Phase 7 (TEST_PLAN T-7-06/T-7-07). Explicit: läuft nur bei gezieltem Aufruf, z. B.
-    // dotnet test Tools/SimTests --filter "FullyQualifiedName~PerformanceProbe" --logger "console;verbosity=detailed"
+    // dotnet test Tools/SimTests -c Release --filter "FullyQualifiedName~PerformanceProbe" --logger "console;verbosity=detailed"
     // Misst Weltaufbau, Zeit und Allokationen je System und Tick, Speichern und Laden. Prüft nur Konsistenz, keine Zeitgrenzen,
     // weil die Werte vom Rechner abhängen.
     public class PerformanceProbe
@@ -24,7 +24,8 @@ namespace WorldBeyond.Tests.Performance
         [TestCase(512, 4, 0, 3000, 2026UL)]
         [TestCase(512, 4, 2000, 1500, 2026UL)]
         [TestCase(1024, 8, 2000, 600, 7UL)]
-        public void Measure(int size, int civs, int extraUnits, int ticks, ulong seed)
+        [TestCase(512, 4, 1000, 1500, 2026UL, true)]
+        public void Measure(int size, int civs, int extraUnits, int ticks, ulong seed, bool allAtWar = false)
         {
             var settings = new GameStartSettings { Seed = seed, WorldWidth = size, WorldHeight = size, CivilizationCount = civs };
 
@@ -39,6 +40,15 @@ namespace WorldBeyond.Tests.Performance
 
             var rng = new Random((int)seed);
             if (extraUnits > 0) SpawnWanderers(ctx, extraUnits, rng);
+            if (allAtWar)
+            {
+                // Alle gegen alle: Kampf, Verfolgung und Armee-KI unter Last (QA-Fund Seed 99: bis 956 Einheiten).
+                var ids = ctx.Get<ICivilizationQuery>().AllCivIds;
+                var dip = ctx.Get<WorldBeyond.Simulation.Diplomacy.IDiplomacyService>();
+                for (int a = 0; a < ids.Count; a++)
+                    for (int b = a + 1; b < ids.Count; b++)
+                        Assert.IsTrue(dip.DeclareWar(ids[a], ids[b]), $"Krieg {ids[a]}-{ids[b]} nicht möglich");
+            }
 
             var systems = comp.Runner.Systems;
             var total = new double[systems.Count];
@@ -84,7 +94,7 @@ namespace WorldBeyond.Tests.Performance
             double sum = 0; foreach (var t in tickTimes) sum += t;
             var civQuery = ctx.Get<ICivilizationQuery>();
 
-            TestContext.WriteLine($"=== Welt {size}x{size}, Civs {civs}, Zusatzeinheiten {extraUnits}, Seed {seed}, Ticks {ticks} ===");
+            TestContext.WriteLine($"=== Welt {size}x{size}, Civs {civs}, Zusatzeinheiten {extraUnits}, Seed {seed}, Ticks {ticks}{(allAtWar ? ", alle im Krieg" : "")} ===");
             TestContext.WriteLine($"Aufbau (GameComposition.Create): {createMs:0} ms, {createAlloc / 1048576.0:0.0} MB alloziert");
             TestContext.WriteLine($"Tick: Mittel {sum / ticks:0.000} ms, Median {tickTimes[ticks / 2]:0.000} ms, P99 {tickTimes[(int)(ticks * 0.99)]:0.000} ms, Max {worstTick:0.00} ms (Budget bei x10: 10 ms/Tick)");
             TestContext.WriteLine($"Allokation im Lauf: {runAlloc / 1048576.0:0.0} MB = {runAlloc / ticks / 1024.0:0.0} KB/Tick; GC gen0/1/2: {GC.CollectionCount(0) - gen0}/{GC.CollectionCount(1) - gen1}/{GC.CollectionCount(2) - gen2}");
