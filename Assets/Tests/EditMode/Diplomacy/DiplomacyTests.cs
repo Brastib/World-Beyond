@@ -368,6 +368,20 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             Assert.Less(asked, 150, "angefragte Rekruten zählen zum Armeeanteil");
         }
 
+        // Für Military-Moral (Phase 5 §11): Kriegsmüdigkeit je Civ 0 … 1.
+        [Test]
+        public void CivWarExhaustion_IsZeroInPeace_AndFollowsWar()
+        {
+            W.AddCiv(1, 0, 0, strength: 100); W.AddCiv(2, 20, 0, strength: 100);
+            Assert.AreEqual(0f, D.GetCivWarExhaustion(1));
+            D.DeclareWar(2, 1);
+            for (int i = 0; i < 10; i++) D.ReportUnitLost(1, 2, 5f);
+            var war = D.FindWar(1, 2);
+            Assert.AreEqual(war.DefenderStats.Exhaustion / 100f, D.GetCivWarExhaustion(1), 1e-4f);
+            Assert.Greater(D.GetCivWarExhaustion(1), D.GetCivWarExhaustion(2));
+            Assert.AreEqual(0f, D.GetCivWarExhaustion(3));
+        }
+
         // Integration 2026-10-27: Kriegsende an das Kampfgeschehen koppeln.
         [Test]
         public void Peace_NotBeforeContact_OrMinWarTicks()

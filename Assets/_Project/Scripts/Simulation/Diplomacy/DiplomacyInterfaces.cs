@@ -33,6 +33,8 @@ namespace WorldBeyond.Simulation.Diplomacy
         War FindWar(int civA, int civB);                            // aktiver oder ruhender Krieg zwischen beiden, sonst null
         // Für Military IArmyAI: Ziele der Civ, absteigend nach Wert.
         IReadOnlyList<TargetPriority> GetTargetPriorities(int civId);
+        // Für Military-Moral: Kriegsmüdigkeit der Civ 0 … 1 (höchste Erschöpfung ihrer laufenden Kriege / 100), 0 ohne Krieg.
+        float GetCivWarExhaustion(int civId);
     }
 
     // Was Phase 4 von Welt, Zivilisationen, Wirtschaft und Militär braucht.

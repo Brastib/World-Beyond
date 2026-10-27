@@ -655,6 +655,18 @@ namespace WorldBeyond.Simulation.Diplomacy
             }
         }
 
+        public float GetCivWarExhaustion(int civId)
+        {
+            float worst = 0f;
+            foreach (var war in Wars)
+            {
+                if (war.Suspended) continue;
+                var side = war.SideOf(civId);
+                if (side != WarSide.None) worst = Math.Max(worst, war.StatsOf(side).Exhaustion);
+            }
+            return Clamp01(worst / 100f);
+        }
+
         // Kampftreffer zwischen zwei Civs (Military über den Adapter, optional): markiert die erste Feindberührung.
         public void ReportCombatContact(int civA, int civB)
         {
