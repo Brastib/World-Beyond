@@ -37,6 +37,13 @@ namespace WorldBeyond.Simulation.Diplomacy
         public float GoalWeightEach = 5f;
         public float GoalWeightMax = 15f;
         public float ExhaustionPerMinute = 0.5f;
+        // Kriegsende an das Kampfgeschehen koppeln (Integration 2026-10-27, Werte sind Platzhalter):
+        // Frieden erst nach erster Feindberührung oder nach PeaceMinWarTicks, je nachdem was zuerst kommt.
+        public long PeaceMinWarTicks = 9000;              // 15 Spielminuten
+        // Zeit-Erschöpfung vor der Feindberührung nur mit PreContactExhaustionFactor; nach WarNoContactMaxTicks
+        // ohne Berührung wieder voll, damit ein Krieg ohne Kontakt trotzdem endet.
+        public float PreContactExhaustionFactor = 0.5f;
+        public long WarNoContactMaxTicks = 36000;         // 60 Spielminuten
 
         // Frieden
         public float PeaceBaseline = 10f;
@@ -73,7 +80,8 @@ namespace WorldBeyond.Simulation.Diplomacy
         public float AssumedUnitStrength = 5f;            // Schätzwert pro Einheit für die Anzahl einer Anfrage
         public int MaxRecruitPerRequest = 5;
         // Obergrenze der Armee nach Bevölkerung (auch im Krieg): eine Civ rüstet sich nicht zu Tode.
-        public float MaxArmyStrengthPerPop = 0.15f;       // Bevölkerung 300 → höchstens Stärke 45 (≈ 9 Einheiten)
+        // Zählt Einheiten inklusive eingereihter Aufträge (Port GetArmyUnitCount). Platzhalter.
+        public float MaxArmyUnitsPerPop = 0.10f;          // Bevölkerung 300 → höchstens 30 Einheiten
         // Aussichtslose Lage: Gegner mindestens so viel stärker → früh Frieden mit Zugeständnis suchen.
         public float HopelessThreat = 4f;
         public float HopelessPeaceExhaustion = 20f;

@@ -221,7 +221,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         {
             var c = new War
             {
-                Id = w.Id, AttackerLeader = w.AttackerLeader, DefenderLeader = w.DefenderLeader, StartTick = w.StartTick, EndTick = w.EndTick,
+                Id = w.Id, AttackerLeader = w.AttackerLeader, DefenderLeader = w.DefenderLeader, StartTick = w.StartTick, EndTick = w.EndTick, FirstContactTick = w.FirstContactTick,
                 CasusBelli = w.CasusBelli, WarScore = w.WarScore, Active = w.Active, Suspended = w.Suspended, EndReason = w.EndReason,
                 AttackerStats = Copy(w.AttackerStats ?? new WarSideStats()), DefenderStats = Copy(w.DefenderStats ?? new WarSideStats()),
             };

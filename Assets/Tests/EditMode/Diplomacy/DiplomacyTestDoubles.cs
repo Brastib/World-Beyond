@@ -18,6 +18,7 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
             public bool Alive = true;
             public float Stock = 1000f;
             public int TerritoryTiles;
+            public int ArmyUnits = -1;    // -1 = aus Stärke geschätzt (Stärke / 5)
         }
 
         public readonly SortedDictionary<int, Civ> Civs = new SortedDictionary<int, Civ>();
@@ -54,6 +55,8 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
         }
         public bool IsCivAlive(int civId) => Civs.TryGetValue(civId, out var c) && c.Alive;
         public float GetMilitaryStrength(int civId) => Civs.TryGetValue(civId, out var c) ? c.Strength : 0f;
+        public int GetArmyUnitCount(int civId) =>
+            Civs.TryGetValue(civId, out var c) ? (c.ArmyUnits >= 0 ? c.ArmyUnits : (int)(c.Strength / 5f)) : 0;
         public float UnitStrength = 5f;
         public float GetUnitCombatStrength(int unitTypeId) => UnitStrength;
         public int GetPopulation(int civId) => Civs.TryGetValue(civId, out var c) ? c.Population : 0;

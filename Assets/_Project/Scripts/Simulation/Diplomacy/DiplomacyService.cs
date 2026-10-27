@@ -468,6 +468,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         public float EvaluatePeaceAcceptance(War war, int proposer, int receiver, PeaceTerm term, out string reason)
         {
             reason = null;
+            if (!PeaceTalksOpen(war)) { reason = "Noch keine Feindberührung: zu früh für Frieden."; return -100f; }
             float scoreR = war.ScoreFor(receiver);
             float exhaustionR = war.StatsOf(war.SideOf(receiver)).Exhaustion;
             float cost = 0f;
@@ -645,12 +646,26 @@ namespace WorldBeyond.Simulation.Diplomacy
                 if (side == WarSide.None) continue;
                 var killerSide = war.SideOf(killerCivId);
                 if (killerSide == WarSide.None || killerSide == side) continue;
+                if (war.FirstContactTick < 0) war.FirstContactTick = Now;
                 var stats = war.StatsOf(side);
                 stats.UnitsLost++;
                 stats.StrengthLost += Math.Max(0f, strength);
                 RecomputeWar(war);
                 return;
             }
+        }
+
+        // Kampftreffer zwischen zwei Civs (Military über den Adapter, optional): markiert die erste Feindberührung.
+        public void ReportCombatContact(int civA, int civB)
+        {
+            var war = FindWar(civA, civB);
+            if (war != null && !war.Suspended && war.FirstContactTick < 0) war.FirstContactTick = Now;
+        }
+
+        // Friedensgespräche erst nach Feindberührung oder nach PeaceMinWarTicks (je nachdem was zuerst kommt).
+        public bool PeaceTalksOpen(War war)
+        {
+            return war.FirstContactTick >= 0 || Now - war.StartTick >= Settings.PeaceMinWarTicks;
         }
 
         // Aus SettlementCapturedEvent (Civ).

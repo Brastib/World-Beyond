@@ -44,7 +44,8 @@ namespace WorldBeyond.Simulation.Diplomacy
         IReadOnlyList<int> CivIds { get; }                          // lebende Civs, aufsteigend sortiert
         bool IsCivAlive(int civId);
         float GetMilitaryStrength(int civId);                       // Military: GetCivCombatStrength
-        float GetUnitCombatStrength(int unitTypeId);                // Military: GetCombatStrength(UnitTypeId); Zivilisten 0 … klein
+        float GetUnitCombatStrength(int unitTypeId);
+        int GetArmyUnitCount(int civId);                            // Military: Kampfeinheiten inkl. eingereihter Rekrutierungsaufträge                // Military: GetCombatStrength(UnitTypeId); Zivilisten 0 … klein
         int GetPopulation(int civId);
         int GetTerritoryTiles(int civId);                           // ICivilizationQuery.TerritoryTiles (für Abstand der Gebietsränder)
         float GetAggression(int civId);                             // Kulturhaltung 0 (friedlich) … 1 (aggressiv)

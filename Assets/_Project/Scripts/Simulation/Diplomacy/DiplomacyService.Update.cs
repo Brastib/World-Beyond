@@ -146,9 +146,20 @@ namespace WorldBeyond.Simulation.Diplomacy
 
             war.WarScore = Clamp(conquest + casualty + points + goals, -100f, 100f);
 
-            float minutes = Math.Max(0L, Now - war.StartTick) / (float)(SimClock.TicksPerSecond * 60);
+            float minutes = WarClockMinutes(war);
             att.Exhaustion = Exhaustion(att, minutes);
             def.Exhaustion = Exhaustion(def, minutes);
+        }
+
+        // Kriegsdauer für die Zeit-Erschöpfung: vor der ersten Feindberührung mit reduzierter Rate
+        // (bis höchstens WarNoContactMaxTicks), danach voll.
+        float WarClockMinutes(War war)
+        {
+            long elapsed = Math.Max(0L, Now - war.StartTick);
+            long contactAt = war.FirstContactTick >= 0 ? Math.Max(0L, war.FirstContactTick - war.StartTick) : elapsed;
+            long pre = Math.Min(contactAt, Math.Min(elapsed, Math.Max(0L, Settings.WarNoContactMaxTicks)));
+            float effective = pre * Settings.PreContactExhaustionFactor + (elapsed - pre);
+            return effective / (SimClock.TicksPerSecond * 60f);
         }
 
         float Exhaustion(WarSideStats s, float minutes)

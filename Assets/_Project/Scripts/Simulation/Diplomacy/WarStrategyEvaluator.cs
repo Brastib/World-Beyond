@@ -129,7 +129,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         {
             foreach (var war in _d.ActiveWars)
             {
-                if (war.Suspended) continue;
+                if (war.Suspended || !_d.PeaceTalksOpen(war)) continue;
                 var side = war.SideOf(civ);
                 if (side == WarSide.None) continue;
                 bool leader = war.AttackerLeader == civ || war.DefenderLeader == civ;
@@ -272,16 +272,15 @@ namespace WorldBeyond.Simulation.Diplomacy
             bool atWar = _d.IsAtWar(civ);
             float strength = W.GetMilitaryStrength(civ);
             float deficit = Math.Max(0f, PeacetimeArmyTarget(civ) - strength);
-            float cap = W.GetPopulation(civ) * S.MaxArmyStrengthPerPop;
-            float headroom = cap - strength;
+            int cap = (int)Math.Floor(W.GetPopulation(civ) * S.MaxArmyUnitsPerPop);
+            int headroom = cap - Math.Max(0, W.GetArmyUnitCount(civ));
             bool hopeless = atWar && threat >= S.HopelessThreat;
             // Verteidigt wird weiter, aber nur bis zur Obergrenze; aussichtslos → TryPeace sucht früh ein Zugeständnis.
             float utility = DiplomacyService.Clamp01(threat - 0.8f) + (atWar ? 0.3f : 0f) + (deficit > 0f ? 0.45f : 0f);
-            if (utility < S.RecruitThreshold || headroom <= 0f) return false;
+            if (utility < S.RecruitThreshold || headroom <= 0) return false;
             int byThreat = (int)Math.Ceiling(threat * 3f);
             int byDeficit = (int)Math.Ceiling(deficit / Math.Max(0.1f, S.AssumedUnitStrength));
-            int byCap = Math.Max(1, (int)Math.Floor(headroom / Math.Max(0.1f, S.AssumedUnitStrength)));
-            int count = Math.Max(1, Math.Min(Math.Min(S.MaxRecruitPerRequest, byCap), Math.Max(byThreat, byDeficit)));
+            int count = Math.Max(1, Math.Min(Math.Min(S.MaxRecruitPerRequest, headroom), Math.Max(byThreat, byDeficit)));
             bool ok = W.RequestMilitaryBuildup(civ, count, out string reason);
             if (!ok && count > 1)
             {
