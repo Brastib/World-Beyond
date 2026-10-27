@@ -272,7 +272,8 @@ namespace WorldBeyond.Simulation.Diplomacy
             bool atWar = _d.IsAtWar(civ);
             float strength = W.GetMilitaryStrength(civ);
             float deficit = Math.Max(0f, PeacetimeArmyTarget(civ) - strength);
-            int cap = Math.Max(S.MinArmyUnitsCap, (int)Math.Floor(W.GetPopulation(civ) * S.MaxArmyUnitsPerPop));
+            int cap = Math.Min(S.MaxArmyUnitsAbsolute,
+                Math.Max(S.MinArmyUnitsCap, (int)Math.Floor(W.GetPopulation(civ) * S.MaxArmyUnitsPerPop)));
             var mem = _d.GetMemory(civ);
             long now = _d.Now;
             if (now - mem.PendingRecruitsTick >= S.RecruitPendingTicks) mem.PendingRecruits = 0;
