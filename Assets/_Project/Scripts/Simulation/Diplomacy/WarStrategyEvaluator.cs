@@ -32,7 +32,8 @@ namespace WorldBeyond.Simulation.Diplomacy
             else if (now - mem.LastAllianceTick >= S.AllianceCooldownTicks && TryAlliance(civId))
                 mem.LastAllianceTick = now;
 
-            if (now - mem.LastRecruitTick >= S.RecruitCooldownTicks && TryRecruit(civId))
+            mem.RecruitWillingness = RecruitWillingness(civId);
+            if (S.SelfRecruit && now - mem.LastRecruitTick >= S.RecruitCooldownTicks && TryRecruit(civId))
                 mem.LastRecruitTick = now;
         }
 
@@ -266,25 +267,66 @@ namespace WorldBeyond.Simulation.Diplomacy
             return W.GetPopulation(civ) * S.PeaceArmyStrengthPerPop * (0.5f + DiplomacyService.Clamp01(W.GetAggression(civ)));
         }
 
+        // Kosten einer Armee dieser Größe: Arbeitskraft (ab LaborSteepFrom steil, ohne harte Grenze), Nahrungsmangel, Kriegsmüdigkeit.
+        // population = Bevölkerung ohne Soldaten (ICivilizationQuery.Population).
+        public float RecruitCost(int civ, int armyUnits, int population)
+        {
+            // Bevölkerung zählt Soldaten nicht mit: Anteil an allen Menschen der Civ.
+            float share = Math.Min(0.99f, Math.Max(0, armyUnits) / (float)Math.Max(1, armyUnits + Math.Max(0, population)));
+            float steep = Math.Max(0f, share - S.LaborSteepFrom) / (1f - share);
+            float labor = S.LaborCostWeight * share / (1f - share) + S.LaborSteepWeight * steep * steep;
+            float food = S.FoodCostWeight * DiplomacyService.Clamp01(W.GetResourceNeed(civ));
+            float exhaustion = 0f;
+            foreach (var war in _d.ActiveWars)
+            {
+                var side = war.SideOf(civ);
+                if (side != WarSide.None) exhaustion = Math.Max(exhaustion, war.StatsOf(side).Exhaustion);
+            }
+            return labor + food + S.ExhaustionCostWeight * exhaustion / 100f;
+        }
+
+        float RecruitBenefit(int civ, out float threat, out bool atWar, out float deficit)
+        {
+            threat = Threat(civ);
+            atWar = _d.IsAtWar(civ);
+            deficit = Math.Max(0f, PeacetimeArmyTarget(civ) - W.GetMilitaryStrength(civ));
+            return DiplomacyService.Clamp01(threat - 0.8f) + (atWar ? 0.3f : 0f) + (deficit > 0f ? 0.45f : 0f);
+        }
+
+        int CountedArmy(int civ, CivAiMemory mem, long now)
+        {
+            if (now - mem.PendingRecruitsTick >= S.RecruitPendingTicks) mem.PendingRecruits = 0;
+            return Math.Max(0, W.GetArmyUnitCount(civ)) + mem.PendingRecruits;
+        }
+
+        // Bereitschaft für einen weiteren Rekruten: Nutzen − Kosten, 0 … 1 (für Military über IWarQuery.GetRecruitWillingness).
+        public float RecruitWillingness(int civ)
+        {
+            float benefit = RecruitBenefit(civ, out _, out _, out _);
+            int army = CountedArmy(civ, _d.GetMemory(civ), _d.Now);
+            return DiplomacyService.Clamp01(benefit - RecruitCost(civ, army + 1, Math.Max(1, W.GetPopulation(civ))));
+        }
+
         bool TryRecruit(int civ)
         {
-            float threat = Threat(civ);
-            bool atWar = _d.IsAtWar(civ);
-            float strength = W.GetMilitaryStrength(civ);
-            float deficit = Math.Max(0f, PeacetimeArmyTarget(civ) - strength);
-            int cap = Math.Min(S.MaxArmyUnitsAbsolute,
-                Math.Max(S.MinArmyUnitsCap, (int)Math.Floor(W.GetPopulation(civ) * S.MaxArmyUnitsPerPop)));
+            float benefit = RecruitBenefit(civ, out float threat, out bool atWar, out float deficit);
             var mem = _d.GetMemory(civ);
             long now = _d.Now;
-            if (now - mem.PendingRecruitsTick >= S.RecruitPendingTicks) mem.PendingRecruits = 0;
-            int headroom = cap - Math.Max(0, W.GetArmyUnitCount(civ)) - mem.PendingRecruits;
+            int army = CountedArmy(civ, mem, now);
+            int pop = Math.Max(1, W.GetPopulation(civ));
             bool hopeless = atWar && threat >= S.HopelessThreat;
-            // Verteidigt wird weiter, aber nur bis zur Obergrenze; aussichtslos → TryPeace sucht früh ein Zugeständnis.
-            float utility = DiplomacyService.Clamp01(threat - 0.8f) + (atWar ? 0.3f : 0f) + (deficit > 0f ? 0.45f : 0f);
-            if (utility < S.RecruitThreshold || headroom <= 0) return false;
             int byThreat = (int)Math.Ceiling(threat * 3f);
             int byDeficit = (int)Math.Ceiling(deficit / Math.Max(0.1f, S.AssumedUnitStrength));
-            int count = Math.Max(1, Math.Min(Math.Min(S.MaxRecruitPerRequest, headroom), Math.Max(byThreat, byDeficit)));
+            int wanted = Math.Max(1, Math.Min(S.MaxRecruitPerRequest, Math.Max(byThreat, byDeficit)));
+            // Keine feste Grenze: größte Anzahl, deren Nutzen die Kosten (Arbeitskraft, Nahrung, Kriegsmüdigkeit) noch trägt.
+            int count = 0; float utility = 0f, cost = 0f;
+            for (int n = wanted; n >= 1; n--)
+            {
+                cost = RecruitCost(civ, army + n, pop);
+                utility = benefit - cost;
+                if (utility >= S.RecruitThreshold) { count = n; break; }
+            }
+            if (count == 0) return false;
             bool ok = W.RequestMilitaryBuildup(civ, count, out string reason);
             if (!ok && count > 1)
             {
@@ -296,7 +338,7 @@ namespace WorldBeyond.Simulation.Diplomacy
             if (ok && S.RecruitPendingTicks > 0) { mem.PendingRecruits += count; mem.PendingRecruitsTick = now; }
             _d.LogDecision(civ, 0, DiplomaticActionType.Recruit, utility,
                 new DecisionFactor("Bedrohung", threat), new DecisionFactor("Im Krieg", atWar ? 1f : 0f), new DecisionFactor("Fehlende Grundarmee", deficit),
-                new DecisionFactor("Obergrenze", cap), new DecisionFactor("Aussichtslos", hopeless ? 1f : 0f),
+                new DecisionFactor("Kosten", cost), new DecisionFactor("Armeeanteil", army / (float)pop), new DecisionFactor("Aussichtslos", hopeless ? 1f : 0f),
                 new DecisionFactor("Anzahl", count), new DecisionFactor("Angenommen", ok ? 1f : 0f));
             return true;   // auch bei Ablehnung (z. B. zu wenig Ressourcen) Abklingzeit, um nicht jeden Takt neu anzufragen
         }
