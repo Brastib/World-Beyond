@@ -20,6 +20,7 @@ Stand: 2026-10-26. Quelle: Nutzeranweisungen vom 2026-10-26 („Aktualisierte Pr
 2. **KI erfindet nichts:** Sprachmodelle formulieren, verdichten und interpretieren nur gespeicherte Ereignisse. Keine LLM-Aufrufe für Routine (Bewegung, Bedürfnisse, Wirtschaft, Kampf).
 3. **Lokale KI bevorzugt**, wenn ausreichend; Qualität und Laufzeit werden gemessen.
 4. **Stabilität vor Umfang**, kleine testbare Schritte, Performance messen statt schätzen, feste Seeds für Reproduzierbarkeit, Platzhalter klar kennzeichnen. Ziel: gegenseitige Prüfung der Threads, „99 % fehlerfrei“.
+6. **Die Spiel-KI entscheidet alles (Nutzer 2026-10-27):** Wer in einen Krieg einbezogen wird, wie stark aufgerüstet wird, wann Frieden geschlossen wird usw. entscheidet die KI der Völker und Personen durch Abwägung (Kosten, Nutzen, Risiko, Bedürfnisse, Persönlichkeit). Keine festen Spielregel-Grenzen, die Entscheidungen ersetzen (z. B. „höchstens 10 % / 80 Einheiten unter Waffen“). Grenzen entstehen aus der Simulation: Unterhalt, Nahrung, fehlende Arbeitskräfte, Versorgung über Wege (V8), Kriegsmüdigkeit. Technische Leistungsgrenzen werden technisch gelöst (Simulationsstufen V1, zusammengefasste Armeen), nicht durch Spielregeln. Übergangswerte sind als PLATZHALTER markiert und werden durch KI-Abwägung ersetzt.
 5. **Assets:** kostenlos bevorzugt, möglichst unter 30 €, höchstens 60 € gesamt. Recherche erlaubt, **Kauf nur mit ausdrücklicher Zustimmung**.
 
 ## 3. Architekturentscheidungen dazu (Integration, [E])
