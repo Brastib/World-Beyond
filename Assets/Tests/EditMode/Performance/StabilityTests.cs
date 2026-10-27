@@ -88,10 +88,6 @@ namespace WorldBeyond.Tests.Performance
             foreach (var s in comp.Context.Saveables.InLoadOrder())
             {
                 var token = JToken.FromObject(s.CaptureState(), serializer);
-                // Bekannt, an Civ gemeldet: TerritoryService speichert das Rechteck auch ohne offene Neuberechnung (Dirty=false),
-                // wo es keine Wirkung hat (MarkArea setzt es neu, Recompute bricht ab). Bis Civ es als 0 speichert, hier ausblenden.
-                if (s.SaveKey == "civs" && token["Territory"] is JObject t && t["Dirty"]?.Type == JTokenType.Boolean && !(bool)t["Dirty"])
-                    foreach (var f in new[] { "MinX", "MinY", "MaxX", "MaxY" }) t[f] = 0;
                 result[s.SaveKey] = SaveGameSerializer.ComputeChecksum(token);
             }
             return result;

@@ -43,12 +43,14 @@ namespace WorldBeyond.Simulation.Civilizations
         /// </summary>
         public const double MaxMilitaryShare = 0.1;
         public const int MinMilitaryCap = 2;
+        /// <summary>PLATZHALTER bis M2 (Logistik, Versorgung): absolute Obergrenze je Civ, begrenzt auch die Rechenzeit.</summary>
+        public const int MaxMilitaryAbsolute = 80;
 
         public int MaxMilitary(int civId)
         {
             double pop = 0;
             foreach (int sid in _s.SettlementListOf(civId)) pop += _s.Settlements[sid].Population;
-            return Math.Max(MinMilitaryCap, (int)(pop * MaxMilitaryShare));
+            return Math.Min(MaxMilitaryAbsolute, Math.Max(MinMilitaryCap, (int)(pop * MaxMilitaryShare)));
         }
 
         private readonly List<EntityId> _unitIds = new List<EntityId>();

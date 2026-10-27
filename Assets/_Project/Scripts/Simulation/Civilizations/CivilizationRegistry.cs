@@ -7,8 +7,12 @@ namespace WorldBeyond.Simulation.Civilizations
     /// <summary>Zivilisationen: Erschaffen, Lesesicht, Zusammenbruch. IDs fortlaufend, nie wiederverwendet.</summary>
     public sealed class CivilizationRegistry : ICivilizationRegistry
     {
-        public const int StartPopulation = 10;
-        public static readonly ResourceCost StartStock = new ResourceCost { Food = 80, Wood = 60, Stone = 10 };
+        /// <summary>
+        /// Ein Volk beginnt als Stamm aus mehreren Großfamilien (realistisch 25–150 Menschen), nicht als einzelne Familie.
+        /// Mit 10 Startern und ~1 %/Jahr Wachstum entstand in den ersten 60 Jahren keine Tochtersiedlung (Unity-Lauf M1).
+        /// </summary>
+        public const int StartPopulation = 40;
+        public static readonly ResourceCost StartStock = new ResourceCost { Food = 150, Wood = 120, Stone = 10 };
 
         private readonly CivState _s;
         private readonly List<int> _alive = new List<int>();

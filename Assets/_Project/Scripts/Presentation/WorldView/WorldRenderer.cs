@@ -251,7 +251,14 @@ namespace WorldBeyond.Presentation.WorldView
         {
             Texture2D tex = _colorMap.Texture;
             _terrainMat = terrainMaterial != null ? Own(new Material(terrainMaterial)) : Own(WorldMaterials.CreateLit("Terrain", Color.white, 0.1f));
-            _waterMat = waterMaterial != null ? Own(new Material(waterMaterial)) : Own(WorldMaterials.CreateLit("Water", Color.white, 0.85f));
+            if (waterMaterial != null)
+                _waterMat = Own(new Material(waterMaterial));
+            else
+            {
+                // Matte Oberfläche: Farbe kommt aus der Textur, Glanz würde aus der Fernansicht grell wirken (UI_STYLE_GUIDE A4).
+                _waterMat = Own(WorldMaterials.CreateLit("Water", Color.white, 0.4f));
+                WorldMaterials.DisableSpecular(_waterMat);
+            }
             if (_terrainMat != null) _terrainMat.mainTexture = tex;
             if (_waterMat != null) _waterMat.mainTexture = tex;
             _trunkMat = trunkMaterial != null ? trunkMaterial : Own(WorldMaterials.CreateLit("Trunk", new Color32(0x6B, 0x4A, 0x2F, 255), 0.05f));

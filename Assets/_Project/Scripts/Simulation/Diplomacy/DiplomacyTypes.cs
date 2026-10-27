@@ -78,6 +78,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         public TreatyEndReason EndReason;
     }
 
+    [Serializable]
     public sealed class WarGoal
     {
         public WarGoalType Type;
@@ -186,6 +187,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         public long PendingRecruitsTick = long.MinValue / 4;
     }
 
+    [Serializable]
     public readonly struct DecisionFactor
     {
         public readonly string Name;
