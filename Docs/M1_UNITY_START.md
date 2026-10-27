@@ -76,6 +76,8 @@ Screenshots: Übersicht, Nahansicht Siedlung, HUD mit Feed, Kampf (falls gesehen
 
 ## 6. Bekannte Grenzen (ehrlich)
 
+- **Stand 2026-10-27 13:10 (Unity-Lauf 3):** Siedlungen, Gebäude, Einheiten und Gebiete werden noch NICHT gezeichnet (es gibt dafür noch keinen Renderer; Art & UI baut ihn). Laden meldet in Unity „Corrupted“ (Prüfsumme, Save/Perf behebt). Sichtbar sind Gelände, Wasser, Vegetation, HUD und Feed.
+
 - Grafik ist Platzhalter: eigene Modelle nach R1/R2 kommen erst mit dem Asset-Katalog.
 - Mehrere Werte sind PLATZHALTER (Kosten, Ressourcenbedarf, Konfliktfaktoren).
 - Zeit: 1 Civ-Jahr = 1 Spielminute (K5), Einheiten bewegen sich in Echtzeit. Bekannt: Kriege enden oft,
