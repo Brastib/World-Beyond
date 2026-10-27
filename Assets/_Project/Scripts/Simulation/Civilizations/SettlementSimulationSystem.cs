@@ -15,7 +15,7 @@ namespace WorldBeyond.Simulation.Civilizations
     {
         // ---- Raten pro Spieljahr (abgestimmt im Langzeittest, Docs/drafts/CIVILIZATION_DESIGN_DRAFT.md §15) ----
         public const double FoodPerAdult = 1.0, FoodPerChild = 0.6, FoodPerElder = 0.8;
-        public const double BirthRate = 0.085;         // je Erwachsenem bei voller Versorgung und freiem Wohnraum
+        public const double BirthRate = 0.08;          // je Erwachsenem bei voller Versorgung und freiem Wohnraum
         public const double MaturationRate = 1.0 / 6;  // Kinder → Erwachsene
         public const double AgingRate = 1.0 / 40;      // Erwachsene → Alte
         // Vorindustriell realistisch (VISION V7): hohe Kindersterblichkeit, Nettowachstum höchstens ~1 %/Jahr;

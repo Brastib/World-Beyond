@@ -187,5 +187,25 @@ namespace WorldBeyond.Tests.Civilizations
             Assert.Less(st.Adults, adultsBefore + 3, "Siedler verlassen die Siedlung");
             Assert.AreEqual(RecruitResult.InvalidRequest, r.Ctx.Get<IRecruitment>().Request(1, "unit.unbekannt", 1, sid));
         }
+
+        [Test]
+        public void MilitaryCap_IsTenPercent_AtLeastTwo_AtMostEighty()
+        {
+            var r = CivRun.Create(5);
+            r.Years(0.05);
+            var rec = (Recruitment)r.Ctx.Get<IRecruitment>();
+            var st = r.State.FindSettlement(r.Civs.Get(1).CapitalSettlementId);
+            int others = 0;
+            foreach (int sid in r.Settlements.GetByCiv(1)) if (sid != st.Id) others += r.Settlements.Get(sid).Population;
+            Assert.AreEqual(0, others, "Am Anfang nur der Hauptort");
+            st.Children = 0; st.Elders = 0;
+            st.Adults = 10;
+            Assert.AreEqual(Recruitment.MinMilitaryCap, rec.MaxMilitary(1), "kleines Volk: Mindestwert");
+            st.Adults = 300;
+            Assert.AreEqual(30, rec.MaxMilitary(1), "10 % der Einwohner");
+            st.Adults = 5000;
+            Assert.AreEqual(Recruitment.MaxMilitaryAbsolute, rec.MaxMilitary(1), "absolute Obergrenze");
+            Assert.AreEqual(80, Recruitment.MaxMilitaryAbsolute);
+        }
     }
 }
