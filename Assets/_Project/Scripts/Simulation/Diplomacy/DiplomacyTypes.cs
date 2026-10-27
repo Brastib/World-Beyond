@@ -106,6 +106,7 @@ namespace WorldBeyond.Simulation.Diplomacy
         public List<int> Defenders = new List<int>();
         public long StartTick;
         public long EndTick = -1;
+        public long FirstContactTick = -1;  // erste Feindberührung (Kampftreffer oder Verlust durch den Gegner), -1 = noch keine
         public CasusBelli CasusBelli;
         public List<WarGoal> Goals = new List<WarGoal>();
         public WarSideStats AttackerStats = new WarSideStats();
@@ -173,6 +174,9 @@ namespace WorldBeyond.Simulation.Diplomacy
         public long LastPeaceProposalTick = long.MinValue / 4;
         public long LastAllianceTick = long.MinValue / 4;
         public long LastRecruitTick = long.MinValue / 4;
+        // Angenommene, vermutlich noch nicht ausgebildete Rekruten (zählen zur Armee-Obergrenze, bis RecruitPendingTicks vorbei sind).
+        public int PendingRecruits;
+        public long PendingRecruitsTick = long.MinValue / 4;
     }
 
     public readonly struct DecisionFactor
