@@ -210,3 +210,34 @@ Bekannte Grenzen:
 - Arbeiter sind Zahlen je Siedlung (Berufe, Bau, Abbau), keine einzeln laufenden Figuren. Siedler und Karawanen sind echte Einheiten auf der Karte.
 - Migration zwischen Siedlungen derselben Civ ist abstrakt (sofortiger Wechsel bei Wohnraummangel), nicht als laufende Einheiten.
 - Der World-Test `TenMinutes_WithoutPlayerCommands_UnitsKeepMoving` setzt seine Test-Einheiten auf die Startplätze, auf denen jetzt Ortskerne stehen. Er ist grün, sollte aber `CivilizationCount = 0` setzen (beim World-Thread angefragt).
+
+## 17. Plan V15 (nach der M1-Abnahme): Zufriedenheit, Abwanderung, Neugründung, Aufstände
+
+Nutzerwunsch vom 2026-10-27: Menschen, die sich in einer Siedlung nicht wohlfühlen, können gehen und eigene Orte gründen oder einen Aufstand anzetteln. Moral im Krieg soll eine Rolle spielen. Alle Werte unten sind Startwerte für Langzeittests, keine festen Spielregeln.
+
+**Zufriedenheit je Siedlung** (`Settlement.Contentment`, 0..1, gespeichert). Sie folgt jedes Jahr gedämpft (etwa 20 % pro Jahr) einem Zielwert aus diesen Einflüssen:
+- Versorgung: Nahrungsvorrat in Jahren und Hunger.
+- Wohnraum: Belegung über 90 % senkt den Wert.
+- Arbeit: der Anteil Arbeitsloser.
+- Abgaben und Rekrutierung: Eingezogene der letzten Jahre im Verhältnis zur Einwohnerzahl.
+- Krieg: Kriegsmüdigkeit des Volkes über `IWarQuery.GetCivWarExhaustion`, dazu Verluste aus diesem Ort.
+- Sicherheit: Feinde in der Nähe, Plünderung, Eroberung.
+- Kultur und Herkunft: Ein eroberter Ort eines anderen Volkes startet niedrig.
+- Positiv wirken Bauten wie Tempel, Markt und Bibliothek, sobald es sie gibt.
+
+**Folgen, in drei Stufen:**
+1. **Abwanderung** (Zufriedenheit unter etwa 0,4): Familien ziehen in zufriedenere eigene Orte. Das gibt es heute schon für Überbelegung und Hunger und wird nur um den Zufriedenheitsgrund erweitert.
+2. **Neugründung** (unter etwa 0,3 über mehrere Jahre): Eine Gruppe (Gründergruppe 10 oder mehr) zieht als echte Siedler-Einheit los. Sie gründet einen Ort desselben Volkes. Liegt das Ziel weit weg oder ist die Kultur fremd, entsteht ein neues Volk über `ICivilizationRegistry.TryCreate`. Ein neues Volk braucht Abstimmung mit War, weil es Beziehungen und Meinungen erbt.
+3. **Aufstand** (unter etwa 0,2): Der Ort sagt sich los und wird ein eigenes Volk. Liegen Truppen dort, kann es zu Kampf kommen. Ablauf und Kampf stimmen wir mit War, dem AI Team und Military ab. Civ liefert das Ereignis `SettlementRevoltEvent` und die Abspaltung über `TransferSettlement` an ein neues Volk.
+
+**Schnittstelle zu Moral und Kriegsmüdigkeit** (abzustimmen mit Combat/Military und War):
+- Civ liest `GetCivWarExhaustion(civId)` als Eingang.
+- Civ stellt `ISettlementQuery`-Sicht `Contentment` bereit (neues Feld in SettlementView; die Änderung an der gemeinsamen Schnittstelle macht Integration).
+- Truppenmoral kann die Zufriedenheit des Herkunftsortes einbeziehen. Die Gewichtung entscheidet Military.
+
+**Etappen:**
+- V15a: Zufriedenheit berechnen und anzeigen, Abwanderung erweitern, Tests.
+- V15b: Neugründung durch Unzufriedene.
+- V15c: Aufstand und Abspaltung, gemeinsam mit War und Military.
+
+Jede Etappe bekommt Langzeittests mit 3 Seeds: Es dürfen keine Völker zerfallen, ohne dass es einen Grund dafür gibt. Die Wirkung muss im Entscheidungsprotokoll nachvollziehbar sein.
