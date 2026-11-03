@@ -9,6 +9,7 @@ Eigene Modelle, gebaut per Skript `Tools/Blender/prim_buildings.py` (Blender 4.0
 | `WB_Prim_Granary` | Vorratsspeicher auf Pfählen mit Mäusetellern, Lehmwände, Brettertür, Reetdach, Kerbbalken-Leiter | 4,1 × 4,5 × 4,9 m | 7 740 | `building.storehouse` / `bld.storehouse` |
 
 ## Technik
+- Ablage (seit 2026-11-03): `Resources/WorldBeyondBuildings/` (Modelle) und `Resources/WorldBeyondBuildings/Textures/`, damit `WorldObjectsRenderer` sie ohne Inspector-Verweis lädt (`BuildingModels.cs`). Die Materialien baut der Code zur Laufzeit aus den Texturen (Zuordnung über den Slot-Namen `M_<Name>` → `T_<Name>_D/_N/_MS`). Die `_N`-Texturen haben eine `.meta` mit Texture Type „Normal map“.
 - 1 Einheit = 1 m. Ursprung = Bodenmitte (0, 0, 0); Pfosten reichen 0,15 m in den Boden.
 - FBX mit Y oben, ohne Drehung oder Skalierung (`bake_space_transform`), ein Mesh je Modell, ein Material-Slot je Material.
 - Materialien: `M_Thatch`, `M_Daub`, `M_Bark`, `M_Wood`, `M_Hide`, `M_Earth`. Einstellungen je Material in URP/Lit:

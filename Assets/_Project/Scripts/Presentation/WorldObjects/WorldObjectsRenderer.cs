@@ -67,6 +67,7 @@ namespace WorldBeyond.Presentation.WorldObjects
         readonly Plane[] _frustum = new Plane[6];
 
         Mesh[] _buildingMeshes, _unitMeshes;
+        BuildingModels _models;
         Material _bodyMat, _darkMat, _roofMat, _thatchMat, _scaffoldMat, _ruinMat, _neutralCivMat, _territoryMat;
         readonly Dictionary<int, Material> _civMats = new Dictionary<int, Material>();
         readonly List<Object> _ownedAssets = new List<Object>();
@@ -118,6 +119,7 @@ namespace WorldBeyond.Presentation.WorldObjects
             _ownedAssets.Clear();
             _buildingMeshes = null;
             _unitMeshes = null;
+            _models = null;
         }
 
         void Build(GameComposition comp)
@@ -178,6 +180,7 @@ namespace WorldBeyond.Presentation.WorldObjects
             _buildingMeshes = new Mesh[10];
             for (int s = 0; s < _buildingMeshes.Length; s++)
                 _buildingMeshes[s] = Own(PlaceholderMeshes.Building((BuildingShape)s));
+            _models = new BuildingModels(_ownedAssets);
             _unitMeshes = new Mesh[PlaceholderMeshes.UnitShapeCount];
             for (int s = 0; s < _unitMeshes.Length; s++)
                 _unitMeshes[s] = Own(PlaceholderMeshes.Unit((PlaceholderMeshes.UnitShape)s));
@@ -307,6 +310,12 @@ namespace WorldBeyond.Presentation.WorldObjects
                 }
                 float horiz = b.Shape == BuildingShape.Wall ? 1f : (b.SizeX + b.SizeY) * 0.5f;
                 var scale = new Vector3(b.SizeX, horiz * b.Height01, b.SizeY);
+                if (_models.TryGet(b.Shape, out var model))
+                {
+                    // Modell in echter Größe; ragt es mehr als 25 % über die Grundfläche hinaus, gleichmäßig verkleinern.
+                    float fit = Mathf.Min(1f, Mathf.Min(b.SizeX, b.SizeY) * ts * 1.25f / model.FootprintMeters);
+                    scale = new Vector3(fit, fit * b.Height01, fit);
+                }
                 // Mauern 2×1 entlang der längeren Achse, Rest nach Hash leicht gedreht (nur 0/90/180/270°, damit nichts über die Kachel ragt).
                 float yaw = b.Shape == BuildingShape.Wall || b.SizeX != b.SizeY ? 0f : ((b.X * 7 + b.Y * 13) & 3) * 90f;
                 var m = Matrix4x4.TRS(new Vector3(cx, y, cz), tilt * Quaternion.Euler(0f, yaw, 0f), scale);
@@ -340,6 +349,16 @@ namespace WorldBeyond.Presentation.WorldObjects
                     var shape = (BuildingShape)(key % 16);
                     var state = (BuildingState)((key / 16) % StateCount);
                     int civId = key / 16 / StateCount;
+                    if (_models.TryGet(shape, out var model))
+                    {
+                        for (int sub = 0; sub < model.Mesh.subMeshCount; sub++)
+                        {
+                            Material mm = state == BuildingState.Ruin ? _ruinMat
+                                : state == BuildingState.UnderConstruction ? _scaffoldMat : model.Materials[sub];
+                            DrawList(model.Mesh, sub, mm, kv.Value, layer, true);
+                        }
+                        continue;
+                    }
                     Mesh mesh = _buildingMeshes[(int)shape];
                     Material civ = CivMaterial(civId);
                     for (int sub = 0; sub < PlaceholderMeshes.BuildingSubMeshes; sub++)
