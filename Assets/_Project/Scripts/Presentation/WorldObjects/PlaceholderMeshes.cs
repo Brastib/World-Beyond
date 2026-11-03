@@ -255,18 +255,72 @@ namespace WorldBeyond.Presentation.WorldObjects
             }
         }
 
+        // Animierte Teile (Code-Animation in WorldObjectsRenderer). Jedes Teil ist um seinen Drehpunkt gebaut.
+        public enum UnitPart { PersonLeg = 0, OxLeg = 1, OxHead = 2, Cart = 3, Wheel = 4 }
+        public const int UnitPartCount = 5;
+
+        // Drehpunkte im Einheitenraum (+Z vorn).
+        public static readonly Vector3[] PersonLegPivots = { V(-0.09f, 0.85f, 0f), V(0.09f, 0.85f, 0f) };
+        public static readonly Vector3[] OxLegPivots = { V(-0.23f, 0.8f, 1.88f), V(0.25f, 0.8f, 1.88f), V(-0.23f, 0.8f, 3.43f), V(0.25f, 0.8f, 3.43f) };
+        public static readonly Vector3 OxHeadPivot = V(0f, 1.3f, 3.55f);
+        public static readonly Vector3 CartPivot = V(0f, 0.62f, -0.35f);
+        public static readonly Vector3[] WheelPivots = { V(-0.92f, 0.62f, -0.35f), V(0.92f, 0.62f, -0.35f) };
+        public const float WheelRadius = 0.62f;
+
+        public static Mesh Part(UnitPart part)
+        {
+            var b = new Builder();
+            switch (part)
+            {
+                case UnitPart.PersonLeg:
+                    b.Box(0, V(-0.085f, -0.85f, -0.11f), V(0.085f, 0f, 0.11f));
+                    break;
+                case UnitPart.OxLeg:
+                    b.Box(0, V(-0.07f, -0.8f, -0.08f), V(0.07f, 0.02f, 0.08f));
+                    b.Box(0, V(-0.08f, -0.8f, -0.09f), V(0.08f, -0.72f, 0.1f));        // Huf
+                    break;
+                case UnitPart.OxHead:
+                    b.Box(0, V(-0.25f, -0.25f, 0.05f), V(0.25f, 0.2f, 0.6f));          // Kopf
+                    b.Box(0, V(-0.2f, -0.05f, -0.05f), V(0.2f, 0.25f, 0.1f));          // Hals
+                    b.Box(0, V(-0.45f, 0.12f, 0.2f), V(-0.25f, 0.2f, 0.3f));           // Hörner
+                    b.Box(0, V(0.25f, 0.12f, 0.2f), V(0.45f, 0.2f, 0.3f));
+                    break;
+                case UnitPart.Cart:
+                {
+                    Vector3 o = CartPivot;
+                    b.Box(0, V(-0.8f, 0.75f, -1.6f) - o, V(0.8f, 0.9f, 0.9f) - o);    // Ladefläche aus Brettern
+                    b.Box(0, V(-0.8f, 0.9f, -1.6f) - o, V(-0.72f, 1.25f, 0.9f) - o);
+                    b.Box(0, V(0.72f, 0.9f, -1.6f) - o, V(0.8f, 1.25f, 0.9f) - o);
+                    b.Box(0, V(-0.8f, 0.9f, -1.6f) - o, V(0.8f, 1.25f, -1.52f) - o);
+                    b.Box(0, V(-0.6f, 0.9f, -1.3f) - o, V(-0.05f, 1.3f, -0.3f) - o);  // Ladung: Säcke und Kisten
+                    b.Box(0, V(0.05f, 0.9f, -0.9f) - o, V(0.6f, 1.2f, 0.4f) - o);
+                    b.Box(0, V(0.74f, 1.25f, -1.58f) - o, V(0.8f, 2.4f, -1.52f) - o); // Wimpelstange
+                    b.Box(1, V(0.8f, 2.0f, -1.56f) - o, V(1.35f, 2.35f, -1.54f) - o); // Wimpel in Civ-Farbe
+                    b.Box(0, V(-1.0f, 0.57f, -0.4f) - o, V(1.0f, 0.67f, -0.3f) - o);  // Achse
+                    b.Box(0, V(-0.05f, 0.78f, 0.9f) - o, V(0.05f, 0.88f, 2.4f) - o);  // Deichsel
+                    break;
+                }
+                case UnitPart.Wheel:
+                    b.Wheel(0, Vector3.zero, WheelRadius, 0.12f);
+                    b.Box(0, V(-0.07f, -0.05f, -WheelRadius), V(0.07f, 0.05f, WheelRadius));   // Speichen, damit das Drehen sichtbar ist
+                    b.Box(0, V(-0.07f, -WheelRadius, -0.05f), V(0.07f, WheelRadius, 0.05f));
+                    break;
+            }
+            return b.Build("UnitPart_" + part + "_Placeholder", UnitSubMeshes);
+        }
+
         public static Mesh Unit(UnitShape shape)
         {
             var b = new Builder();
             switch (shape)
             {
                 case UnitShape.Person:
-                    b.Box(0, V(-0.18f, 0f, -0.12f), V(0.18f, 0.85f, 0.12f));            // Beine
+                    // Beine: Teil PersonLeg (animiert)
                     b.Box(1, V(-0.24f, 0.85f, -0.15f), V(0.24f, 1.45f, 0.15f));         // Kittel in Civ-Farbe
                     b.Box(0, V(-0.12f, 1.48f, -0.12f), V(0.12f, 1.78f, 0.12f));         // Kopf
                     break;
                 case UnitShape.Soldier:
-                    b.Box(0, V(-0.18f, 0f, -0.12f), V(0.18f, 0.85f, 0.12f));
+                    // Beine: Teil PersonLeg (animiert)
                     b.Box(1, V(-0.25f, 0.85f, -0.16f), V(0.25f, 1.45f, 0.16f));
                     b.Box(0, V(-0.12f, 1.48f, -0.12f), V(0.12f, 1.74f, 0.12f));
                     b.Box(1, V(-0.15f, 1.72f, -0.15f), V(0.15f, 1.84f, 0.15f));         // Helm
@@ -286,30 +340,11 @@ namespace WorldBeyond.Presentation.WorldObjects
                     b.Box(0, V(-0.1f, 0f, -2.2f), V(0.1f, 0.4f, -0.5f));               // Holm
                     break;
                 case UnitShape.Wagon:
-                    // Ochse vorn (+Z): Rumpf, Kopf, Beine, Hörner
+                    // Nur der Ochsenrumpf; Kopf, Beine, Karren und Räder sind animierte Teile (UnitPart, WagonParts).
                     b.Box(0, V(-0.42f, 0.75f, 1.7f), V(0.42f, 1.55f, 3.6f));
-                    b.Box(0, V(-0.25f, 1.05f, 3.6f), V(0.25f, 1.5f, 4.15f));
-                    b.Box(0, V(-0.45f, 1.42f, 3.75f), V(-0.25f, 1.5f, 3.85f));
-                    b.Box(0, V(0.25f, 1.42f, 3.75f), V(0.45f, 1.5f, 3.85f));
-                    foreach (float lx in new[] { -0.3f, 0.18f })
-                        foreach (float lz in new[] { 1.8f, 3.35f })
-                            b.Box(0, V(lx, 0f, lz), V(lx + 0.14f, 0.78f, lz + 0.16f));
-                    // Karren hinten: offene Ladefläche aus Brettern, zwei Speichenräder, Deichsel
-                    b.Box(0, V(-0.8f, 0.75f, -1.6f), V(0.8f, 0.9f, 0.9f));
-                    b.Box(0, V(-0.8f, 0.9f, -1.6f), V(-0.72f, 1.25f, 0.9f));
-                    b.Box(0, V(0.72f, 0.9f, -1.6f), V(0.8f, 1.25f, 0.9f));
-                    b.Box(0, V(-0.8f, 0.9f, -1.6f), V(0.8f, 1.25f, -1.52f));
-                    b.Box(0, V(-0.6f, 0.9f, -1.3f), V(-0.05f, 1.3f, -0.3f));           // Ladung: Säcke und Kisten
-                    b.Box(0, V(0.05f, 0.9f, -0.9f), V(0.6f, 1.2f, 0.4f));
-                    b.Box(0, V(0.74f, 1.25f, -1.58f), V(0.8f, 2.4f, -1.52f));         // Wimpelstange
-                    b.Box(1, V(0.8f, 2.0f, -1.56f), V(1.35f, 2.35f, -1.54f));         // Wimpel in Civ-Farbe
-                    b.Wheel(0, V(-0.92f, 0.62f, -0.35f), 0.62f, 0.12f);
-                    b.Wheel(0, V(0.92f, 0.62f, -0.35f), 0.62f, 0.12f);
-                    b.Box(0, V(-1.0f, 0.57f, -0.4f), V(1.0f, 0.67f, -0.3f));           // Achse
-                    b.Box(0, V(-0.05f, 0.78f, 0.9f), V(0.05f, 0.88f, 2.4f));           // Deichsel
                     break;
                 case UnitShape.Carrier:
-                    b.Box(0, V(-0.18f, 0f, -0.12f), V(0.18f, 0.85f, 0.12f));            // Beine
+                    // Beine: Teil PersonLeg (animiert)
                     b.Box(1, V(-0.24f, 0.85f, -0.15f), V(0.24f, 1.45f, 0.15f));         // Kittel
                     b.Box(0, V(-0.12f, 1.48f, -0.12f), V(0.12f, 1.78f, 0.12f));         // Kopf
                     b.Box(0, V(-0.26f, 0.8f, -0.55f), V(0.26f, 1.65f, -0.15f));         // Traglast auf dem Rücken

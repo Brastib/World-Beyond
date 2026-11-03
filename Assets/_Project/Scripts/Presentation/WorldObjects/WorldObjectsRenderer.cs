@@ -30,6 +30,7 @@ namespace WorldBeyond.Presentation.WorldObjects
         [SerializeField] float unitMaxScale = 1f;   // 1 = immer echte Größe (Vorgabe Integration 03.11.2026: realistische Maße)
         [Tooltip("Obergrenze für Fahrzeuge, Geschütze und Wagen, die schon in echter Größe 3–5 m lang sind.")]
         [SerializeField] float largeUnitMaxScale = 1f;
+        [SerializeField] float animationDistance = 250f;   // weiter weg stehen Beine/Räder still (aus der Ferne ohnehin kaum sichtbar)
 
         [Header("Aktualisierung (Sekunden Echtzeit)")]
         [SerializeField] float buildingRefreshSeconds = 0.25f;
@@ -66,7 +67,9 @@ namespace WorldBeyond.Presentation.WorldObjects
         readonly Matrix4x4[] _batch = new Matrix4x4[MaxPerBatch];
         readonly Plane[] _frustum = new Plane[6];
 
-        Mesh[] _buildingMeshes, _unitMeshes;
+        Mesh[] _buildingMeshes, _unitMeshes, _partMeshes;
+        readonly Dictionary<int, List<Matrix4x4>> _partLists = new Dictionary<int, List<Matrix4x4>>();
+        readonly UnitGait _gait = new UnitGait();
         Mesh _siteMesh;
         BuildingModels _models;
         Material _bodyMat, _darkMat, _roofMat, _thatchMat, _scaffoldMat, _ruinMat, _neutralCivMat, _territoryMat;
@@ -120,6 +123,7 @@ namespace WorldBeyond.Presentation.WorldObjects
             _ownedAssets.Clear();
             _buildingMeshes = null;
             _unitMeshes = null;
+            _partMeshes = null;
             _models = null;
         }
 
@@ -172,6 +176,9 @@ namespace WorldBeyond.Presentation.WorldObjects
             _civMats.Clear();
             foreach (var l in _unitLists.Values)
                 l.Clear();
+            foreach (var l in _partLists.Values)
+                l.Clear();
+            _gait.Clear();
         }
 
         void CreateSharedAssets()
@@ -186,6 +193,9 @@ namespace WorldBeyond.Presentation.WorldObjects
             _unitMeshes = new Mesh[PlaceholderMeshes.UnitShapeCount];
             for (int s = 0; s < _unitMeshes.Length; s++)
                 _unitMeshes[s] = Own(PlaceholderMeshes.Unit((PlaceholderMeshes.UnitShape)s));
+            _partMeshes = new Mesh[PlaceholderMeshes.UnitPartCount];
+            for (int p = 0; p < _partMeshes.Length; p++)
+                _partMeshes[p] = Own(PlaceholderMeshes.Part((PlaceholderMeshes.UnitPart)p));
 
             // Farben nach UI_STYLE_GUIDE A4 (warme, natürliche Töne; Civ-Farbe nur als Akzent).
             _bodyMat = Own(WorldMaterials.CreateLit("BuildingBody", new Color32(0xE2, 0xD3, 0xB2, 255), 0.08f));
@@ -435,6 +445,10 @@ namespace WorldBeyond.Presentation.WorldObjects
         {
             foreach (var l in _unitLists.Values)
                 l.Clear();
+            foreach (var l in _partLists.Values)
+                l.Clear();
+            _gait.BeginFrame();
+            float dt = Time.unscaledDeltaTime;
             Vector3 camPos = cam.transform.position;
             float maxSq = unitDistance * unitDistance;
             int visible = 0;
@@ -455,7 +469,14 @@ namespace WorldBeyond.Presentation.WorldObjects
                 int key = s.CivId * PlaceholderMeshes.UnitShapeCount + (int)shape;
                 if (!_unitLists.TryGetValue(key, out var list))
                     _unitLists[key] = list = new List<Matrix4x4>();
-                list.Add(Matrix4x4.TRS(pos, Quaternion.Euler(0f, heading, 0f), Vector3.one * scale));
+                var m = Matrix4x4.TRS(pos, Quaternion.Euler(0f, heading, 0f), Vector3.one * scale);
+                // Code-Animation nur in der Nähe (Teile wären aus der Ferne unsichtbar), Gang aus dem gelaufenen Weg.
+                _gait.Step(s.Id, x, z, dt, out float walked, out float amount);
+                bool near = sq < animationDistance * animationDistance;
+                if (!near) amount = 0f;
+                if (shape == PlaceholderMeshes.UnitShape.Wagon) m = AddWagonParts(m, walked, amount, s.CivId);
+                else if (shape != PlaceholderMeshes.UnitShape.Vehicle && shape != PlaceholderMeshes.UnitShape.Gun) m = AddLegs(m, walked, amount);
+                list.Add(m);
                 visible++;
             }
             VisibleUnitCount = visible;
@@ -468,10 +489,69 @@ namespace WorldBeyond.Presentation.WorldObjects
                 int shapeIndex = kv.Key % PlaceholderMeshes.UnitShapeCount;
                 Mesh mesh = _unitMeshes[shapeIndex];
                 // Karren in hellem Holz, damit er nicht als dunkler Klotz wirkt; Civ-Farbe nur am Wimpel (Submesh 1).
-                Material body = shapeIndex == (int)PlaceholderMeshes.UnitShape.Wagon ? _scaffoldMat : _darkMat;
+                Material body = _darkMat;   // Wagen-Grundmesh ist nur noch der Ochsenrumpf; Karren/Räder sind Holz-Teile
                 DrawList(mesh, 0, body, kv.Value, layer, false);
                 DrawList(mesh, 1, CivMaterial(kv.Key / PlaceholderMeshes.UnitShapeCount), kv.Value, layer, false);
             }
+            foreach (var kv in _partLists)
+            {
+                if (kv.Value.Count == 0)
+                    continue;
+                int part = kv.Key % PlaceholderMeshes.UnitPartCount;
+                Mesh mesh = _partMeshes[part];
+                bool wood = part == (int)PlaceholderMeshes.UnitPart.Cart || part == (int)PlaceholderMeshes.UnitPart.Wheel;
+                DrawList(mesh, 0, wood ? _scaffoldMat : _darkMat, kv.Value, layer, false);
+                if (part == (int)PlaceholderMeshes.UnitPart.Cart)
+                    DrawList(mesh, 1, CivMaterial(kv.Key / PlaceholderMeshes.UnitPartCount), kv.Value, layer, false);
+            }
+        }
+
+        void AddPart(PlaceholderMeshes.UnitPart part, int civId, Matrix4x4 m)
+        {
+            int key = civId * PlaceholderMeshes.UnitPartCount + (int)part;
+            if (!_partLists.TryGetValue(key, out var list))
+                _partLists[key] = list = new List<Matrix4x4>();
+            list.Add(m);
+        }
+
+        // Menschen: Beine schwingen gegenläufig, Körper wippt leicht (Schrittlänge ≈ 1,3 m je Doppelschritt).
+        Matrix4x4 AddLegs(Matrix4x4 m, float walked, float amount)
+        {
+            float phase = walked / 1.3f * Mathf.PI * 2f;
+            float swing = Mathf.Sin(phase) * 28f * amount;
+            float bob = Mathf.Abs(Mathf.Sin(phase)) * 0.04f * amount;
+            Matrix4x4 body = m * Matrix4x4.Translate(new Vector3(0f, bob, 0f));
+            for (int i = 0; i < 2; i++)
+            {
+                float a = i == 0 ? swing : -swing;
+                AddPart(PlaceholderMeshes.UnitPart.PersonLeg, 0, body * Matrix4x4.TRS(PlaceholderMeshes.PersonLegPivots[i], Quaternion.Euler(a, 0f, 0f), Vector3.one));
+            }
+            return body;
+        }
+
+        // Ochsenkarren: Ochse im Kreuzgang (diagonale Beinpaare gegenläufig), Kopf nickt im Doppeltakt, Räder rollen
+        // genau mit dem Weg (Winkel = Weg / Radius), Karren schaukelt leicht um die Achse.
+        Matrix4x4 AddWagonParts(Matrix4x4 m, float walked, float amount, int civId)
+        {
+            float phase = walked / 1.8f * Mathf.PI * 2f;
+            float swing = Mathf.Sin(phase) * 22f * amount;
+            float bob = Mathf.Abs(Mathf.Sin(phase)) * 0.05f * amount;
+            Matrix4x4 ox = m * Matrix4x4.Translate(new Vector3(0f, bob, 0f));
+            for (int i = 0; i < 4; i++)
+            {
+                // 0 hinten links, 1 hinten rechts, 2 vorn links, 3 vorn rechts; diagonal: 0+3 und 1+2
+                float a = (i == 0 || i == 3) ? swing : -swing;
+                AddPart(PlaceholderMeshes.UnitPart.OxLeg, 0, ox * Matrix4x4.TRS(PlaceholderMeshes.OxLegPivots[i], Quaternion.Euler(a, 0f, 0f), Vector3.one));
+            }
+            float nod = Mathf.Sin(phase * 2f) * 5f * amount + 6f;
+            AddPart(PlaceholderMeshes.UnitPart.OxHead, 0, ox * Matrix4x4.TRS(PlaceholderMeshes.OxHeadPivot, Quaternion.Euler(nod, 0f, 0f), Vector3.one));
+            float roll = Mathf.Sin(walked * 1.7f) * 1.6f * amount;
+            float pitch = Mathf.Sin(walked * 2.3f + 1f) * 0.8f * amount;
+            AddPart(PlaceholderMeshes.UnitPart.Cart, civId, m * Matrix4x4.TRS(PlaceholderMeshes.CartPivot, Quaternion.Euler(pitch, 0f, roll), Vector3.one));
+            float wheel = walked / PlaceholderMeshes.WheelRadius * Mathf.Rad2Deg;
+            for (int i = 0; i < 2; i++)
+                AddPart(PlaceholderMeshes.UnitPart.Wheel, 0, m * Matrix4x4.TRS(PlaceholderMeshes.WheelPivots[i], Quaternion.Euler(wheel, 0f, 0f), Vector3.one));
+            return ox;
         }
 
         void DrawList(Mesh mesh, int subMesh, Material material, List<Matrix4x4> list, int layer, bool shadows)
