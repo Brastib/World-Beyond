@@ -252,6 +252,10 @@ namespace WorldBeyond.Presentation.WorldView
             }
             mesh.normals = n;
             mesh.uv = uv;
+            // Wasserdaten für WaterSurface: tief, keine Strömung.
+            var water = new System.Collections.Generic.List<Vector4>(v.Length);
+            for (int k = 0; k < v.Length; k++) water.Add(new Vector4(20f, 0f, 0f, 0f));
+            mesh.SetUVs(1, water);
             mesh.triangles = t;
             mesh.RecalculateBounds();
             var go = NewObject("Ocean", parent);
@@ -259,6 +263,21 @@ namespace WorldBeyond.Presentation.WorldView
             var mr = go.AddComponent<MeshRenderer>();
             mr.sharedMaterial = _waterMat;
             mr.shadowCastingMode = ShadowCastingMode.Off;
+        }
+
+        // Eigener Wasser-Shader (Tiefenfarbe, Wellen, Fresnel, Uferschaum, Strömung); null, wenn er fehlt.
+        Material CreateWaterSurface(Texture2D colorMap)
+        {
+            var shader = Resources.Load<Shader>("WorldBeyondWater/WaterSurface");
+            if (shader == null) shader = Shader.Find("WorldBeyond/WaterSurface");
+            if (shader == null || !shader.isSupported)
+            {
+                Debug.LogWarning("WorldRenderer: Shader WorldBeyond/WaterSurface fehlt oder wird nicht unterstützt, Wasser bleibt matt.");
+                return null;
+            }
+            var m = Own(new Material(shader) { name = "WaterSurface" });
+            m.SetTexture("_ColorMap", colorMap);
+            return m;
         }
 
         void CreateMaterials()
@@ -271,12 +290,16 @@ namespace WorldBeyond.Presentation.WorldView
                 _waterMat = Own(new Material(waterMaterial));
             else
             {
-                // Matte Oberfläche: Farbe kommt aus der Textur, Glanz würde aus der Fernansicht grell wirken (UI_STYLE_GUIDE A4).
-                _waterMat = Own(WorldMaterials.CreateLit("Water", Color.white, 0.4f));
-                WorldMaterials.DisableSpecular(_waterMat);
+                _waterMat = CreateWaterSurface(tex);
+                if (_waterMat == null)
+                {
+                    // Rückfall: matte Oberfläche, Farbe aus der Textur (UI_STYLE_GUIDE A4).
+                    _waterMat = Own(WorldMaterials.CreateLit("Water", Color.white, 0.4f));
+                    WorldMaterials.DisableSpecular(_waterMat);
+                }
             }
             if (_terrainMat != null && _splat == null) _terrainMat.mainTexture = tex;
-            if (_waterMat != null) _waterMat.mainTexture = tex;
+            if (_waterMat != null && !_waterMat.HasProperty("_ColorMap")) _waterMat.mainTexture = tex;
             _trunkMat = trunkMaterial != null ? trunkMaterial : Own(WorldMaterials.CreateLit("Trunk", new Color32(0x6B, 0x4A, 0x2F, 255), 0.05f));
             _rockMat = rockMaterial != null ? rockMaterial : Own(WorldMaterials.CreateLit("Rock", WorldPalette.Rock, 0.15f));
             if (crownMaterials != null && crownMaterials.Length >= 2)

@@ -15,6 +15,7 @@ namespace WorldBeyond.Presentation.WorldView
         readonly List<Vector3> _vertices = new List<Vector3>(1100);
         readonly List<Vector3> _normals = new List<Vector3>(1100);
         readonly List<Vector2> _uvs = new List<Vector2>(1100);
+        readonly List<Vector4> _waterData = new List<Vector4>();   // Wasser: x = Tiefe (m), y = 0, zw = Strömung (m/s)
         readonly List<int> _indices = new List<int>(6200);
 
         public static int ChunkCountX(IWorldQuery world) => (world.Width + WorldConstants.ChunkSize - 1) / WorldConstants.ChunkSize;
@@ -127,14 +128,19 @@ namespace WorldBeyond.Presentation.WorldView
                     float l00 = Level(i, j), l10 = Level(i + 1, j), l01 = Level(i, j + 1), l11 = Level(i + 1, j + 1);
                     bool allWet = l00 > float.MinValue && l10 > float.MinValue && l01 > float.MinValue && l11 > float.MinValue;
                     float maxLevel = Mathf.Max(Mathf.Max(l00, l10), Mathf.Max(l01, l11));
+                    // Strömung bergab entlang des Wasserspiegels (Flüsse); Seen und Meer sind eben und strömen nicht.
+                    float f00 = l00 > float.MinValue ? l00 : maxLevel, f10 = l10 > float.MinValue ? l10 : maxLevel;
+                    float f01 = l01 > float.MinValue ? l01 : maxLevel, f11 = l11 > float.MinValue ? l11 : maxLevel;
+                    var grad = new Vector2(((f10 + f11) - (f00 + f01)) * 0.5f, ((f01 + f11) - (f00 + f10)) * 0.5f) / ts;
+                    Vector2 flow = grad.sqrMagnitude > 1e-6f ? -grad.normalized * Mathf.Clamp(grad.magnitude * 40f, 0.3f, 1.5f) : Vector2.zero;
                     int b = _vertices.Count;
                     if (allWet)
                     {
                         // Offenes Wasser braucht keine Unterteilung (Ozean-Chunks bleiben bei 4 Ecken je Zelle).
-                        AddWaterVertex(xa, l00, za, invW, invH);
-                        AddWaterVertex(xb, l10, za, invW, invH);
-                        AddWaterVertex(xa, l01, zb, invW, invH);
-                        AddWaterVertex(xb, l11, zb, invW, invH);
+                        AddWaterVertex(xa, l00, za, invW, invH, l00 - world.SampleHeight(xa, za), flow);
+                        AddWaterVertex(xb, l10, za, invW, invH, l10 - world.SampleHeight(xb, za), flow);
+                        AddWaterVertex(xa, l01, zb, invW, invH, l01 - world.SampleHeight(xa, zb), flow);
+                        AddWaterVertex(xb, l11, zb, invW, invH, l11 - world.SampleHeight(xb, zb), flow);
                         _indices.Add(b); _indices.Add(b + 3); _indices.Add(b + 1);
                         _indices.Add(b); _indices.Add(b + 2); _indices.Add(b + 3);
                         continue;
@@ -146,8 +152,9 @@ namespace WorldBeyond.Presentation.WorldView
                         {
                             float u = (float)su / n;
                             float x = Mathf.Lerp(xa, xb, u), z = Mathf.Lerp(za, zb, v);
-                            float y = Mathf.Min(world.SampleHeight(x, z) + DepthAt(i, j, u, v), maxLevel);
-                            AddWaterVertex(x, y, z, invW, invH);
+                            float ground = world.SampleHeight(x, z);
+                            float y = Mathf.Min(ground + DepthAt(i, j, u, v), maxLevel);
+                            AddWaterVertex(x, y, z, invW, invH, y - ground, flow);
                         }
                     }
                     for (int sv = 0; sv < n; sv++)
@@ -198,11 +205,12 @@ namespace WorldBeyond.Presentation.WorldView
             return t.WaterLevel > t.Height + 0.05f;
         }
 
-        void AddWaterVertex(float x, float y, float z, float invW, float invH)
+        void AddWaterVertex(float x, float y, float z, float invW, float invH, float depth, Vector2 flow)
         {
             _vertices.Add(new Vector3(x, y, z));
             _normals.Add(Vector3.up);
             _uvs.Add(new Vector2(x * invW, z * invH));
+            _waterData.Add(new Vector4(depth, 0f, flow.x, flow.y));
         }
 
         static Vector3 VertexNormal(IWorldQuery world, int i, int j)
@@ -224,6 +232,7 @@ namespace WorldBeyond.Presentation.WorldView
             _vertices.Clear();
             _normals.Clear();
             _uvs.Clear();
+            _waterData.Clear();
             _indices.Clear();
         }
 
@@ -234,6 +243,8 @@ namespace WorldBeyond.Presentation.WorldView
             mesh.SetVertices(_vertices);
             mesh.SetNormals(_normals);
             mesh.SetUVs(0, _uvs);
+            if (_waterData.Count == _vertices.Count)
+                mesh.SetUVs(1, _waterData);
             mesh.SetTriangles(_indices, 0, true);
         }
     }
