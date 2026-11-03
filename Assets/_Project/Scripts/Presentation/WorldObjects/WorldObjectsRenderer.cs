@@ -274,6 +274,9 @@ namespace WorldBeyond.Presentation.WorldObjects
 
         // ---------------- Gebäude ----------------
 
+        // Schlüssel-Formen über BuildingShape hinaus: Baustellen-Modelle nach Grundfläche (Formen nutzen 0…9).
+        const int SiteKey1x1 = 14, SiteKey2x2 = 15;
+
         static int Key(BuildingShape shape, BuildingState state, int civId) => ((civId * StateCount) + (int)state) * 16 + (int)shape;
 
         void RebuildBuildingChunks()
@@ -312,10 +315,26 @@ namespace WorldBeyond.Presentation.WorldObjects
                 }
                 float horiz = b.Shape == BuildingShape.Wall ? 1f : (b.SizeX + b.SizeY) * 0.5f;
                 var scale = new Vector3(b.SizeX, horiz * b.Height01, b.SizeY);
+                int keyShape = (int)b.Shape;
+                BuildingModels.Model fieldModel = b.Shape == BuildingShape.Field ? _models.Field(0) : null;
                 if (IsSite(b.Shape, b.State))
                 {
                     // Baustelle statt wachsendem Haus; fertig gebaut erscheint das Gebäude auf einmal.
                     scale = new Vector3(b.SizeX, 1f, b.SizeY);
+                    int size = Mathf.Min(b.SizeX, b.SizeY);
+                    BuildingModels.Model site = _models.Site(size);
+                    if (site != null)
+                    {
+                        // Baustellen-Modell (Asset-Katalog) nach Grundfläche, gleichmäßig auf die Kacheln skaliert.
+                        float s = Mathf.Clamp(size * ts / site.FootprintMeters, 0.6f, 1.6f);
+                        scale = new Vector3(s, s, s);
+                        keyShape = size <= 1 ? SiteKey1x1 : SiteKey2x2;
+                    }
+                }
+                else if (fieldModel != null)
+                {
+                    // Feldmodell (8 × 8 m) auf die echte Feldgröße strecken; Höhe bleibt.
+                    scale = new Vector3(b.SizeX * ts / fieldModel.SizeX, 1f, b.SizeY * ts / fieldModel.SizeZ);
                 }
                 else if (_models.TryGet(b.Shape, out var model))
                 {
@@ -329,7 +348,7 @@ namespace WorldBeyond.Presentation.WorldObjects
 
                 int chunk = Mathf.Min(b.Y / WorldConstants.ChunkSize, _countY - 1) * _countX + Mathf.Min(b.X / WorldConstants.ChunkSize, _countX - 1);
                 Chunk c = _chunks[chunk];
-                int key = Key(b.Shape, b.State, b.CivId);
+                int key = Key((BuildingShape)keyShape, b.State, b.CivId);
                 if (!c.Lists.TryGetValue(key, out var list))
                     c.Lists[key] = list = new List<Matrix4x4>();
                 list.Add(m);
@@ -347,6 +366,7 @@ namespace WorldBeyond.Presentation.WorldObjects
             Vector3 camPos = cam.transform.position;
             float maxSq = buildingDistance * buildingDistance;
             int layer = gameObject.layer;
+            int fieldStage = BuildingVisuals.FieldStage(_comp.Context.Clock.Tick, true);
             foreach (Chunk c in _chunks)
             {
                 if (!c.HasBounds || c.Bounds.SqrDistance(camPos) > maxSq || !GeometryUtility.TestPlanesAABB(_frustum, c.Bounds))
@@ -359,6 +379,18 @@ namespace WorldBeyond.Presentation.WorldObjects
                     var shape = (BuildingShape)(key % 16);
                     var state = (BuildingState)((key / 16) % StateCount);
                     int civId = key / 16 / StateCount;
+                    if ((int)shape == SiteKey1x1 || (int)shape == SiteKey2x2)
+                    {
+                        DrawModel(_models.Site((int)shape == SiteKey1x1 ? 1 : 2), null, kv.Value, layer);
+                        continue;
+                    }
+                    if (shape == BuildingShape.Field && _models.Field(0) != null)
+                    {
+                        BuildingModels.Model field = _models.Field(fieldStage);
+                        if (state != BuildingState.Complete || field == null) field = _models.Field(0);
+                        DrawModel(field, state == BuildingState.Ruin ? _ruinMat : null, kv.Value, layer);
+                        continue;
+                    }
                     if (IsSite(shape, state))
                     {
                         DrawList(_siteMesh, 0, _scaffoldMat, kv.Value, layer, true);
@@ -389,6 +421,12 @@ namespace WorldBeyond.Presentation.WorldObjects
                     }
                 }
             }
+        }
+
+        void DrawModel(BuildingModels.Model model, Material overrideMat, List<Matrix4x4> list, int layer)
+        {
+            for (int sub = 0; sub < model.Mesh.subMeshCount; sub++)
+                DrawList(model.Mesh, sub, overrideMat != null ? overrideMat : model.Materials[sub], list, layer, true);
         }
 
         // ---------------- Einheiten ----------------

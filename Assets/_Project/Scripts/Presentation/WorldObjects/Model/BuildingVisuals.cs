@@ -40,6 +40,17 @@ namespace WorldBeyond.Presentation.WorldObjects
     /// </summary>
     public sealed class BuildingVisuals
     {
+        /// <summary>Feldstufe nach Jahreszeit (alle Felder gleich): 0 umgepflügt (Frühjahr, nach der Ernte), 1 grün, 2 reif.
+        /// Felder im Bau sind immer umgepflügt. Die Simulation kennt (Stand 03.11.2026) keinen eigenen Erntezyklus.</summary>
+        public static int FieldStage(long tick, bool complete)
+        {
+            if (!complete)
+                return 0;
+            long y = CivTime.TicksPerYear;
+            float f = (float)(((tick % y) + y) % y) / y;
+            return f < 0.2f ? 0 : f < 0.55f ? 1 : f < 0.85f ? 2 : 0;
+        }
+
         public const float MinConstructionHeight = 0.2f;
         public const float RuinHeight = 0.35f;
         public static long RuinTicks = CivTime.TicksPerYear;

@@ -22,6 +22,17 @@ namespace WorldBeyond.UiTests
         }
 
         [Test]
+        public void FieldStage_FollowsSeason_AndSitesArePlowed()
+        {
+            long y = CivTime.TicksPerYear;
+            Assert.AreEqual(0, BuildingVisuals.FieldStage(y * 3 + y / 2, false));
+            Assert.AreEqual(0, BuildingVisuals.FieldStage(0, true));
+            Assert.AreEqual(1, BuildingVisuals.FieldStage(y * 2 + y * 3 / 10, true));
+            Assert.AreEqual(2, BuildingVisuals.FieldStage(y * 7 / 10, true));
+            Assert.AreEqual(0, BuildingVisuals.FieldStage(y * 9 / 10, true));
+        }
+
+        [Test]
         public void BuildingVisuals_ListsEveryAliveBuilding_WithCivAndShape()
         {
             var c = NewGame();
