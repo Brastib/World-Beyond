@@ -137,36 +137,62 @@ namespace WorldBeyond.Presentation.WorldView
             return h;
         }
 
+        readonly List<Matrix4x4> _near = new List<Matrix4x4>(), _far = new List<Matrix4x4>();
+
         // Zeichnet sichtbare Chunks bis maxDistance (Meter) um die Kamera. Krone und Stamm sind getrennte Submeshes;
-        // meshes, trunks und crowns sind je Kind indiziert (Rock nutzt nur rock).
-        public void Draw(Camera camera, float maxDistance, Mesh[] meshes, Material[] trunks, Material[] crowns, Material rock, int layer)
+        // Felder sind je Kind indiziert (Rock nutzt nur rock). LOD (Unity-Lauf 7: Alpha-Clip-Bäume bis 450 m kosteten
+        // zwei Drittel der Bildrate): bis lodDistance die near*-Modelle, dahinter die günstigen far*-Platzhalter.
+        // Chunks, die ganz jenseits von lodDistance liegen, werden ohne Aufteilung gezeichnet.
+        public void Draw(Camera camera, float maxDistance, float lodDistance,
+            Mesh[] nearMeshes, Material[] nearTrunks, Material[] nearCrowns,
+            Mesh[] farMeshes, Material[] farTrunks, Material[] farCrowns, Material rock, int layer)
         {
             if (camera == null)
                 return;
             GeometryUtility.CalculateFrustumPlanes(camera, _frustum);
             Vector3 camPos = camera.transform.position;
-            float maxSq = maxDistance * maxDistance;
+            float maxSq = maxDistance * maxDistance, lodSq = lodDistance * lodDistance;
             for (int i = 0; i < _chunks.Length; i++)
             {
                 Chunk c = _chunks[i];
-                if (c.Bounds.SqrDistance(camPos) > maxSq || !GeometryUtility.TestPlanesAABB(_frustum, c.Bounds))
+                float chunkSq = c.Bounds.SqrDistance(camPos);
+                if (chunkSq > maxSq || !GeometryUtility.TestPlanesAABB(_frustum, c.Bounds))
                     continue;
                 for (int k = 0; k < KindCount; k++)
                 {
                     List<Matrix4x4> list = c.Instances[k];
-                    if (list.Count == 0 || meshes[k] == null)
+                    if (list.Count == 0)
                         continue;
                     if (k == (int)Kind.Rock)
                     {
-                        DrawList(meshes[k], 0, rock, list, layer);
+                        if (nearMeshes[k] != null) DrawList(nearMeshes[k], 0, rock, list, layer);
+                        continue;
                     }
-                    else
+                    bool sameLod = nearMeshes[k] == farMeshes[k];
+                    if (sameLod || chunkSq > lodSq)
                     {
-                        DrawList(meshes[k], 0, trunks[k], list, layer);
-                        DrawList(meshes[k], 1, crowns[k], list, layer);
+                        DrawTree(farMeshes[k], farTrunks[k], farCrowns[k], list, layer);
+                        continue;
                     }
+                    _near.Clear();
+                    _far.Clear();
+                    foreach (Matrix4x4 m in list)
+                    {
+                        float dx = m.m03 - camPos.x, dy = m.m13 - camPos.y, dz = m.m23 - camPos.z;
+                        (dx * dx + dy * dy + dz * dz <= lodSq ? _near : _far).Add(m);
+                    }
+                    DrawTree(nearMeshes[k], nearTrunks[k], nearCrowns[k], _near, layer);
+                    DrawTree(farMeshes[k], farTrunks[k], farCrowns[k], _far, layer);
                 }
             }
+        }
+
+        void DrawTree(Mesh mesh, Material trunk, Material crown, List<Matrix4x4> list, int layer)
+        {
+            if (mesh == null || list.Count == 0)
+                return;
+            DrawList(mesh, 0, trunk, list, layer);
+            DrawList(mesh, 1, crown, list, layer);
         }
 
         void DrawList(Mesh mesh, int subMesh, Material material, List<Matrix4x4> list, int layer)

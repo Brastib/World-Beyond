@@ -30,6 +30,8 @@ namespace WorldBeyond.Presentation.WorldView
 
         [Header("Darstellung")]
         [SerializeField] float vegetationDistance = 450f;
+        [Tooltip("Bis zu dieser Entfernung (m) Baummodelle, dahinter einfache Platzhalter-Bäume (Bildrate).")]
+        [SerializeField] float treeModelDistance = 120f;
         [SerializeField] int maxChunkRebuildsPerFrame = 6;
         [SerializeField] float oceanMargin = 3000f;
 
@@ -51,7 +53,9 @@ namespace WorldBeyond.Presentation.WorldView
         Mesh[] _vegMeshes;
         Material _terrainMat, _waterMat, _trunkMat, _rockMat;
         Material[] _crownMats;
-        Material[] _vegTrunks, _vegCrowns;   // je VegetationLayer.Kind
+        Material[] _vegTrunks, _vegCrowns;   // je VegetationLayer.Kind, nah (Modell, falls geladen)
+        Mesh[] _vegFarMeshes;
+        Material[] _vegFarTrunks, _vegFarCrowns;   // je Kind, fern (immer Platzhalter)
 
         public IWorldQuery World => _world;
         public Texture2D ColorMap => _colorMap?.Texture;
@@ -183,7 +187,8 @@ namespace WorldBeyond.Presentation.WorldView
             Drain(_dirtyVegetation, i => _vegetation.RebuildChunk(i % _countX, i / _countX));
 
             Camera cam = viewCamera != null ? viewCamera : Camera.main;
-            _vegetation.Draw(cam, vegetationDistance, _vegMeshes, _vegTrunks, _vegCrowns, _rockMat, gameObject.layer);
+            _vegetation.Draw(cam, vegetationDistance, treeModelDistance, _vegMeshes, _vegTrunks, _vegCrowns,
+                _vegFarMeshes, _vegFarTrunks, _vegFarCrowns, _rockMat, gameObject.layer);
         }
 
         void Drain(SortedSet<int> set, System.Action<int> rebuild)
@@ -298,13 +303,18 @@ namespace WorldBeyond.Presentation.WorldView
             Set(VegetationLayer.Kind.Cherry, procBroadleaf, _trunkMat, _crownMats[1]);
             _vegMeshes[(int)VegetationLayer.Kind.Rock] = rockMesh != null ? rockMesh : Own(ProceduralMeshes.Rock());
 
+            _vegFarMeshes = (Mesh[])_vegMeshes.Clone();
+            _vegFarTrunks = (Material[])_vegTrunks.Clone();
+            _vegFarCrowns = (Material[])_vegCrowns.Clone();
+
             var loader = new ResourceModels("WorldBeyondTrees/", _ownedAssets);
             int loaded = 0;
-            if (coniferMesh == null) loaded += TryModel(loader, "WB_Tree_Spruce", VegetationLayer.Kind.Conifer);
+            // Fernfarben = mittlere Farbe der Laub-Atlanten, damit der LOD-Wechsel bei treeModelDistance kaum auffällt.
+            if (coniferMesh == null) loaded += TryModel(loader, "WB_Tree_Spruce", VegetationLayer.Kind.Conifer, new Color32(0x41, 0x55, 0x37, 255));
             if (broadleafMesh == null)
             {
-                loaded += TryModel(loader, "WB_Tree_Broadleaf", VegetationLayer.Kind.Broadleaf);
-                loaded += TryModel(loader, "WB_Tree_Cherry", VegetationLayer.Kind.Cherry);
+                loaded += TryModel(loader, "WB_Tree_Broadleaf", VegetationLayer.Kind.Broadleaf, new Color32(0x51, 0x62, 0x38, 255));
+                loaded += TryModel(loader, "WB_Tree_Cherry", VegetationLayer.Kind.Cherry, new Color32(0x5A, 0x6E, 0x3C, 255));
             }
             if (loaded > 0) Debug.Log($"WorldRenderer: {loaded} Baummodell(e) geladen.");
             else Debug.Log("WorldRenderer: keine Baummodelle in Resources/WorldBeyondTrees, Bäume bleiben Platzhalter.");
@@ -316,7 +326,7 @@ namespace WorldBeyond.Presentation.WorldView
                 _vegCrowns[(int)k] = crown;
             }
 
-            int TryModel(ResourceModels l, string file, VegetationLayer.Kind k)
+            int TryModel(ResourceModels l, string file, VegetationLayer.Kind k, Color farCrown)
             {
                 var m = l.Load(file);
                 if (m == null || m.Mesh.subMeshCount < 2 || m.Materials[0] == null || m.Materials[1] == null)
@@ -325,6 +335,7 @@ namespace WorldBeyond.Presentation.WorldView
                     return 0;
                 }
                 Set(k, m.Mesh, m.Materials[0], m.Materials[1]);
+                _vegFarCrowns[(int)k] = Own(WorldMaterials.CreateLit("CrownFar_" + k, farCrown, 0.05f));
                 return 1;
             }
         }
