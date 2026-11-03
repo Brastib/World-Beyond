@@ -8,6 +8,8 @@ Eigene Modelle, gebaut per Skript `Tools/Blender/prim_buildings.py` (Blender 4.0
 | `WB_Prim_Field_0Plowed` | Acker frisch gepflügt: Furchen aus Erde (echte Geometrie), Feldsteinrand mit Zugang vorn | 7,88 × 7,95 × 0,14 m | 6 240 | `building.farm` (2 × 2), Stufe 0 |
 | `WB_Prim_Field_1Green` | wie oben + junges grünes Getreide (gekreuzte Karten, 0,5 m) | 7,88 × 7,95 × 0,60 m | 7 824 | Stufe 1 |
 | `WB_Prim_Field_2Ripe` | wie oben + reifer Weizen mit Ähren (gekreuzte Karten, 1,0 m) | 7,99 × 7,95 × 1,15 m | 7 456 | Stufe 2 |
+| `WB_Prim_Construction_1x1` | Baustelle: eingeebneter Platz, Pfostenrahmen (teils fertig), Rähm, Flechtwerk-Anfang, Rundholz- und Bretterstapel, Steine | 3,60 × 3,60 × 2,17 m | 2 868 | Baustelle 1 × 1 |
+| `WB_Prim_Construction_2x2` | wie oben, größer, mit Lehmhaufen und Rutenbündel | 7,60 × 7,60 × 2,32 m | 4 088 | Baustelle 2 × 2 |
 | `WB_Prim_Hut_Wattle` | Hütte: Pfosten, Flechtwerk mit Lehm, Reetdach 50°, Fellvorhang, Tür seitlich | 3,74 × 3,78 × 4,05 m (Wände 3,2 × 2,6 m) | 13 008 | `building.hut` / `bld.hut` (1 × 1 Kachel) |
 | `WB_Prim_House_Wattle` | Großes Wohnhaus: Pfosten, Flechtwerk mit Lehm, Reetdach 48°, Fellvorhang an der Tür, innen hohl mit Lehmboden | 8,9 × 7,0 × 5,7 m (Wände 8 × 5,6 m) | 17 692 | späteres 2 × 2-Gebäude (Entscheidung Lead 2026-11-03) |
 | `WB_Prim_Tent_Hide` | Stangenzelt mit Fellbahn, Türöffnung, Rauchklappen, Heringe | 3,97 × 3,95 × 4,43 m | 4 256 | `bld.kit.wall.textile` (kein Sim-Gebäude) |
