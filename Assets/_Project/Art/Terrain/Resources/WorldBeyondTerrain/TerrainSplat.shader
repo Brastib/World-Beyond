@@ -21,7 +21,7 @@ Shader "WorldBeyond/TerrainSplat"
         _FarEnd ("nur Farbkarte ab (m)", Float) = 1100
         _WorldSizeXZ ("Weltgröße m (x, z)", Vector) = (1024, 1024, 0, 0)
         _HasNormal ("Normalen vorhanden", Float) = 1
-        _PathTint ("Wege: Farbfaktor", Color) = (1.35, 1.25, 1.05, 1)
+        _PathTint ("Wege: Trampelpfad-Farbe", Color) = (0.74, 0.6, 0.42, 1)
         _PathEdge ("Wege: Kantenschärfe", Range(0, 1)) = 0.7
         // Für die übernommenen Lit-Pässe (Schatten, Tiefe)
         [HideInInspector] _BaseMap ("", 2D) = "white" {}
@@ -137,7 +137,9 @@ Shader "WorldBeyond/TerrainSplat"
                     {
                         float2 uv = i.positionWS.xz / _Repeat[l];
                         half3 c = SAMPLE_TEXTURE2D_ARRAY(_Albedo, sampler_Albedo, uv, l).rgb;
-                        if (l == 2) c = saturate(c * _PathTint.rgb);   // Wege heller und sandiger als Hof-Erde
+                        // Wege als Trampelpfad in warmem Sandbraun (Unity-Lauf 7: Textur wirkte grau-bläulich gepflastert):
+                        // Helligkeitsmuster der Textur behalten, Farbe durch _PathTint ersetzen.
+                        if (l == 2) c = saturate(_PathTint.rgb * (0.6 + 0.4 * dot(c, half3(0.3, 0.59, 0.11)) / 0.45));
                         albedo += c * wl;
                         if (_HasNormal > 0.5)
                             nTS += UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(_Normal, sampler_Normal, uv, l)) * wl;
