@@ -427,8 +427,11 @@ namespace WorldBeyond.Presentation.WorldObjects
             {
                 if (kv.Value.Count == 0)
                     continue;
-                Mesh mesh = _unitMeshes[kv.Key % PlaceholderMeshes.UnitShapeCount];
-                DrawList(mesh, 0, _darkMat, kv.Value, layer, false);
+                int shapeIndex = kv.Key % PlaceholderMeshes.UnitShapeCount;
+                Mesh mesh = _unitMeshes[shapeIndex];
+                // Karren in hellem Holz, damit er nicht als dunkler Klotz wirkt; Civ-Farbe nur am Wimpel (Submesh 1).
+                Material body = shapeIndex == (int)PlaceholderMeshes.UnitShape.Wagon ? _scaffoldMat : _darkMat;
+                DrawList(mesh, 0, body, kv.Value, layer, false);
                 DrawList(mesh, 1, CivMaterial(kv.Key / PlaceholderMeshes.UnitShapeCount), kv.Value, layer, false);
             }
         }

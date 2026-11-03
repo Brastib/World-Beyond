@@ -294,13 +294,15 @@ namespace WorldBeyond.Presentation.WorldObjects
                     foreach (float lx in new[] { -0.3f, 0.18f })
                         foreach (float lz in new[] { 1.8f, 3.35f })
                             b.Box(0, V(lx, 0f, lz), V(lx + 0.14f, 0.78f, lz + 0.16f));
-                    b.Box(1, V(-0.44f, 1.3f, 2.3f), V(0.44f, 1.58f, 2.9f));             // Joch-Decke in Civ-Farbe
                     // Karren hinten: offene Ladefläche aus Brettern, zwei Speichenräder, Deichsel
                     b.Box(0, V(-0.8f, 0.75f, -1.6f), V(0.8f, 0.9f, 0.9f));
                     b.Box(0, V(-0.8f, 0.9f, -1.6f), V(-0.72f, 1.25f, 0.9f));
                     b.Box(0, V(0.72f, 0.9f, -1.6f), V(0.8f, 1.25f, 0.9f));
                     b.Box(0, V(-0.8f, 0.9f, -1.6f), V(0.8f, 1.25f, -1.52f));
-                    b.Box(1, V(-0.6f, 0.9f, -1.3f), V(0.6f, 1.35f, 0.4f));             // Ladung unter Plane
+                    b.Box(0, V(-0.6f, 0.9f, -1.3f), V(-0.05f, 1.3f, -0.3f));           // Ladung: Säcke und Kisten
+                    b.Box(0, V(0.05f, 0.9f, -0.9f), V(0.6f, 1.2f, 0.4f));
+                    b.Box(0, V(0.74f, 1.25f, -1.58f), V(0.8f, 2.4f, -1.52f));         // Wimpelstange
+                    b.Box(1, V(0.8f, 2.0f, -1.56f), V(1.35f, 2.35f, -1.54f));         // Wimpel in Civ-Farbe
                     b.Wheel(0, V(-0.92f, 0.62f, -0.35f), 0.62f, 0.12f);
                     b.Wheel(0, V(0.92f, 0.62f, -0.35f), 0.62f, 0.12f);
                     b.Box(0, V(-1.0f, 0.57f, -0.4f), V(1.0f, 0.67f, -0.3f));           // Achse
