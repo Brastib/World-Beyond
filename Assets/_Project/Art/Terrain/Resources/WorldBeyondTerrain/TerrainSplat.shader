@@ -21,6 +21,8 @@ Shader "WorldBeyond/TerrainSplat"
         _FarEnd ("nur Farbkarte ab (m)", Float) = 1100
         _WorldSizeXZ ("Weltgröße m (x, z)", Vector) = (1024, 1024, 0, 0)
         _HasNormal ("Normalen vorhanden", Float) = 1
+        _PathTint ("Wege: Farbfaktor", Color) = (1.35, 1.25, 1.05, 1)
+        _PathEdge ("Wege: Kantenschärfe", Range(0, 1)) = 0.7
         // Für die übernommenen Lit-Pässe (Schatten, Tiefe)
         [HideInInspector] _BaseMap ("", 2D) = "white" {}
         [HideInInspector] _BaseColor ("", Color) = (1, 1, 1, 1)
@@ -68,6 +70,8 @@ Shader "WorldBeyond/TerrainSplat"
                 float _FarStart;
                 float _FarEnd;
                 float _HasNormal;
+                half4 _PathTint;
+                half _PathEdge;
                 float4 _BaseMap_ST;
                 half4 _BaseColor;
                 half _Cutoff;
@@ -112,6 +116,14 @@ Shader "WorldBeyond/TerrainSplat"
                 half4 s1 = SAMPLE_TEXTURE2D(_Splat1, sampler_ColorMap, ctrlUV + jitter);
                 half4 s2 = SAMPLE_TEXTURE2D(_Splat2, sampler_ColorMap, ctrlUV + jitter);
                 half w[LAYERS] = { s0.r, s0.g, s0.b, s0.a, s1.r, s1.g, s1.b, s1.a, s2.r, s2.g };
+                // Wege (Schicht 2) mit klarer Kante statt 4-m-Verlauf: Gewicht geschärft, Rest anteilig gedämpft.
+                half pathRaw = w[2];
+                half halfWidth = 0.5 * (1.0 - _PathEdge) + 0.02;
+                half pathSharp = smoothstep(0.5 - halfWidth, 0.5 + halfWidth, pathRaw);
+                half restScale = pathRaw < 0.999 ? (1.0 - pathSharp) / (1.0 - pathRaw) : 0;
+                [unroll]
+                for (int r = 0; r < LAYERS; r++) w[r] *= restScale;
+                w[2] = pathSharp;
 
                 half3 albedo = 0;
                 half3 nTS = 0;
@@ -124,7 +136,9 @@ Shader "WorldBeyond/TerrainSplat"
                     if (wl > 0.004)
                     {
                         float2 uv = i.positionWS.xz / _Repeat[l];
-                        albedo += SAMPLE_TEXTURE2D_ARRAY(_Albedo, sampler_Albedo, uv, l).rgb * wl;
+                        half3 c = SAMPLE_TEXTURE2D_ARRAY(_Albedo, sampler_Albedo, uv, l).rgb;
+                        if (l == 2) c = saturate(c * _PathTint.rgb);   // Wege heller und sandiger als Hof-Erde
+                        albedo += c * wl;
                         if (_HasNormal > 0.5)
                             nTS += UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(_Normal, sampler_Normal, uv, l)) * wl;
                         total += wl;

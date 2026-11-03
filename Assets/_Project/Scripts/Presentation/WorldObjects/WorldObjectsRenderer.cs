@@ -67,6 +67,7 @@ namespace WorldBeyond.Presentation.WorldObjects
         readonly Plane[] _frustum = new Plane[6];
 
         Mesh[] _buildingMeshes, _unitMeshes;
+        Mesh _siteMesh;
         BuildingModels _models;
         Material _bodyMat, _darkMat, _roofMat, _thatchMat, _scaffoldMat, _ruinMat, _neutralCivMat, _territoryMat;
         readonly Dictionary<int, Material> _civMats = new Dictionary<int, Material>();
@@ -180,6 +181,7 @@ namespace WorldBeyond.Presentation.WorldObjects
             _buildingMeshes = new Mesh[10];
             for (int s = 0; s < _buildingMeshes.Length; s++)
                 _buildingMeshes[s] = Own(PlaceholderMeshes.Building((BuildingShape)s));
+            _siteMesh = Own(PlaceholderMeshes.ConstructionSite());
             _models = new BuildingModels(_ownedAssets);
             _unitMeshes = new Mesh[PlaceholderMeshes.UnitShapeCount];
             for (int s = 0; s < _unitMeshes.Length; s++)
@@ -310,7 +312,12 @@ namespace WorldBeyond.Presentation.WorldObjects
                 }
                 float horiz = b.Shape == BuildingShape.Wall ? 1f : (b.SizeX + b.SizeY) * 0.5f;
                 var scale = new Vector3(b.SizeX, horiz * b.Height01, b.SizeY);
-                if (_models.TryGet(b.Shape, out var model))
+                if (IsSite(b.Shape, b.State))
+                {
+                    // Baustelle statt wachsendem Haus; fertig gebaut erscheint das Gebäude auf einmal.
+                    scale = new Vector3(b.SizeX, 1f, b.SizeY);
+                }
+                else if (_models.TryGet(b.Shape, out var model))
                 {
                     // Modell in echter Größe; ragt es mehr als 25 % über die Grundfläche hinaus, gleichmäßig verkleinern.
                     float fit = Mathf.Min(1f, Mathf.Min(b.SizeX, b.SizeY) * ts * 1.25f / model.FootprintMeters);
@@ -332,6 +339,9 @@ namespace WorldBeyond.Presentation.WorldObjects
             }
         }
 
+        // Felder entstehen flach und dürfen „wachsen“; alles andere zeigt im Bau eine Baustelle.
+        static bool IsSite(BuildingShape shape, BuildingState state) => state == BuildingState.UnderConstruction && shape != BuildingShape.Field;
+
         void DrawBuildings(Camera cam)
         {
             Vector3 camPos = cam.transform.position;
@@ -349,6 +359,13 @@ namespace WorldBeyond.Presentation.WorldObjects
                     var shape = (BuildingShape)(key % 16);
                     var state = (BuildingState)((key / 16) % StateCount);
                     int civId = key / 16 / StateCount;
+                    if (IsSite(shape, state))
+                    {
+                        DrawList(_siteMesh, 0, _scaffoldMat, kv.Value, layer, true);
+                        DrawList(_siteMesh, 1, CivMaterial(civId), kv.Value, layer, true);
+                        DrawList(_siteMesh, 2, _darkMat, kv.Value, layer, true);
+                        continue;
+                    }
                     if (_models.TryGet(shape, out var model))
                     {
                         for (int sub = 0; sub < model.Mesh.subMeshCount; sub++)

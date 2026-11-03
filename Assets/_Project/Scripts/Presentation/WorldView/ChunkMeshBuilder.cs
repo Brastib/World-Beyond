@@ -71,39 +71,53 @@ namespace WorldBeyond.Presentation.WorldView
             return true;
         }
 
+        // Wasser als Höhenfeld über den Kachelmitten (wie das Gelände, gleiche Diagonale). Wasserkacheln liegen auf ihrem
+        // Wasserspiegel, Landkacheln 0,5 m unter dem Boden; die sichtbare Uferlinie ist der Schnitt mit dem Gelände und
+        // verläuft dadurch schräg und weich statt in 4-m-Treppen (Unity-Feedback 03.11.2026: eckige Flüsse).
+        // Randkacheln der Welt werden bis an den Weltrand gezogen, dort schließt die Ozeanebene an.
+        const float LandWaterDepth = 0.5f;
+
         public bool BuildWater(IWorldQuery world, int cx, int cy, Mesh mesh)
         {
             Clear();
-            int x0 = cx * WorldConstants.ChunkSize;
-            int y0 = cy * WorldConstants.ChunkSize;
-            int x1 = Mathf.Min(x0 + WorldConstants.ChunkSize, world.Width);
-            int y1 = Mathf.Min(y0 + WorldConstants.ChunkSize, world.Height);
-            float ts = WorldConstants.TileSize, half = ts * 0.5f;
-            float invW = 1f / (world.Width * ts), invH = 1f / (world.Height * ts);
-
-            for (int y = y0; y < y1; y++)
+            int i0 = cx * WorldConstants.ChunkSize;
+            int j0 = cy * WorldConstants.ChunkSize;
+            int i1 = Mathf.Min(i0 + WorldConstants.ChunkSize, world.Width - 1);
+            int j1 = Mathf.Min(j0 + WorldConstants.ChunkSize, world.Height - 1);
+            if (i1 <= i0 || j1 <= j0)
             {
-                for (int x = x0; x < x1; x++)
+                mesh.Clear();
+                return false;
+            }
+            float ts = WorldConstants.TileSize;
+            float invW = 1f / (world.Width * ts), invH = 1f / (world.Height * ts);
+            int stride = i1 - i0 + 1;
+            _water.Clear();
+            for (int j = j0; j <= j1; j++)
+            {
+                for (int i = i0; i <= i1; i++)
                 {
-                    if (!IsWaterTile(world, x, y))
-                        continue;
-                    float level = world.Get(x, y).WaterLevel;
-                    float minX = x * ts, maxX = minX + ts, minZ = y * ts, maxZ = minZ + ts;
-                    if (!IsWaterTile(world, x - 1, y)) minX -= half;
-                    if (!IsWaterTile(world, x + 1, y)) maxX += half;
-                    if (!IsWaterTile(world, x, y - 1)) minZ -= half;
-                    if (!IsWaterTile(world, x, y + 1)) maxZ += half;
-
-                    int b = _vertices.Count;
-                    AddWaterVertex(minX, level, minZ, invW, invH);
-                    AddWaterVertex(maxX, level, minZ, invW, invH);
-                    AddWaterVertex(minX, level, maxZ, invW, invH);
-                    AddWaterVertex(maxX, level, maxZ, invW, invH);
-                    _indices.Add(b); _indices.Add(b + 2); _indices.Add(b + 3);
-                    _indices.Add(b); _indices.Add(b + 3); _indices.Add(b + 1);
+                    bool wet = IsWaterTile(world, i, j);
+                    TileData t = world.Get(i, j);
+                    float wx = i == 0 ? 0f : i == world.Width - 1 ? world.Width * ts : WorldCoords.TileCenterX(i);
+                    float wz = j == 0 ? 0f : j == world.Height - 1 ? world.Height * ts : WorldCoords.TileCenterZ(j);
+                    float y = wet ? t.WaterLevel : world.SampleHeight(WorldCoords.TileCenterX(i), WorldCoords.TileCenterZ(j)) - LandWaterDepth;
+                    AddWaterVertex(wx, y, wz, invW, invH);
+                    _water.Add(wet);
                 }
             }
-            if (_vertices.Count == 0)
+            for (int j = 0; j < j1 - j0; j++)
+            {
+                for (int i = 0; i < i1 - i0; i++)
+                {
+                    int v00 = j * stride + i, v10 = v00 + 1, v01 = v00 + stride, v11 = v01 + 1;
+                    if (!_water[v00] && !_water[v10] && !_water[v01] && !_water[v11])
+                        continue;
+                    _indices.Add(v00); _indices.Add(v11); _indices.Add(v10);
+                    _indices.Add(v00); _indices.Add(v01); _indices.Add(v11);
+                }
+            }
+            if (_indices.Count == 0)
             {
                 mesh.Clear();
                 return false;
@@ -111,6 +125,8 @@ namespace WorldBeyond.Presentation.WorldView
             Upload(mesh);
             return true;
         }
+
+        readonly List<bool> _water = new List<bool>();
 
         public static bool IsWaterTile(IWorldQuery world, int x, int y)
         {

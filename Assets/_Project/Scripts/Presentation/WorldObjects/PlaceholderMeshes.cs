@@ -83,6 +83,31 @@ namespace WorldBeyond.Presentation.WorldObjects
                 }
             }
 
+            // Dreieck so gedreht, dass die Normale von center weg zeigt (für Räder und andere runde Teile).
+            public void TriOut(int sub, Vector3 a, Vector3 b, Vector3 c, Vector3 center)
+            {
+                if (Vector3.Dot(Vector3.Cross(b - a, c - a), (a + b + c) / 3f - center) < 0f)
+                    Tri(sub, a, c, b);
+                else
+                    Tri(sub, a, b, c);
+            }
+
+            // Rad als n-seitiges Prisma um die X-Achse.
+            public void Wheel(int sub, Vector3 center, float radius, float width, int sides = 10)
+            {
+                var off = new Vector3(width * 0.5f, 0f, 0f);
+                for (int s = 0; s < sides; s++)
+                {
+                    float a0 = s * Mathf.PI * 2f / sides, a1 = (s + 1) * Mathf.PI * 2f / sides;
+                    var p0 = center + new Vector3(0f, Mathf.Sin(a0), Mathf.Cos(a0)) * radius;
+                    var p1 = center + new Vector3(0f, Mathf.Sin(a1), Mathf.Cos(a1)) * radius;
+                    TriOut(sub, p0 - off, p1 - off, p1 + off, center);
+                    TriOut(sub, p0 - off, p1 + off, p0 + off, center);
+                    TriOut(sub, center - off, p0 - off, p1 - off, center);
+                    TriOut(sub, center + off, p1 + off, p0 + off, center);
+                }
+            }
+
             public Mesh Build(string name, int subMeshes)
             {
                 var m = new Mesh { name = name };
@@ -188,8 +213,33 @@ namespace WorldBeyond.Presentation.WorldObjects
             return b.Build("Building_" + shape + "_Placeholder", BuildingSubMeshes);
         }
 
-        public enum UnitShape { Person = 0, Soldier = 1, Vehicle = 2, Gun = 3, Wagon = 4 }
-        public const int UnitShapeCount = 5;
+        // Baustelle (Unity-Feedback 03.11.2026: Häuser sollen nicht aus dem Boden wachsen): festgestampfte Fläche,
+        // Eckpfosten mit Rahmen aus frischem Holz, Bretterstapel und Steinhaufen. Grundfläche 1 Kachel, der Renderer skaliert x/z.
+        // Submesh 0 = frisches Holz, 1 = Civ-Wimpel, 2 = Erde/dunkles Holz/Stein.
+        public static Mesh ConstructionSite()
+        {
+            var b = new Builder();
+            b.Box(Dark, V(-1.9f, -0.5f, -1.9f), V(1.9f, 0.03f, 1.9f));                 // Erdfläche
+            float p = 1.45f, t = 0.09f;
+            foreach (var c in new[] { V(-p, 0f, -p), V(p, 0f, -p), V(-p, 0f, p), V(p, 0f, p) })
+                b.Box(Dark, c + V(-t, 0f, -t), c + V(t, 3.2f, t));                         // Eckpfosten
+            b.Box(Body, V(-p - t, 2.9f, -p - t), V(p + t, 3.05f, -p + t));                // Rahmen oben
+            b.Box(Body, V(-p - t, 2.9f, p - t), V(p + t, 3.05f, p + t));
+            b.Box(Body, V(-p - t, 2.9f, -p), V(-p + t, 3.05f, p));
+            b.Box(Body, V(p - t, 2.9f, -p), V(p + t, 3.05f, p));
+            b.Box(Body, V(-p - t, 1.2f, -p - t), V(p + t, 1.3f, -p + t));                // Querriegel vorn
+            for (int i = 0; i < 4; i++)                                                    // Bretterstapel
+                b.Box(Body, V(0.2f, 0.03f + i * 0.09f, -1.0f), V(1.2f, 0.11f + i * 0.09f, 0.1f + i * 0.03f));
+            b.Box(Dark, V(-1.2f, 0.03f, 0.4f), V(-0.4f, 0.35f, 1.1f));                    // Steinhaufen
+            b.Box(Dark, V(-1.0f, 0.35f, 0.55f), V(-0.6f, 0.55f, 0.9f));
+            b.Box(Civ, V(p - 0.02f, 2.7f, p + t), V(p + 0.5f, 3.0f, p + t + 0.02f));     // Wimpel am Pfosten
+            return b.Build("ConstructionSite_Placeholder", BuildingSubMeshes);
+        }
+
+        // Wagon = Ochsenkarren mit Holzrädern (Frühzeit-tauglich, Unity-Feedback 03.11.2026: keine „Autos“);
+        // Carrier = Siedler zu Fuß mit Traglast. Vehicle/Gun gibt es erst mit Militärfahrzeugen späterer Epochen.
+        public enum UnitShape { Person = 0, Soldier = 1, Vehicle = 2, Gun = 3, Wagon = 4, Carrier = 5 }
+        public const int UnitShapeCount = 6;
 
         public static UnitShape ShapeFor(Simulation.Units.UnitRole role)
         {
@@ -199,7 +249,7 @@ namespace WorldBeyond.Presentation.WorldObjects
                 case Simulation.Units.UnitRole.Vehicle: return UnitShape.Vehicle;
                 case Simulation.Units.UnitRole.Artillery:
                 case Simulation.Units.UnitRole.RocketArtillery: return UnitShape.Gun;
-                case Simulation.Units.UnitRole.Settler:
+                case Simulation.Units.UnitRole.Settler: return UnitShape.Carrier;
                 case Simulation.Units.UnitRole.Trader: return UnitShape.Wagon;
                 default: return UnitShape.Person;
             }
@@ -236,13 +286,33 @@ namespace WorldBeyond.Presentation.WorldObjects
                     b.Box(0, V(-0.1f, 0f, -2.2f), V(0.1f, 0.4f, -0.5f));               // Holm
                     break;
                 case UnitShape.Wagon:
-                    b.Box(0, V(-0.95f, 0f, -1.2f), V(-0.8f, 0.8f, -0.4f));             // Räder
-                    b.Box(0, V(0.8f, 0f, -1.2f), V(0.95f, 0.8f, -0.4f));
-                    b.Box(0, V(-0.95f, 0f, 0.6f), V(-0.8f, 0.8f, 1.4f));
-                    b.Box(0, V(0.8f, 0f, 0.6f), V(0.95f, 0.8f, 1.4f));
-                    b.Box(0, V(-0.75f, 0.5f, -1.4f), V(0.75f, 1.0f, 1.6f));            // Wagenkasten
-                    b.Gable(1, -0.7f, 0.7f, -1.3f, 1.5f, 1.0f, 2.0f, 0.05f);           // Plane (First entlang X ist hier quer – reicht als Platzhalter)
-                    b.Box(0, V(-0.05f, 0.5f, 1.6f), V(0.05f, 0.6f, 2.6f));             // Deichsel
+                    // Ochse vorn (+Z): Rumpf, Kopf, Beine, Hörner
+                    b.Box(0, V(-0.42f, 0.75f, 1.7f), V(0.42f, 1.55f, 3.6f));
+                    b.Box(0, V(-0.25f, 1.05f, 3.6f), V(0.25f, 1.5f, 4.15f));
+                    b.Box(0, V(-0.45f, 1.42f, 3.75f), V(-0.25f, 1.5f, 3.85f));
+                    b.Box(0, V(0.25f, 1.42f, 3.75f), V(0.45f, 1.5f, 3.85f));
+                    foreach (float lx in new[] { -0.3f, 0.18f })
+                        foreach (float lz in new[] { 1.8f, 3.35f })
+                            b.Box(0, V(lx, 0f, lz), V(lx + 0.14f, 0.78f, lz + 0.16f));
+                    b.Box(1, V(-0.44f, 1.3f, 2.3f), V(0.44f, 1.58f, 2.9f));             // Joch-Decke in Civ-Farbe
+                    // Karren hinten: offene Ladefläche aus Brettern, zwei Speichenräder, Deichsel
+                    b.Box(0, V(-0.8f, 0.75f, -1.6f), V(0.8f, 0.9f, 0.9f));
+                    b.Box(0, V(-0.8f, 0.9f, -1.6f), V(-0.72f, 1.25f, 0.9f));
+                    b.Box(0, V(0.72f, 0.9f, -1.6f), V(0.8f, 1.25f, 0.9f));
+                    b.Box(0, V(-0.8f, 0.9f, -1.6f), V(0.8f, 1.25f, -1.52f));
+                    b.Box(1, V(-0.6f, 0.9f, -1.3f), V(0.6f, 1.35f, 0.4f));             // Ladung unter Plane
+                    b.Wheel(0, V(-0.92f, 0.62f, -0.35f), 0.62f, 0.12f);
+                    b.Wheel(0, V(0.92f, 0.62f, -0.35f), 0.62f, 0.12f);
+                    b.Box(0, V(-1.0f, 0.57f, -0.4f), V(1.0f, 0.67f, -0.3f));           // Achse
+                    b.Box(0, V(-0.05f, 0.78f, 0.9f), V(0.05f, 0.88f, 2.4f));           // Deichsel
+                    break;
+                case UnitShape.Carrier:
+                    b.Box(0, V(-0.18f, 0f, -0.12f), V(0.18f, 0.85f, 0.12f));            // Beine
+                    b.Box(1, V(-0.24f, 0.85f, -0.15f), V(0.24f, 1.45f, 0.15f));         // Kittel
+                    b.Box(0, V(-0.12f, 1.48f, -0.12f), V(0.12f, 1.78f, 0.12f));         // Kopf
+                    b.Box(0, V(-0.26f, 0.8f, -0.55f), V(0.26f, 1.65f, -0.15f));         // Traglast auf dem Rücken
+                    b.Box(1, V(-0.2f, 1.65f, -0.5f), V(0.2f, 1.8f, -0.2f));             // Bündel obenauf
+                    b.Box(0, V(0.28f, 0f, 0.15f), V(0.33f, 1.6f, 0.2f));               // Wanderstab
                     break;
             }
             return b.Build("Unit_" + shape + "_Placeholder", UnitSubMeshes);

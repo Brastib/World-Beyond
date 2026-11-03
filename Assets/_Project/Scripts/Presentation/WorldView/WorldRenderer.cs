@@ -153,17 +153,23 @@ namespace WorldBeyond.Presentation.WorldView
                     if (!_world.InBounds(x, y))
                         continue;
                     int cx = x / WorldConstants.ChunkSize, cy = y / WorldConstants.ChunkSize;
-                    _dirtyWater.Add(cy * _countX + cx);
-                    _dirtyTerrain.Add(cy * _countX + cx);
+                    // Wasser ist seit 03.11.2026 ein Höhenfeld wie das Gelände: gleiche Nachbar-Chunks betroffen.
+                    MarkChunk(cx, cy);
                     if (x % WorldConstants.ChunkSize == 0 && cx > 0)
-                        _dirtyTerrain.Add(cy * _countX + cx - 1);
+                        MarkChunk(cx - 1, cy);
                     if (y % WorldConstants.ChunkSize == 0 && cy > 0)
-                        _dirtyTerrain.Add((cy - 1) * _countX + cx);
+                        MarkChunk(cx, cy - 1);
                     if (x % WorldConstants.ChunkSize == 0 && cx > 0 && y % WorldConstants.ChunkSize == 0 && cy > 0)
-                        _dirtyTerrain.Add((cy - 1) * _countX + cx - 1);
+                        MarkChunk(cx - 1, cy - 1);
                 }
             }
             _dirtyVegetation.Add(e.Y / WorldConstants.ChunkSize * _countX + e.X / WorldConstants.ChunkSize);
+        }
+
+        void MarkChunk(int cx, int cy)
+        {
+            _dirtyTerrain.Add(cy * _countX + cx);
+            _dirtyWater.Add(cy * _countX + cx);
         }
 
         void LateUpdate()
