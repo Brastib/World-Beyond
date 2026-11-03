@@ -8,6 +8,14 @@ Shader "WorldBeyond/WaterSurface"
     Properties
     {
         _ColorMap ("Farbkarte (Ferne)", 2D) = "white" {}
+        _FineNormal ("Wellen fein (Normal)", 2D) = "bump" {}
+        _CoarseNormal ("Wellen grob (Normal)", 2D) = "bump" {}
+        _FoamMask ("Schaummaske", 2D) = "gray" {}
+        _Caustics ("Kaustik", 2D) = "black" {}
+        _FineRepeat ("Wiederholung fein (m)", Float) = 3
+        _CoarseRepeat ("Wiederholung grob (m)", Float) = 16
+        _TexNormalStrength ("Textur-Wellenstärke", Range(0, 2)) = 0.8
+        _CausticStrength ("Kaustik-Stärke", Range(0, 1)) = 0.35
         _ShallowColor ("Flachwasser", Color) = (0.27, 0.62, 0.62, 1)
         _DeepColor ("Tiefwasser", Color) = (0.05, 0.2, 0.32, 1)
         _DepthScale ("Tiefe bis voll dunkel (m)", Float) = 6
@@ -52,6 +60,10 @@ Shader "WorldBeyond/WaterSurface"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             TEXTURE2D(_ColorMap); SAMPLER(sampler_ColorMap);
+            TEXTURE2D(_FineNormal); SAMPLER(sampler_FineNormal);
+            TEXTURE2D(_CoarseNormal);
+            TEXTURE2D(_FoamMask);
+            TEXTURE2D(_Caustics);
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _ColorMap_ST;
@@ -60,6 +72,7 @@ Shader "WorldBeyond/WaterSurface"
                 float _WaveScale, _WaveStrength, _WaveSpeed, _FlowSpeed;
                 float _FresnelPower, _Gloss, _SpecStrength;
                 float _FoamDepth, _FoamStrength, _FarStart, _FarEnd;
+                float _FineRepeat, _CoarseRepeat, _TexNormalStrength, _CausticStrength;
             CBUFFER_END
 
             struct Attributes
@@ -127,7 +140,18 @@ Shader "WorldBeyond/WaterSurface"
                 float2 slope = lerp(WaveSlope(p - fo * ph0, t), WaveSlope(p - fo * ph1 + 3.7, t), wBlend);
                 // Feine zweite Lage für Glitzern
                 slope += WaveSlope(p * 3.1 + 11.0 - fo * 2.0 * ph0, t * 1.7) * 0.25;
-                float3 n = normalize(float3(-slope.x * _WaveStrength, 1.0, -slope.y * _WaveStrength));
+                // Kachelbare Wellen-Texturen (Asset-Katalog): fein und grob gegeneinander verschoben, mit der Strömung
+                // in zwei Phasen mitgezogen. Fehlen sie, sind sie flach ("bump") und nur die Sinuswellen wirken.
+                float2 wp = i.positionWS.xz;
+                float2 fl0 = flow * ph0 * 4.0, fl1 = flow * ph1 * 4.0;
+                float2 uvF = wp / max(_FineRepeat, 0.01), uvC = wp / max(_CoarseRepeat, 0.01);
+                float2 driftF = _Time.y * float2(0.03, 0.012) / max(_FineRepeat, 0.01);
+                float2 driftC = _Time.y * float2(-0.008, 0.012) / max(_CoarseRepeat, 0.01);
+                float3 nF = lerp(UnpackNormal(SAMPLE_TEXTURE2D(_FineNormal, sampler_FineNormal, uvF + driftF - fl0 / max(_FineRepeat, 0.01))),
+                                 UnpackNormal(SAMPLE_TEXTURE2D(_FineNormal, sampler_FineNormal, uvF + driftF - fl1 / max(_FineRepeat, 0.01) + 0.37)), wBlend);
+                float3 nC = UnpackNormal(SAMPLE_TEXTURE2D(_CoarseNormal, sampler_FineNormal, uvC + driftC - fl0 / max(_CoarseRepeat, 0.01)));
+                float2 texSlope = (nF.xy * 0.6 + nC.xy) * _TexNormalStrength;   // Tangentenraum xy ≈ Neigung in Welt x/z (Wasser liegt flach)
+                float3 n = normalize(float3(-slope.x * _WaveStrength + texSlope.x, 1.0, -slope.y * _WaveStrength + texSlope.y));
 
                 float3 viewDir = SafeNormalize(GetWorldSpaceViewDir(i.positionWS));
                 float4 shadowCoord = TransformWorldToShadowCoord(i.positionWS);
@@ -139,6 +163,10 @@ Shader "WorldBeyond/WaterSurface"
                 half3 water = lerp(_ShallowColor.rgb, _DeepColor.rgb, sqrt(dk));
                 float ndl = saturate(dot(n, light.direction)) * 0.5 + 0.5;
                 half3 col = water * (light.color * ndl * shadow + SampleSH(n) * 0.5);
+                // Kaustik nur im Flachen (bis ~2 m): zwei Lagen, Minimum ergibt das typische Lichtnetz.
+                float c0 = SAMPLE_TEXTURE2D(_Caustics, sampler_FineNormal, wp / 5.0 + _Time.y * float2(0.02, 0.013)).r;
+                float c1 = SAMPLE_TEXTURE2D(_Caustics, sampler_FineNormal, wp / 6.3 - _Time.y * float2(0.011, 0.017)).r;
+                col += light.color * min(c0, c1) * _CausticStrength * saturate(1.0 - depth / 2.0) * shadow;
 
                 // Fresnel + Himmelsreflexion
                 float fres = pow(1.0 - saturate(dot(n, viewDir)), _FresnelPower);
@@ -153,6 +181,8 @@ Shader "WorldBeyond/WaterSurface"
                 float shore = 1.0 - saturate(depth / max(_FoamDepth, 0.01));
                 float2 fp = i.positionWS.xz * 0.9 - flow * _Time.y * 0.6;
                 float noise = ValueNoise(fp) * 0.6 + ValueNoise(fp * 2.3 + _Time.y * 0.3) * 0.4;
+                float mask = SAMPLE_TEXTURE2D(_FoamMask, sampler_FineNormal, fp / 2.7).r;   // ohne Textur grau = neutral
+                noise = saturate(noise * 0.5 + mask * 0.9 - 0.2);
                 float band = 0.5 + 0.5 * sin(depth / max(_FoamDepth, 0.01) * 9.0 - _Time.y * 1.5);
                 float foam = saturate(shore * shore * (noise * 1.4 - 0.25 + band * 0.35)) * _FoamStrength;
                 // leichter Schaum bei schneller Strömung

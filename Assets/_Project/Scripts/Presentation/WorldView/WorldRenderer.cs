@@ -284,7 +284,19 @@ namespace WorldBeyond.Presentation.WorldView
             }
             var m = Own(new Material(shader) { name = "WaterSurface" });
             m.SetTexture("_ColorMap", colorMap);
+            // Kachelbare Wasser-Texturen (Asset-Katalog); fehlt eine, bleibt der neutrale Standard des Shaders.
+            SetIfFound(m, "_FineNormal", "WorldBeyondWater/T_WaterFine_N");
+            SetIfFound(m, "_CoarseNormal", "WorldBeyondWater/T_WaterCoarse_N");
+            SetIfFound(m, "_FoamMask", "WorldBeyondWater/T_WaterFoam_Mask");
+            SetIfFound(m, "_Caustics", "WorldBeyondWater/T_WaterCaustics");
             return m;
+        }
+
+        static void SetIfFound(Material m, string property, string resource)
+        {
+            var t = Resources.Load<Texture2D>(resource);
+            if (t != null)
+                m.SetTexture(property, t);
         }
 
         void CreateMaterials()
