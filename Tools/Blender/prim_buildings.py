@@ -1,5 +1,5 @@
 # World Beyond: Frühzeit-Gebäude für Unity aus Blender (headless).
-# Aufruf: blender -b -noaudio --python prim_buildings.py -- <center|hut|house|tent|granary> <texdir> <outdir> [preview.png] [samples]
+# Aufruf: blender -b -noaudio --python prim_buildings.py -- <field0|field1|field2|center|hut|house|tent|granary> <texdir> <outdir> [preview.png] [samples]
 # Ergebnis: <outdir>/WB_Prim_*.fbx (Ursprung = Bodenmitte, 1 Einheit = 1 m, Y oben in Unity), optional Vorschaubild.
 import bpy, bmesh, sys, math, random, os
 from mathutils import Vector, Matrix, noise
@@ -8,8 +8,8 @@ argv = sys.argv[sys.argv.index("--") + 1:]
 MODEL, TEX, OUTDIR = argv[0], argv[1], argv[2]
 PREVIEW = argv[3] if len(argv) > 3 else None
 SAMPLES = int(argv[4]) if len(argv) > 4 else 64
-NAMES = {"center": "WB_Prim_Center", "hut": "WB_Prim_Hut_Wattle", "house": "WB_Prim_House_Wattle", "tent": "WB_Prim_Tent_Hide", "granary": "WB_Prim_Granary"}
-rng = random.Random({"house": 1, "tent": 2, "granary": 3, "hut": 4, "center": 5}[MODEL])
+NAMES = {"field0": "WB_Prim_Field_0Plowed", "field1": "WB_Prim_Field_1Green", "field2": "WB_Prim_Field_2Ripe", "center": "WB_Prim_Center", "hut": "WB_Prim_Hut_Wattle", "house": "WB_Prim_House_Wattle", "tent": "WB_Prim_Tent_Hide", "granary": "WB_Prim_Granary"}
+rng = random.Random({"house": 1, "tent": 2, "granary": 3, "hut": 4, "center": 5, "field0": 6, "field1": 6, "field2": 6}[MODEL])
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
 
@@ -17,7 +17,7 @@ scene = bpy.context.scene
 TEXSETS = {  # Materialname: (Datei-Präfix, Kachelgröße in m)
     "M_Thatch": ("T_Thatch", 2.5), "M_Daub": ("T_Daub", 1.6), "M_Bark": ("T_Bark", 1.0),
     "M_Wood": ("T_Wood", 0.5), "M_Hide": ("T_Hide", 0.9), "M_Earth": ("T_Earth", 1.3),
-    "M_Stone": ("T_Stone", 0.9),
+    "M_Stone": ("T_Stone", 0.9), "M_LeafCrop": ("T_LeafCrop", 1.0),
 }
 MATS = {}
 def material(name):
@@ -28,6 +28,11 @@ def material(name):
         n = nt.nodes.new("ShaderNodeTexImage"); n.image = bpy.data.images.load(os.path.join(TEX, f"{pre}_{suffix}.jpg"))
         if non_color: n.image.colorspace_settings.name = "Non-Color"
         return n
+    if name.startswith("M_Leaf"):  # Laub/Getreide: PNG mit Alpha, im Spiel Alpha Clipping + beidseitig
+        d = nt.nodes.new("ShaderNodeTexImage"); d.image = bpy.data.images.load(os.path.join(TEX, f"{pre}_D.png"))
+        nt.links.new(d.outputs["Color"], b.inputs["Base Color"]); nt.links.new(d.outputs["Alpha"], b.inputs["Alpha"])
+        m.blend_method = "CLIP"; b.inputs["Roughness"].default_value = 0.7
+        MATS[name] = m; return m
     d = img("D", False); nt.links.new(d.outputs["Color"], b.inputs["Base Color"])
     r = img("R", True); nt.links.new(r.outputs["Color"], b.inputs["Roughness"])
     n = img("N", True); nm = nt.nodes.new("ShaderNodeNormalMap"); nt.links.new(n.outputs["Color"], nm.inputs["Color"])
@@ -389,6 +394,56 @@ def stone(c, r, squash=0.6, sub=2):
     bmesh.ops.translate(bm, vec=Vector(c), verts=bm.verts)
     bm.normal_update(); box_uv_bm(bm, TEXSETS["M_Stone"][1], (rng.random(), rng.random())); return finish(bm, "M_Stone")
 
+def build_field(stage):
+    """Acker (2 x 2 Kacheln = 8 x 8 m): Furchen aus Erde, Feldsteinrand, Getreide als Karten. stage 0 = gepflügt, 1 = grün, 2 = reif."""
+    half = 3.7; pitch_y = 0.55; amp = 0.07 if stage == 0 else 0.05
+    def zf(x, y): return amp * (0.5 + 0.5 * math.cos(2 * math.pi * y / pitch_y)) + 0.012 * noise.noise(Vector((x * 1.3, y * 1.3, stage)))
+    nx = 28; ny = int(2 * half / pitch_y * 6)
+    bm = bmesh.new(); grid = []
+    for j in range(ny + 1):
+        y = -half + 2 * half * j / ny
+        grid.append([bm.verts.new((-half + 2 * half * i / nx, y, zf(-half + 2 * half * i / nx, y) + 0.01)) for i in range(nx + 1)])
+    for j in range(ny):
+        for i in range(nx):
+            bm.faces.new((grid[j][i], grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i]))
+    for row in (grid[0], grid[-1]):  # Rand bis auf den Boden ziehen, damit keine Kante schwebt
+        for v in row: v.co.z = 0.0
+    for row in grid:
+        row[0].co.z = 0.0; row[-1].co.z = 0.0
+    bm.normal_update(); box_uv_bm(bm, TEXSETS["M_Earth"][1]); finish(bm, "M_Earth")
+    # Feldsteinrand mit Zugang vorn in der Mitte
+    edge = 3.8
+    for side in range(4):
+        t = -edge
+        while t < edge:
+            x, y = [(t, -edge), (edge, t), (-t, edge), (-edge, -t)][side]
+            if not (side == 0 and abs(x) < 0.6):
+                stone((x + rng.uniform(-0.04, 0.04), y + rng.uniform(-0.04, 0.04), 0.05), rng.uniform(0.09, 0.15), 0.55, sub=1)
+            t += rng.uniform(0.28, 0.4)
+    if stage == 0: return 8.0, 8.0
+    # Getreide: gekreuzte Karten auf den Furchenkämmen
+    bm = bmesh.new(); uv = bm.loops.layers.uv.new("UVMap")
+    size = 0.5 if stage == 1 else 1.0; v0 = 0.0 if stage == 1 else 0.5
+    k = 0
+    while True:
+        y = -half + 0.3 + k * pitch_y
+        if y > half - 0.3: break
+        y = round(y / pitch_y) * pitch_y if abs(round(y / pitch_y) * pitch_y) < half - 0.3 else y
+        x = -half + 0.25
+        while x < half - 0.25:
+            c = Vector((x + rng.uniform(-0.05, 0.05), y + rng.uniform(-0.04, 0.04), zf(x, y)))
+            u0 = 0.5 * rng.randrange(2); a0 = rng.uniform(0, math.pi)
+            sz = size * rng.uniform(0.85, 1.1)
+            for a in (a0, a0 + math.pi / 2):
+                d = Vector((math.cos(a), math.sin(a), 0)) * sz / 2
+                vs = [bm.verts.new(c - d), bm.verts.new(c + d), bm.verts.new(c + d + Vector((0, 0, sz))), bm.verts.new(c - d + Vector((0, 0, sz)))]
+                f = bm.faces.new(vs)
+                for lp, (uu, vv) in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))): lp[uv].uv = (u0 + uu * 0.5, v0 + vv * 0.5)
+            x += rng.uniform(0.26, 0.34) if stage == 2 else rng.uniform(0.2, 0.26)
+        k += 1
+    finish(bm, "M_LeafCrop")
+    return 8.0, 8.0
+
 def build_center():
     """Ortskern der Frühzeit (2 x 2 Kacheln = 8 x 8 m): Häuptlingshalle mit Vorplatz, Feuerstelle, Bänken und Holzstapel."""
     n0 = len(PARTS)
@@ -418,7 +473,7 @@ def build_center():
             tube([(1.85, y, 0.09 + row * 0.15), (2.85 + rng.uniform(-0.05, 0.05), y, 0.09 + row * 0.15)], [0.08, 0.075], 7, "M_Bark")
     return 8.0, 8.0
 
-span = {"center": build_center, "hut": lambda: build_house(3.2, 2.6, 1.8, 2, 2, 1, 0.85, 50, 0.4, 0.27, 0.28, 3, 2),
+span = {"field0": lambda: build_field(0), "field1": lambda: build_field(1), "field2": lambda: build_field(2), "center": build_center, "hut": lambda: build_house(3.2, 2.6, 1.8, 2, 2, 1, 0.85, 50, 0.4, 0.27, 0.28, 3, 2),
         "house": build_house, "tent": build_tent, "granary": build_granary}[MODEL]()
 
 # ---------- Zusammenführen: ein Objekt, ein Material-Slot je Material (feste Reihenfolge) ----------
