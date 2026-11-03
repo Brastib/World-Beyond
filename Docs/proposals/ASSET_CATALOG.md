@@ -73,14 +73,14 @@ Die Prüfung läuft automatisch im Generator. Zusätzlich wird für jeden Archet
 | Wasserpflanzen (§2.6) | 6 | 6 | 0 | 0 | 0 | 0 |
 | Nutzpflanzen (§2.7) | 17 | 17 | 0 | 0 | 0 | 0 |
 | Fels, Gelände, Wasser (§3) | 26 | 13 | 13 (über P-003, P-004, P-005) | 0 | 0 | 0 |
-| Gebäude (§4) | 66 | 66 | 0 | 0 | 0 | 0 |
+| Gebäude (§4) | 66 | 63 | 0 | 3 | 0 | 0 |
 | Personen, Einheiten, Fahrzeuge (§5) | 37 | 37 | 0 | 0 | 0 | 0 |
 | Tiere (§6) | 10 | 10 | 0 | 0 | 0 | 0 |
 | Effekte, Decals (§7) | 32 | 32 | 0 | 0 | 0 | 0 |
 | Requisiten (§8) | 21 | 21 | 0 | 0 | 0 | 0 |
 | Innenausstattung (§8.1) | 14 | 14 | 0 | 0 | 0 | 0 |
 | Werkzeuge, Epochen-Gegenstände (§8.2) | 30 | 30 | 0 | 0 | 0 | 0 |
-| **Summe** | **367** | **352** | **15** (5 Platzhalter-Dateien P-001–P-005) | **0** | **0** | **0** |
+| **Summe** | **367** | **349** | **15** (5 Platzhalter-Dateien P-001–P-005) | **3** | **0** | **0** |
 
 Pflanzen-Gattungen gesamt (§2.2–2.7): **104** (Etappe P2). Ziel P3: 250–400 Gattungen, P4: Arten als Datensätze.
 
@@ -296,7 +296,7 @@ Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude
 | ID | Name | Sim-Schlüssel | Größe (Kacheln) | ab Epoche | Etappe | Status | Bemerkung |
 |---|---|---|---|---|---|---|---|
 | bld.town_center | Ortskern | building.town_center | 2×2 | F | A7 | geplant | |
-| bld.hut | Hütte | building.hut | 1×1 | F | A7 | geplant | |
+| bld.hut | Hütte | building.hut | 1×1 | F | A7 | in Arbeit (Modell v1 `Assets/_Project/Art/Buildings/Primitive/WB_Prim_House_Wattle`, Unity-Test offen) | |
 | bld.house | Steinhaus | building.house | 1×1 | M | A7 | geplant | |
 | bld.apartment | Mietshaus | building.apartment | 2×2 | I | A7 | geplant | |
 | bld.farm | Farm | building.farm | 2×2 | F | A7 | geplant | Felder: §2.7 |
@@ -308,7 +308,7 @@ Derzeit werden Gebäude **gar nicht dargestellt**. Weg: MB (+T0). Jedes Gebäude
 | bld.smelter | Schmelze | building.smelter | 1×1 | A | A7 | geplant | Rauch-Effekt |
 | bld.workshop | Werkstatt | building.workshop | 1×1 | M | A7 | geplant | |
 | bld.oil_well | Ölförderung | building.oil_well | 1×1 | Mo | A7 | geplant | |
-| bld.storehouse | Lagerhaus | building.storehouse | 1×1 | F | A7 | geplant | |
+| bld.storehouse | Lagerhaus | building.storehouse | 1×1 | F | A7 | in Arbeit (Modell v1 `Assets/_Project/Art/Buildings/Primitive/WB_Prim_Granary`, Unity-Test offen) | |
 | bld.warehouse | Großlager | building.warehouse | 2×2 | M | A7 | geplant | |
 | bld.library | Bibliothek | building.library | 1×1 | A | A7 | geplant | |
 | bld.palisade | Palisade | building.palisade | 1×1 | F | A7 | geplant | |
@@ -346,7 +346,7 @@ Der Katalog zählt deshalb nur, was wir wirklich bauen müssen: **Bauteil-Sätze
 |---|---|---|---|---|---|
 | bld.kit.wall.pole | Stangen, Flechtwerk, Lehmbewurf | Pfosten, Flechtwände, Lehmputz | F | A7 | geplant |
 | bld.kit.wall.log | Blockbau | liegende Stämme, Eckverbindungen | F | A7 | geplant (Probe in Haus v2/v3) |
-| bld.kit.wall.textile | Fell, Filz, Plane über Gerüst | Gerüststangen, Bahnen, Seile | F | A7 | geplant |
+| bld.kit.wall.textile | Fell, Filz, Plane über Gerüst | Gerüststangen, Bahnen, Seile | F | A7 | in Arbeit (Modell v1 `Assets/_Project/Art/Buildings/Primitive/WB_Prim_Tent_Hide`, Unity-Test offen) |
 | bld.kit.wall.adobe | Lehm, Adobe, Stampflehm | Wände, Gesimse, Wasserspeier | F | A7 | geplant (Probe in Haus v2/v3) |
 | bld.kit.wall.timberframe | Fachwerk | Ständer, Riegel, Streben, Gefache | A | A7 | geplant |
 | bld.kit.wall.stone | Bruch- und Quaderstein | Mauerwerk, Ecksteine, Stürze | A | A7 | geplant |
