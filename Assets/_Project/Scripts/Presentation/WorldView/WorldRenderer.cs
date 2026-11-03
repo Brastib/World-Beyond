@@ -36,6 +36,7 @@ namespace WorldBeyond.Presentation.WorldView
         IWorldQuery _world;
         WorldBeyond.Core.ISimEventBus _events;
         WorldColorMap _colorMap;
+        TerrainSplat _splat;   // Bodentexturen; null = einfarbig über Farbkarte
         VegetationLayer _vegetation;
         readonly ChunkMeshBuilder _builder = new ChunkMeshBuilder();
         readonly List<GameObject> _owned = new List<GameObject>();
@@ -88,6 +89,8 @@ namespace WorldBeyond.Presentation.WorldView
             _events.Subscribe<TileChangedEvent>(OnTileChanged);
 
             _colorMap = new WorldColorMap(world);
+            if (terrainMaterial == null)
+                _splat = TerrainSplat.TryCreate(world, _colorMap.Texture);
             CreateMaterials();
             _vegMeshes = new[]
             {
@@ -135,6 +138,8 @@ namespace WorldBeyond.Presentation.WorldView
             _ownedAssets.Clear();
             _colorMap?.Dispose();
             _colorMap = null;
+            _splat?.Dispose();
+            _splat = null;
         }
 
         void OnTileChanged(TileChangedEvent e)
@@ -142,6 +147,7 @@ namespace WorldBeyond.Presentation.WorldView
             if (_world == null || e.Kind == TileChangeKind.Owner || e.Kind == TileChangeKind.Resource)
                 return;
             _colorMap.UpdateTile(e.X, e.Y);
+            _splat?.UpdateTile(e.X, e.Y);
             // Ein Gitterpunkt gehört bis zu zwei Terrain-Chunks je Achse; Normalen hängen an den Nachbarn.
             for (int dy = -1; dy <= 1; dy++)
             {
@@ -169,6 +175,7 @@ namespace WorldBeyond.Presentation.WorldView
             if (_world == null)
                 return;
             _colorMap.ApplyIfDirty();
+            _splat?.ApplyIfDirty();
             Drain(_dirtyTerrain, RebuildTerrain);
             Drain(_dirtyWater, RebuildWater);
             Drain(_dirtyVegetation, i => _vegetation.RebuildChunk(i % _countX, i / _countX));
@@ -250,7 +257,9 @@ namespace WorldBeyond.Presentation.WorldView
         void CreateMaterials()
         {
             Texture2D tex = _colorMap.Texture;
-            _terrainMat = terrainMaterial != null ? Own(new Material(terrainMaterial)) : Own(WorldMaterials.CreateLit("Terrain", Color.white, 0.1f));
+            _terrainMat = terrainMaterial != null ? Own(new Material(terrainMaterial))
+                : _splat != null ? _splat.Material   // gehört TerrainSplat, wird dort zerstört
+                : Own(WorldMaterials.CreateLit("Terrain", Color.white, 0.1f));
             if (waterMaterial != null)
                 _waterMat = Own(new Material(waterMaterial));
             else
@@ -259,7 +268,7 @@ namespace WorldBeyond.Presentation.WorldView
                 _waterMat = Own(WorldMaterials.CreateLit("Water", Color.white, 0.4f));
                 WorldMaterials.DisableSpecular(_waterMat);
             }
-            if (_terrainMat != null) _terrainMat.mainTexture = tex;
+            if (_terrainMat != null && _splat == null) _terrainMat.mainTexture = tex;
             if (_waterMat != null) _waterMat.mainTexture = tex;
             _trunkMat = trunkMaterial != null ? trunkMaterial : Own(WorldMaterials.CreateLit("Trunk", new Color32(0x6B, 0x4A, 0x2F, 255), 0.05f));
             _rockMat = rockMaterial != null ? rockMaterial : Own(WorldMaterials.CreateLit("Rock", WorldPalette.Rock, 0.15f));

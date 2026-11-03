@@ -112,10 +112,10 @@ namespace WorldBeyond.Presentation.WorldObjects
             {
                 case BuildingShape.Center:
                     Plinth(b, 1.9f, 0.35f);
-                    b.Box(Body, V(-1.5f, 0.35f, -1.2f), V(1.5f, 2.6f, 1.2f));
-                    b.Gable(Roof, -1.5f, 1.5f, -1.2f, 1.2f, 2.6f, 3.8f, 0.2f);
-                    b.Box(Body, V(0.6f, 0.35f, 0.4f), V(1.6f, 4.6f, 1.4f));          // Turm
-                    b.Cone(Roof, V(1.1f, 4.6f, 0.9f), 0.85f, 1.4f, 4);
+                    b.Box(Body, V(-1.5f, 0.35f, -1.2f), V(1.5f, 2.2f, 1.2f));
+                    b.Gable(Roof, -1.5f, 1.5f, -1.2f, 1.2f, 2.2f, 3.3f, 0.2f);
+                    b.Box(Body, V(0.85f, 0.35f, 0.65f), V(1.45f, 3.4f, 1.25f));     // schlanker Turm
+                    b.Cone(Roof, V(1.15f, 3.4f, 0.95f), 0.5f, 0.9f, 4);
                     b.Box(Dark, V(-0.3f, 0.35f, -1.25f), V(0.3f, 1.6f, -1.2f));        // Tor
                     break;
                 case BuildingShape.Hut:
@@ -139,14 +139,14 @@ namespace WorldBeyond.Presentation.WorldObjects
                         b.Box(Dark, V(-1.62f, 1.2f + i * 1.4f, -1.42f), V(1.62f, 1.6f + i * 1.4f, 1.42f));
                     break;
                 case BuildingShape.Field:
-                    b.Box(Dark, V(-1.9f, -0.6f, -1.9f), V(1.9f, 0.08f, 1.9f));        // Erde
+                    b.Box(Dark, V(-1.9f, -0.6f, -1.9f), V(1.9f, 0.04f, 1.9f));        // Erde
                     for (int i = 0; i < 5; i++)                                         // Ährenreihen
                     {
                         float z = -1.6f + i * 0.8f;
-                        b.Box(Thatch, V(-1.7f, 0.08f, z - 0.22f), V(1.7f, 0.45f, z + 0.22f));
+                        b.Box(Thatch, V(-1.75f, 0.04f, z - 0.3f), V(1.75f, 0.2f, z + 0.3f));
                     }
-                    b.Box(Civ, V(-1.95f, 0f, -1.95f), V(-1.75f, 0.9f, -1.75f));       // Grenzpfosten
-                    b.Box(Civ, V(1.75f, 0f, 1.75f), V(1.95f, 0.9f, 1.95f));
+                    b.Box(Civ, V(-1.92f, 0f, -1.92f), V(-1.82f, 0.5f, -1.82f));       // Grenzpfosten
+                    b.Box(Civ, V(1.82f, 0f, 1.82f), V(1.92f, 0.5f, 1.92f));
                     break;
                 case BuildingShape.Workshop:
                     Plinth(b, 1.6f, 0.3f);

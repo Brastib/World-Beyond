@@ -19,6 +19,7 @@
     <Compile Include="../../Assets/_Project/Scripts/Application/**/*.cs" Exclude="../../Assets/_Project/Scripts/Application/Unity/**/*.cs" />
     <Compile Include="../../Assets/_Project/Scripts/Presentation/UI/Model/**/*.cs" />
     <Compile Include="../../Assets/_Project/Scripts/Presentation/WorldObjects/Model/**/*.cs" />
+    <Compile Include="../../Assets/_Project/Scripts/Presentation/WorldView/Model/**/*.cs" />
     <Compile Include="*.cs" />
   </ItemGroup>
   <ItemGroup>
