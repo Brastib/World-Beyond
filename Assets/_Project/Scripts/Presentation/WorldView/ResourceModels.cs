@@ -45,14 +45,29 @@ namespace WorldBeyond.Presentation.WorldView
             return new Model { Mesh = mesh, Materials = mats };
         }
 
-        // "M_Thatch" (auch "M_Thatch (Instance)" oder "M_Thatch.001") → "Thatch".
+        // Slot-Namen, deren Texturen anders heißen (Unity-Lauf 6: weiße Fichten/Laubbäume).
+        static readonly Dictionary<string, string> Aliases = new Dictionary<string, string>
+        {
+            { "BarkSpruce", "BarkPine" },
+            { "LeafSpruce", "LeafNeedle" },
+            { "LeafOak", "LeafBroad" },
+        };
+
+        // "M_Thatch" (auch "M_Thatch (Instance)" oder "M_Thatch.001") → "Thatch"; danach Alias-Tabelle.
         public static string TextureKey(string slotName)
         {
             string key = slotName ?? "";
             int cut = key.IndexOfAny(new[] { ' ', '.' });
             if (cut > 0) key = key.Substring(0, cut);
-            return key.StartsWith("M_") ? key.Substring(2) : key;
+            if (key.StartsWith("M_")) key = key.Substring(2);
+            return Aliases.TryGetValue(key, out string alias) ? alias : key;
         }
+
+        // Ersatzfarbe, wenn die Farbtextur fehlt: lieber Grün/Braun als Weiß.
+        static Color FallbackColor(string key) =>
+            key.StartsWith("Leaf") ? new Color32(0x4E, 0x7A, 0x34, 255)
+            : key.StartsWith("Bark") || key == "Wood" ? new Color32(0x6B, 0x4A, 0x2F, 255)
+            : new Color32(0xA8, 0x98, 0x7A, 255);
 
         /// <summary>Material aus T_<key>_D/_N/_MS; textureKey überschreibt die Zuordnung (z. B. Kirschblüte).</summary>
         public Material MaterialFor(string slotName, string textureKey = null)
@@ -62,14 +77,14 @@ namespace WorldBeyond.Presentation.WorldView
                 return cached;
 
             var baseMap = Resources.Load<Texture2D>(_folder + "Textures/T_" + key + "_D");
-            var m = WorldMaterials.CreateLit("Model_" + key, Color.white, 0.2f, baseMap);
+            var m = WorldMaterials.CreateLit("Model_" + key, baseMap != null ? Color.white : FallbackColor(key), 0.2f, baseMap);
             _materials[key] = m;
             if (m == null)
                 return null;
             _owned.Add(m);
             if (baseMap == null)
             {
-                Debug.LogWarning($"ResourceModels: Textur T_{key}_D fehlt, Material {slotName} bleibt grau.");
+                Debug.LogWarning($"ResourceModels: Textur T_{key}_D fehlt (Slot {slotName}), Ersatzfarbe statt Textur.");
                 return m;
             }
             var normal = Resources.Load<Texture2D>(_folder + "Textures/T_" + key + "_N");
