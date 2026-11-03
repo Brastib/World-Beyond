@@ -21,7 +21,8 @@ namespace WorldBeyond.Presentation.WorldObjects
 
         static readonly Dictionary<BuildingShape, string> Files = new Dictionary<BuildingShape, string>
         {
-            { BuildingShape.Hut, "WB_Prim_House_Wattle" },
+            { BuildingShape.Hut, "WB_Prim_Hut_Wattle" },
+            { BuildingShape.House, "WB_Prim_House_Wattle" },
             { BuildingShape.Storage, "WB_Prim_Granary" },
         };
 
