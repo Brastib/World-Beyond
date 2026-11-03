@@ -6,7 +6,7 @@ namespace WorldBeyond.Presentation.CameraControl
 {
     // Beobachter-Kamera (Sandbox: Zuschauen ist der Normalfall, UI_STYLE_GUIDE B0).
     // Kreist um einen Drehpunkt auf dem Boden: schwenken (WASD/Pfeile, Bildschirmrand, rechte Maustaste ziehen),
-    // drehen (Q/E, mittlere Maustaste ziehen), zoomen (Mausrad, 15–400 m bzw. bis zur Weltgröße).
+    // drehen (Q/E, mittlere Maustaste ziehen), zoomen (Mausrad, 15–260 m, RTS-Sicht).
     // Je weiter herausgezoomt, desto steiler der Blick (Kartenansicht). Läuft mit unskalierter Zeit,
     // funktioniert also auch bei pausierter Simulation. FocusOn springt weich zu einer Stelle (Ereignis-Feed).
     [RequireComponent(typeof(Camera))]
@@ -18,12 +18,12 @@ namespace WorldBeyond.Presentation.CameraControl
 
         [Header("Zoom (Meter Abstand zum Drehpunkt)")]
         [SerializeField] float minDistance = 15f;
-        [SerializeField] float maxDistance = 400f;
+        [SerializeField] float maxDistance = 220f;
         [Tooltip("Maximaler Abstand wächst mit der Weltgröße bis zu diesem Wert, damit die ganze Karte sichtbar wird")]
-        [SerializeField] float absoluteMaxDistance = 2200f;
+        [SerializeField] float absoluteMaxDistance = 260f;   // RTS-Sicht (Nutzer 2026-11-03): nicht die ganze Karte von oben wie WorldBox
         [SerializeField] float zoomStep = 0.15f;
-        [SerializeField] float minPitch = 32f;
-        [SerializeField] float maxPitch = 72f;
+        [SerializeField] float minPitch = 28f;
+        [SerializeField] float maxPitch = 55f;
 
         [Header("Bewegung")]
         [SerializeField] float panSpeed = 1.1f;            // Anteil des Abstands pro Sekunde
@@ -37,7 +37,7 @@ namespace WorldBeyond.Presentation.CameraControl
         Camera _camera;
         Vector3 _pivot, _pivotTarget;
         float _yaw = 0f, _yawTarget = 0f;
-        float _distance = 120f, _distanceTarget = 120f;
+        float _distance = 70f, _distanceTarget = 70f;
         Vector2 _lastMouse;
         bool _hasMouse;
         bool _initialized;
@@ -68,6 +68,22 @@ namespace WorldBeyond.Presentation.CameraControl
         }
 
         void OnWorldRebuilt(WorldRenderer r) => _initialized = false;
+
+        const float StartDistance = 70f;
+
+        static Vector3 FirstCapitalOr(IWorldQuery world, Vector3 fallback)
+        {
+            var boot = Object.FindAnyObjectByType<WorldBeyond.Application.GameBootstrap>();
+            var ctx = boot != null && boot.Composition != null ? boot.Composition.Context : null;
+            if (ctx == null || !ctx.TryGet(out WorldBeyond.Simulation.Civilizations.ICivilizationQuery civs)
+                || !ctx.TryGet(out WorldBeyond.Simulation.Civilizations.ISettlementQuery settlements))
+                return fallback;
+            var ids = civs.AllCivIds;
+            if (ids.Count == 0 || !civs.TryGet(ids[0], out var civ) || !settlements.TryGet(civ.CapitalSettlementId, out var cap))
+                return fallback;
+            var p = WorldCoords.TileToWorld(world, cap.X, cap.Y);
+            return new Vector3(p.X, p.Y, p.Z);
+        }
 
         IWorldQuery World => worldRenderer != null ? worldRenderer.World : null;
 
@@ -109,8 +125,9 @@ namespace WorldBeyond.Presentation.CameraControl
             if (!_initialized)
             {
                 _initialized = true;
+                // RTS-Start: nah an der ersten Hauptstadt statt Kartenübersicht; ohne Hauptstadt Kartenmitte.
                 float w = world.Width * WorldConstants.TileSize, h = world.Height * WorldConstants.TileSize;
-                SnapTo(new Vector3(w * 0.5f, 0f, h * 0.5f), Mathf.Min(MaxDistance, Mathf.Max(w, h) * 0.6f));
+                SnapTo(FirstCapitalOr(world, new Vector3(w * 0.5f, 0f, h * 0.5f)), StartDistance);
             }
 
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
