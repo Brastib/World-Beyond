@@ -811,7 +811,7 @@ namespace WorldBeyond.Simulation.Diplomacy
 
         internal void LogDecision(int civ, int target, DiplomaticActionType action, float utility, params DecisionFactor[] factors)
         {
-            var d = new DiplomaticDecision { Tick = Now, CivId = civ, TargetCiv = target, Action = action, Utility = utility };
+            var d = new DiplomaticDecision { Tick = Now, CivId = civ, TargetCiv = target, Action = action, Utility = utility + 0f };
             d.Factors.AddRange(factors);
             Decisions.Add(d);
             while (Decisions.Count > Settings.DecisionLogSize) Decisions.RemoveAt(0);

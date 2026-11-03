@@ -166,6 +166,60 @@ namespace WorldBeyond.Tests.EditMode.Combat
             Assert.That(Fingerprint(b), Is.EqualTo(Fingerprint(reference)));
         }
 
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        public void RejectedRestorePreservesExistingProgress(int defect)
+        {
+            var c = Make(0, 0);
+            var initial = new CaptureSaveState { Records = new[]
+            {
+                new CaptureRecord { SettlementId = SettlementId, AttackerCiv = 1, HeldTicks = 120 },
+            } };
+            Assert.That(c.Capture.TryRestoreState(initial, out var initialError), Is.True, initialError);
+
+            var broken = new CaptureRecord { SettlementId = 9, AttackerCiv = 3, HeldTicks = 20 };
+            if (defect == 0) broken.SettlementId = 0;
+            else if (defect == 1) broken.HeldTicks = -1;
+            else broken.SettlementId = 8;
+            var incoming = new CaptureSaveState { Records = new[]
+            {
+                new CaptureRecord { SettlementId = 8, AttackerCiv = 3, HeldTicks = 30 },
+                broken,
+            } };
+
+            Assert.That(c.Capture.TryRestoreState(incoming, out var error), Is.False);
+            Assert.That(error, Does.Contain("ungültig"));
+            var after = (CaptureSaveState)c.Capture.CaptureState();
+            Assert.That(after.Records.Length, Is.EqualTo(1), "keine Teilübernahme");
+            Assert.That(after.Records[0].SettlementId, Is.EqualTo(SettlementId));
+            Assert.That(after.Records[0].AttackerCiv, Is.EqualTo(1));
+            Assert.That(after.Records[0].HeldTicks, Is.EqualTo(120));
+        }
+
+        [Test]
+        public void ValidRestoreReplacesExistingProgressAndEmptyRestoreClearsIt()
+        {
+            var c = Make(0, 0);
+            var initial = new CaptureSaveState { Records = new[]
+            {
+                new CaptureRecord { SettlementId = SettlementId, AttackerCiv = 1, HeldTicks = 120 },
+            } };
+            Assert.That(c.Capture.TryRestoreState(initial, out var initialError), Is.True, initialError);
+            var incoming = new CaptureSaveState { Records = new[]
+            {
+                new CaptureRecord { SettlementId = 8, AttackerCiv = 3, HeldTicks = 30 },
+            } };
+            Assert.That(c.Capture.TryRestoreState(incoming, out var error), Is.True, error);
+            Assert.That(c.Capture.TryGetProgress(SettlementId, out _, out _), Is.False);
+            Assert.That(c.Capture.TryGetProgress(8, out int attacker, out float fraction), Is.True);
+            Assert.That(attacker, Is.EqualTo(3));
+            Assert.That(fraction, Is.EqualTo(0.1f).Within(0.0001f));
+
+            Assert.That(c.Capture.TryRestoreState(new CaptureSaveState { Records = Array.Empty<CaptureRecord>() }, out error), Is.True, error);
+            Assert.That(((CaptureSaveState)c.Capture.CaptureState()).Records, Is.Empty);
+        }
+
         [Test]
         public void RestoreRejectsBrokenRecords()
         {

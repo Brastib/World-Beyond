@@ -152,12 +152,18 @@ namespace WorldBeyond.Simulation.Military
         public bool TryRestoreState(object dto, out string error)
         {
             if (!(dto is CaptureSaveState s) || s.Records == null) { error = "capture: Zustand fehlt oder hat falschen Typ."; return false; }
+            // Erst vollständig prüfen: ein abgelehnter Zustand darf laufende Besetzungen nicht verändern.
+            var seen = new HashSet<int>();
+            foreach (var r in s.Records)
+            {
+                if (r == null) continue;
+                if (r.SettlementId == 0 || r.HeldTicks < 0 || !seen.Add(r.SettlementId))
+                { error = $"capture: ungültiger Eintrag für Siedlung {r.SettlementId}."; return false; }
+            }
             _progress.Clear();
             foreach (var r in s.Records)
             {
                 if (r == null) continue;
-                if (r.SettlementId == 0 || r.HeldTicks < 0 || _progress.ContainsKey(r.SettlementId))
-                { error = $"capture: ungültiger Eintrag für Siedlung {r.SettlementId}."; return false; }
                 _progress[r.SettlementId] = new Progress { AttackerCiv = r.AttackerCiv, HeldTicks = r.HeldTicks };
             }
             error = null;

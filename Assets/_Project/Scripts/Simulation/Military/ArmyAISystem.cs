@@ -353,24 +353,67 @@ namespace WorldBeyond.Simulation.Military
 
         internal int RecruitNeed(int civ)
         {
-            // Angreifer wollen Überlegenheit, Verteidiger nur Gleichstand (sonst schaukeln sich beide Seiten gegenseitig hoch).
+            // Bedarf aus der Lage, nicht aus der Gesamtstärke des Gegners (sonst Wettrüsten mit positiver Rückkopplung, QA 2026-10-27):
+            // - Angriff: feindliche Truppen am eigenen Angriffsziel (Kriegsziel, sonst feindliche Heimat) × Superiority.
+            // - Verteidigung: feindliche Truppen, die näher an unserer Heimat stehen als an ihrer eigenen, × DefenderRatio.
+            // Truppen, die der Gegner zu Hause hält, treiben den Verteidiger nicht zur Aufrüstung. Ohne HomeOf: alle feindlichen Truppen.
             float own = 0f, threat = 0f;
+            bool local = _env.HomeOf != null;
+            float hx = 0f, hz = 0f;
+            if (local) { var h = _env.HomeOf(civ); local = h.ok; hx = h.x; hz = h.z; }
+            _enemyPoints.Clear();
             foreach (var id in _alive)
             {
                 if (!_units.TryGet(id, out var u) || u.MaxHp <= 0f) continue;
                 float s = _catalog.GetCombatStrength(u.Type) * (u.Hp / u.MaxHp);
                 if (s <= 0f) continue;
-                if (u.CivId == civ) own += s;
-                else if (_combatEnv.AreHostile(civ, u.CivId))
-                    threat += s * (_env.IsAttackerAgainst == null || _env.IsAttackerAgainst(civ, u.CivId) ? _env.Superiority : _env.DefenderRatio);
+                if (u.CivId == civ) { own += s; continue; }
+                if (!_combatEnv.AreHostile(civ, u.CivId)) continue;
+                bool attacker = _env.IsAttackerAgainst == null || _env.IsAttackerAgainst(civ, u.CivId);
+                if (!local) { threat += s * (attacker ? _env.Superiority : _env.DefenderRatio); continue; }
+
+                var p = EnemyPoints(civ, u.CivId);
+                float dh = Dist2(u.X, u.Z, hx, hz);
+                float factor = 0f;
+                if (!p.homeOk || dh < Dist2(u.X, u.Z, p.homeX, p.homeZ)) factor = _env.DefenderRatio;                 // rückt auf uns vor
+                if (attacker && Dist2(u.X, u.Z, p.targetX, p.targetZ) <= TargetAreaRadius * TargetAreaRadius)
+                    factor = Math.Max(factor, _env.Superiority);                                                   // verteidigt unser Ziel
+                threat += s * factor;
             }
             float unit = RecruitUnitStrength();
             if (unit <= 0f) return 0;
             if (_env.PendingRecruits != null) own += Math.Max(0, _env.PendingRecruits(civ)) * unit;   // eingereihte Aufträge zählen mit
-            float wanted = Math.Max(threat, _env.MinAttackUnits * unit);
+            // Grundarmee (MinAttackUnits) bestellt die Civ bei jeder spürbaren Bereitschaft, alles darüber nur ab RecruitThreshold:
+            // Ohne Grundarmee gäbe es weder Verteidigung noch Kriege (M1SandboxTests), darüber entscheidet die Kostenabwägung.
+            float baseline = _env.MinAttackUnits * unit;
             float willingness = _env.RecruitWillingness == null ? 1f : Math.Clamp(_env.RecruitWillingness(civ), 0f, 1f);
-            float gap = (wanted - own) * willingness;
+            float baseGap = Math.Max(0f, baseline - own);
+            float extraGap = willingness >= _env.RecruitThreshold ? Math.Max(0f, threat - Math.Max(own, baseline)) : 0f;
+            float gap = (baseGap + extraGap) * willingness;
             return gap <= 0f ? 0 : (int)MathF.Ceiling(gap / unit - 1e-4f);
+        }
+
+        private const float TargetAreaRadius = 300f;
+        private const float MinWillingness = 0.05f;      // Truppen so nah am Angriffsziel muss der Angreifer schlagen können
+        private readonly Dictionary<int, (bool homeOk, float homeX, float homeZ, float targetX, float targetZ)> _enemyPoints =
+            new Dictionary<int, (bool, float, float, float, float)>();
+
+        private static float Dist2(float ax, float az, float bx, float bz) { float dx = ax - bx, dz = az - bz; return dx * dx + dz * dz; }
+
+        // Heimat des Gegners und unser Angriffsziel gegen ihn (erstes Kriegsziel mit diesem Besitzer, sonst seine Heimat); je Aufruf gepuffert.
+        private (bool homeOk, float homeX, float homeZ, float targetX, float targetZ) EnemyPoints(int civ, int enemy)
+        {
+            if (_enemyPoints.TryGetValue(enemy, out var p)) return p;
+            var h = _env.HomeOf(enemy);
+            float tx = h.x, tz = h.z;
+            bool target = h.ok;
+            if (_env.Objectives != null)
+                foreach (var o in _env.Objectives(civ))
+                    if (o.OwnerCiv == enemy) { tx = o.X; tz = o.Z; target = true; break; }
+            if (!target) { tx = float.MaxValue / 4f; tz = float.MaxValue / 4f; }
+            p = (h.ok, h.x, h.z, tx, tz);
+            _enemyPoints[enemy] = p;
+            return p;
         }
 
         private float RecruitUnitStrength() => _catalog.GetRoleStrength(MilitaryRole.Rifleman);

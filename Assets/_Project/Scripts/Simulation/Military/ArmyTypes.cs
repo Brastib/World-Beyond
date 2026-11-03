@@ -107,7 +107,8 @@ namespace WorldBeyond.Simulation.Military
         public Func<int, float> RecruitWillingness;                          // 0..1: Bereitschaft der Civ aufzurüsten (Kosten, Unterhalt, Kriegsmüdigkeit); null = 1
         public float Superiority = 1.5f;                                     // PLATZHALTER bis Persönlichkeit/War: gewünschte Überlegenheit gegenüber feindlicher Stärke
         public int MinAttackUnits = 4;
-        public float DefenderRatio = 1f;                                     // PLATZHALTER: Verteidiger zielen auf Gleichstand
+        public float DefenderRatio = 1f;
+        public float RecruitThreshold = 0.4f;                                // unter dieser Bereitschaft wird nicht bestellt (wie War RecruitThreshold)                                     // PLATZHALTER: Verteidiger zielen auf Gleichstand
         public Func<int, int, bool> IsAttackerAgainst;                       // (civ, feindliche Civ) → civ ist Angreifer in diesem Krieg; null = immer Angreifer                                       // PLATZHALTER: kleine Eroberungstruppe, wenn der Feind keine Truppen hat
 
         // Besetzung von Siedlungen (SettlementCaptureSystem)

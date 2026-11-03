@@ -347,18 +347,30 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
         public void Recruitment_LaborShare_CountsSoldiers_AndRisesSteeply()
         {
             W.AddCiv(1, 0, 0, strength: 100, population: 80); W.AddCiv(2, 20, 0, strength: 100, population: 80);
+            float at5 = _rig.Ai.RecruitCost(1, 4, 80);        // 5 %
             float at10 = _rig.Ai.RecruitCost(1, 9, 80);       // ≈ 10 %
-            float at20 = _rig.Ai.RecruitCost(1, 20, 80);      // 20 %
-            float at30 = _rig.Ai.RecruitCost(1, 34, 80);      // ≈ 30 %
+            float at15 = _rig.Ai.RecruitCost(1, 14, 80);      // ≈ 15 %
             float huge = _rig.Ai.RecruitCost(1, 145, 80);     // Befund
-            Assert.Less(at10, 0.3f, "kleine Armee ist billig");
-            Assert.Greater(at20 - at10, 3f * (at10 - _rig.Ai.RecruitCost(1, 0, 80)), "ab der Schwelle steil");
-            Assert.Greater(at30, 1.75f, "teurer als jeder mögliche Nutzen");
-            Assert.Greater(huge, at30);
+            Assert.Less(at5, 0.2f, "kleine Armee ist billig");
+            Assert.Greater(at10 - at5, 2f * (at5 - _rig.Ai.RecruitCost(1, 0, 80)), "ab der Schwelle steil");
+            Assert.Greater(at15, 1.75f, "ab etwa 15 % teurer als jeder mögliche Nutzen (QA: Bereitschaft vor 10–15 % gegen 0)");
+            Assert.Greater(huge, at15);
             Assert.IsFalse(float.IsInfinity(huge) || float.IsNaN(huge));
         }
 
-        // Szenario: verzweifelter Verteidiger stellt nicht mehr als etwa ein Viertel seiner Leute unter Waffen.
+        // QA-Befund: Vorzeichen der Null ging beim Speichern verloren (−0 im Log gegen 0 nach dem Laden).
+        [Test]
+        public void ScoreAndFactors_NeverNegativeZero()
+        {
+            W.AddCiv(1, 0, 0); W.AddCiv(2, 20, 0);
+            D.DeclareWar(2, 1);
+            var war = D.FindWar(1, 2);
+            D.Update();
+            Assert.IsFalse(float.IsNegative(war.ScoreFor(1)) && war.ScoreFor(1) == 0f, "ScoreFor liefert keine −0");
+            Assert.IsFalse(float.IsNegative(new DecisionFactor("x", -0f).Value));
+        }
+
+        // Szenario: auch ein verzweifelter Verteidiger stellt weniger als 15 % seiner Leute unter Waffen (QA 2026-10-27: vorher bis 26 %).
         [Test]
         public void Recruitment_DesperateDefender_StaysBelowQuarter()
         {
@@ -373,7 +385,7 @@ namespace WorldBeyond.Tests.EditMode.Diplomacy
                 army += W.RecruitRequests.Where(r => r.civ == 1).Sum(r => r.count);   // jede Anfrage wird sofort Einheit
             }
             Assert.Greater(army, 0);
-            Assert.Less(army / (float)(army + 80), 0.25f);
+            Assert.Less(army / (float)(army + 80), 0.15f);
         }
 
         [Test]
