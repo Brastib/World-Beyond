@@ -78,7 +78,7 @@ namespace WorldBeyond.Presentation.WorldView
         // (Unity-Feedback 03.11.2026, Lauf 7). Randkacheln der Welt reichen bis an den Weltrand (Ozeanebene schließt an).
         const float LandWaterDepth = 0.6f;
         const int WaterSubdiv = 4;
-        float[] _depth = new float[0], _level = new float[0];
+        float[] _depth = new float[0], _level = new float[0], _fill = new float[0];
         int _depthStride, _depthI0, _depthJ0;
 
         public bool BuildWater(IWorldQuery world, int cx, int cy, Mesh mesh)
@@ -97,7 +97,7 @@ namespace WorldBeyond.Presentation.WorldView
             _depthI0 = i0 - 1; _depthJ0 = j0 - 1;
             _depthStride = i1 - i0 + 4;
             int rows = j1 - j0 + 4;
-            if (_depth.Length < _depthStride * rows) { _depth = new float[_depthStride * rows]; _level = new float[_depthStride * rows]; }
+            if (_depth.Length < _depthStride * rows) { _depth = new float[_depthStride * rows]; _level = new float[_depthStride * rows]; _fill = new float[_depthStride * rows]; }
             for (int r = 0; r < rows; r++)
             {
                 for (int q = 0; q < _depthStride; q++)
@@ -107,6 +107,27 @@ namespace WorldBeyond.Presentation.WorldView
                     bool wet = IsWaterTile(world, i, j);
                     _depth[r * _depthStride + q] = wet ? Mathf.Max(0.05f, world.Get(i, j).WaterLevel - ground) : -LandWaterDepth;
                     _level[r * _depthStride + q] = wet ? world.Get(i, j).WaterLevel : float.MinValue;
+                }
+            }
+
+            // Spiegelhöhe auch an Landpunkten (Mittel der nassen Nachbarn): Uferzellen bekommen so einen stetig fallenden
+            // Flussspiegel statt einer ebenen Stufe je Zelle (Lauf 8: Flussufer stufig). Pro Punkt, also nahtlos.
+            for (int r = 0; r < rows; r++)
+            {
+                for (int q = 0; q < _depthStride; q++)
+                {
+                    int k = r * _depthStride + q;
+                    if (_level[k] > float.MinValue) { _fill[k] = _level[k]; continue; }
+                    float sum = 0f; int cnt = 0;
+                    for (int dr = -1; dr <= 1; dr++)
+                        for (int dq = -1; dq <= 1; dq++)
+                        {
+                            int rr = r + dr, qq = q + dq;
+                            if (rr < 0 || rr >= rows || qq < 0 || qq >= _depthStride) continue;
+                            float l = _level[rr * _depthStride + qq];
+                            if (l > float.MinValue) { sum += l; cnt++; }
+                        }
+                    _fill[k] = cnt > 0 ? sum / cnt : float.MinValue;
                 }
             }
 
@@ -133,6 +154,7 @@ namespace WorldBeyond.Presentation.WorldView
                     float f01 = l01 > float.MinValue ? l01 : maxLevel, f11 = l11 > float.MinValue ? l11 : maxLevel;
                     var grad = new Vector2(((f10 + f11) - (f00 + f01)) * 0.5f, ((f01 + f11) - (f00 + f10)) * 0.5f) / ts;
                     Vector2 flow = grad.sqrMagnitude > 1e-6f ? -grad.normalized * Mathf.Clamp(grad.magnitude * 40f, 0.3f, 1.5f) : Vector2.zero;
+                    float g00 = Fill(i, j, maxLevel), g10 = Fill(i + 1, j, maxLevel), g01 = Fill(i, j + 1, maxLevel), g11 = Fill(i + 1, j + 1, maxLevel);
                     int b = _vertices.Count;
                     if (allWet)
                     {
@@ -153,7 +175,8 @@ namespace WorldBeyond.Presentation.WorldView
                             float u = (float)su / n;
                             float x = Mathf.Lerp(xa, xb, u), z = Mathf.Lerp(za, zb, v);
                             float ground = world.SampleHeight(x, z);
-                            float y = Mathf.Min(ground + DepthAt(i, j, u, v), maxLevel);
+                            float cap = Mathf.Lerp(Mathf.Lerp(g00, g10, u), Mathf.Lerp(g01, g11, u), v);
+                            float y = Mathf.Min(ground + DepthAt(i, j, u, v), cap);
                             AddWaterVertex(x, y, z, invW, invH, y - ground, flow);
                         }
                     }
@@ -175,6 +198,12 @@ namespace WorldBeyond.Presentation.WorldView
             }
             Upload(mesh);
             return true;
+        }
+
+        float Fill(int i, int j, float fallback)
+        {
+            float f = _fill[(j - _depthJ0) * _depthStride + (i - _depthI0)];
+            return f > float.MinValue ? f : fallback;
         }
 
         float Level(int i, int j) => _level[(j - _depthJ0) * _depthStride + (i - _depthI0)];
