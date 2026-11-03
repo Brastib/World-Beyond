@@ -70,6 +70,8 @@ namespace WorldBeyond.Presentation.WorldObjects
         Mesh[] _buildingMeshes, _unitMeshes, _partMeshes;
         readonly Dictionary<int, List<Matrix4x4>> _partLists = new Dictionary<int, List<Matrix4x4>>();
         readonly UnitGait _gait = new UnitGait();
+        UnitModels _unitModels;
+        readonly Dictionary<UnitModels.Part, List<Matrix4x4>> _modelParts = new Dictionary<UnitModels.Part, List<Matrix4x4>>();
         Mesh _siteMesh;
         BuildingModels _models;
         Material _bodyMat, _darkMat, _roofMat, _thatchMat, _scaffoldMat, _ruinMat, _neutralCivMat, _territoryMat;
@@ -125,6 +127,8 @@ namespace WorldBeyond.Presentation.WorldObjects
             _unitMeshes = null;
             _partMeshes = null;
             _models = null;
+            _unitModels = null;
+            _modelParts.Clear();
         }
 
         void Build(GameComposition comp)
@@ -196,6 +200,7 @@ namespace WorldBeyond.Presentation.WorldObjects
             _partMeshes = new Mesh[PlaceholderMeshes.UnitPartCount];
             for (int p = 0; p < _partMeshes.Length; p++)
                 _partMeshes[p] = Own(PlaceholderMeshes.Part((PlaceholderMeshes.UnitPart)p));
+            _unitModels = new UnitModels(_ownedAssets);
 
             // Farben nach UI_STYLE_GUIDE A4 (warme, natürliche Töne; Civ-Farbe nur als Akzent).
             _bodyMat = Own(WorldMaterials.CreateLit("BuildingBody", new Color32(0xE2, 0xD3, 0xB2, 255), 0.08f));
@@ -447,6 +452,8 @@ namespace WorldBeyond.Presentation.WorldObjects
                 l.Clear();
             foreach (var l in _partLists.Values)
                 l.Clear();
+            foreach (var l in _modelParts.Values)
+                l.Clear();
             _gait.BeginFrame();
             float dt = Time.unscaledDeltaTime;
             Vector3 camPos = cam.transform.position;
@@ -474,6 +481,12 @@ namespace WorldBeyond.Presentation.WorldObjects
                 _gait.Step(s.Id, x, z, dt, out float walked, out float amount);
                 bool near = sq < animationDistance * animationDistance;
                 if (!near) amount = 0f;
+                if (shape == PlaceholderMeshes.UnitShape.Wagon && _unitModels != null && _unitModels.HasOxCart)
+                {
+                    AddOxCartModel(m, walked, amount);
+                    visible++;
+                    continue;
+                }
                 if (shape == PlaceholderMeshes.UnitShape.Wagon) m = AddWagonParts(m, walked, amount, s.CivId);
                 else if (shape != PlaceholderMeshes.UnitShape.Vehicle && shape != PlaceholderMeshes.UnitShape.Gun) m = AddLegs(m, walked, amount);
                 list.Add(m);
@@ -492,6 +505,13 @@ namespace WorldBeyond.Presentation.WorldObjects
                 Material body = _darkMat;   // Wagen-Grundmesh ist nur noch der Ochsenrumpf; Karren/Räder sind Holz-Teile
                 DrawList(mesh, 0, body, kv.Value, layer, false);
                 DrawList(mesh, 1, CivMaterial(kv.Key / PlaceholderMeshes.UnitShapeCount), kv.Value, layer, false);
+            }
+            foreach (var kv in _modelParts)
+            {
+                if (kv.Value.Count == 0)
+                    continue;
+                for (int sub = 0; sub < kv.Key.Mesh.subMeshCount; sub++)
+                    DrawList(kv.Key.Mesh, sub, kv.Key.Materials[sub], kv.Value, layer, true);
             }
             foreach (var kv in _partLists)
             {
@@ -527,6 +547,39 @@ namespace WorldBeyond.Presentation.WorldObjects
                 AddPart(PlaceholderMeshes.UnitPart.PersonLeg, 0, body * Matrix4x4.TRS(PlaceholderMeshes.PersonLegPivots[i], Quaternion.Euler(a, 0f, 0f), Vector3.one));
             }
             return body;
+        }
+
+        void AddModelPart(UnitModels.Part part, Matrix4x4 m)
+        {
+            if (!_modelParts.TryGetValue(part, out var list))
+                _modelParts[part] = list = new List<Matrix4x4>();
+            list.Add(m);
+        }
+
+        // Ochsenkarren aus den Asset-Modellen (README WorldBeyondUnits): Beine diagonal ±18°, Kopf ±4°, Schwanz pendelt,
+        // Räder rollen mit dem Weg (Ø 0,92 m), Karrenkasten schaukelt leicht. Drehung um die lokale X-Achse jedes Teils.
+        void AddOxCartModel(Matrix4x4 m, float walked, float amount)
+        {
+            UnitModels u = _unitModels;
+            float phase = walked / 1.8f * Mathf.PI * 2f;
+            float swing = Mathf.Sin(phase) * 18f * amount;
+            Matrix4x4 ox = m * Matrix4x4.Translate(new Vector3(0f, Mathf.Abs(Mathf.Sin(phase)) * 0.04f * amount, 0f));
+            AddModelPart(u.OxBody, ox * u.OxBody.Rest);
+            for (int i = 0; i < 4; i++)
+            {
+                float a = (i == 0 || i == 3) ? swing : -swing;   // diagonal: BL+FR gegen BR+FL
+                AddModelPart(u.OxLegs[i], ox * u.OxLegs[i].Rest * Matrix4x4.Rotate(Quaternion.Euler(a, 0f, 0f)));
+            }
+            AddModelPart(u.OxHead, ox * u.OxHead.Rest * Matrix4x4.Rotate(Quaternion.Euler(Mathf.Sin(phase * 2f) * 4f * amount, 0f, 0f)));
+            if (u.OxTail != null)
+                AddModelPart(u.OxTail, ox * u.OxTail.Rest * Matrix4x4.Rotate(Quaternion.Euler(Mathf.Sin(Time.time * 1.3f) * 6f, 0f, Mathf.Sin(Time.time * 0.9f) * 8f)));
+            float roll = Mathf.Sin(walked * 1.7f) * 1.4f * amount;
+            AddModelPart(u.CartBody, m * Matrix4x4.Translate(new Vector3(0f, UnitModels.WheelRadius, 0f))
+                * Matrix4x4.Rotate(Quaternion.Euler(Mathf.Sin(walked * 2.3f + 1f) * 0.7f * amount, 0f, roll))
+                * Matrix4x4.Translate(new Vector3(0f, -UnitModels.WheelRadius, 0f)) * u.CartBody.Rest);
+            float wheel = walked / UnitModels.WheelRadius * Mathf.Rad2Deg;
+            for (int i = 0; i < 2; i++)
+                AddModelPart(u.Wheels[i], m * u.Wheels[i].Rest * Matrix4x4.Rotate(Quaternion.Euler(wheel, 0f, 0f)));
         }
 
         // Ochsenkarren: Ochse im Kreuzgang (diagonale Beinpaare gegenläufig), Kopf nickt im Doppeltakt, Räder rollen
