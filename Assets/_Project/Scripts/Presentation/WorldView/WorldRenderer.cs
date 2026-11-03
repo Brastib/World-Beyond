@@ -51,6 +51,7 @@ namespace WorldBeyond.Presentation.WorldView
         Mesh[] _vegMeshes;
         Material _terrainMat, _waterMat, _trunkMat, _rockMat;
         Material[] _crownMats;
+        Material[] _vegTrunks, _vegCrowns;   // je VegetationLayer.Kind
 
         public IWorldQuery World => _world;
         public Texture2D ColorMap => _colorMap?.Texture;
@@ -92,12 +93,7 @@ namespace WorldBeyond.Presentation.WorldView
             if (terrainMaterial == null)
                 _splat = TerrainSplat.TryCreate(world, _colorMap.Texture);
             CreateMaterials();
-            _vegMeshes = new[]
-            {
-                coniferMesh != null ? coniferMesh : Own(ProceduralMeshes.Conifer()),
-                broadleafMesh != null ? broadleafMesh : Own(ProceduralMeshes.Broadleaf()),
-                rockMesh != null ? rockMesh : Own(ProceduralMeshes.Rock()),
-            };
+            CreateVegetationAssets();
 
             _countX = ChunkMeshBuilder.ChunkCountX(world);
             _countY = ChunkMeshBuilder.ChunkCountY(world);
@@ -181,7 +177,7 @@ namespace WorldBeyond.Presentation.WorldView
             Drain(_dirtyVegetation, i => _vegetation.RebuildChunk(i % _countX, i / _countX));
 
             Camera cam = viewCamera != null ? viewCamera : Camera.main;
-            _vegetation.Draw(cam, vegetationDistance, _vegMeshes, _trunkMat, _crownMats, _rockMat, gameObject.layer);
+            _vegetation.Draw(cam, vegetationDistance, _vegMeshes, _vegTrunks, _vegCrowns, _rockMat, gameObject.layer);
         }
 
         void Drain(SortedSet<int> set, System.Action<int> rebuild)
@@ -280,6 +276,51 @@ namespace WorldBeyond.Presentation.WorldView
                     Own(WorldMaterials.CreateLit("CrownConifer", new Color32(0x2F, 0x5F, 0x34, 255), 0.05f)),
                     Own(WorldMaterials.CreateLit("CrownBroadleaf", new Color32(0x4E, 0x8C, 0x34, 255), 0.05f)),
                 };
+        }
+
+        // Bäume: Blender-Modelle aus Resources/WorldBeyondTrees (Art/Vegetation), sonst prozedurale Platzhalter.
+        // Im Inspector gesetzte Meshes haben Vorrang. Submesh 0 = Rinde/Stamm, 1 = Laub/Krone (bei Modell und Platzhalter gleich).
+        void CreateVegetationAssets()
+        {
+            int n = VegetationLayer.KindCount;
+            _vegMeshes = new Mesh[n];
+            _vegTrunks = new Material[n];
+            _vegCrowns = new Material[n];
+            Mesh procBroadleaf = broadleafMesh != null ? broadleafMesh : Own(ProceduralMeshes.Broadleaf());
+            Set(VegetationLayer.Kind.Conifer, coniferMesh != null ? coniferMesh : Own(ProceduralMeshes.Conifer()), _trunkMat, _crownMats[0]);
+            Set(VegetationLayer.Kind.Broadleaf, procBroadleaf, _trunkMat, _crownMats[1]);
+            Set(VegetationLayer.Kind.Cherry, procBroadleaf, _trunkMat, _crownMats[1]);
+            _vegMeshes[(int)VegetationLayer.Kind.Rock] = rockMesh != null ? rockMesh : Own(ProceduralMeshes.Rock());
+
+            var loader = new ResourceModels("WorldBeyondTrees/", _ownedAssets);
+            int loaded = 0;
+            if (coniferMesh == null) loaded += TryModel(loader, "WB_Tree_Spruce", VegetationLayer.Kind.Conifer);
+            if (broadleafMesh == null)
+            {
+                loaded += TryModel(loader, "WB_Tree_Broadleaf", VegetationLayer.Kind.Broadleaf);
+                loaded += TryModel(loader, "WB_Tree_Cherry", VegetationLayer.Kind.Cherry);
+            }
+            if (loaded > 0) Debug.Log($"WorldRenderer: {loaded} Baummodell(e) geladen.");
+            else Debug.Log("WorldRenderer: keine Baummodelle in Resources/WorldBeyondTrees, Bäume bleiben Platzhalter.");
+
+            void Set(VegetationLayer.Kind k, Mesh mesh, Material trunk, Material crown)
+            {
+                _vegMeshes[(int)k] = mesh;
+                _vegTrunks[(int)k] = trunk;
+                _vegCrowns[(int)k] = crown;
+            }
+
+            int TryModel(ResourceModels l, string file, VegetationLayer.Kind k)
+            {
+                var m = l.Load(file);
+                if (m == null || m.Mesh.subMeshCount < 2 || m.Materials[0] == null || m.Materials[1] == null)
+                {
+                    if (m != null) Debug.LogWarning($"WorldRenderer: {file} braucht 2 Material-Slots (Rinde, Laub), Platzhalter bleibt.");
+                    return 0;
+                }
+                Set(k, m.Mesh, m.Materials[0], m.Materials[1]);
+                return 1;
+            }
         }
 
         MeshFilter NewChunk(string name, Transform parent, Material material, bool castShadows)

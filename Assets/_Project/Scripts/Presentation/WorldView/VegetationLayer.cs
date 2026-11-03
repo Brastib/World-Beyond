@@ -10,13 +10,13 @@ namespace WorldBeyond.Presentation.WorldView
     // ausschließlich aus dem Weltraster. Auf Kacheln mit Gebäude, Straße, Brand, Krater oder Wasser steht nichts.
     public sealed class VegetationLayer
     {
-        public enum Kind { Conifer = 0, Broadleaf = 1, Rock = 2 }
-        const int KindCount = 3;
+        public enum Kind { Conifer = 0, Broadleaf = 1, Rock = 2, Cherry = 3 }
+        public const int KindCount = 4;
         const int MaxPerBatch = 1023;   // Grenze von DrawMeshInstanced
 
         sealed class Chunk
         {
-            public readonly List<Matrix4x4>[] Instances = { new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>() };
+            public readonly List<Matrix4x4>[] Instances = { new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>() };
             public Bounds Bounds;
         }
 
@@ -110,16 +110,19 @@ namespace WorldBeyond.Presentation.WorldView
             }
 
             float ts = WorldConstants.TileSize;
+            // Kirschbäume vereinzelt unter den Laubbäumen der gemäßigten und mediterranen Biome.
+            bool cherryBiome = t.Biome == BiomeType.Temperate || t.Biome == BiomeType.Mediterranean;
             for (int i = 0; i < count; i++)
             {
                 uint r = Hash((int)(h + (uint)i * 0x9E3779B9u), i * 31 + 7);
+                Kind k = kind == Kind.Broadleaf && cherryBiome && r % 7 == 0 ? Kind.Cherry : kind;
                 float fx = (r & 0xFF) / 255f, fz = ((r >> 8) & 0xFF) / 255f;
                 float wx = (x + 0.15f + fx * 0.7f) * ts;
                 float wz = (y + 0.15f + fz * 0.7f) * ts;
                 float wy = _world.SampleHeight(wx, wz) - 0.15f;
                 float scale = 0.75f + ((r >> 16) & 0xFF) / 255f * 0.5f;
                 float yaw = ((r >> 24) & 0xFF) / 255f * 360f;
-                chunk.Instances[(int)kind].Add(Matrix4x4.TRS(new Vector3(wx, wy, wz), Quaternion.Euler(0f, yaw, 0f), Vector3.one * scale));
+                chunk.Instances[(int)k].Add(Matrix4x4.TRS(new Vector3(wx, wy, wz), Quaternion.Euler(0f, yaw, 0f), Vector3.one * scale));
             }
         }
 
@@ -134,8 +137,9 @@ namespace WorldBeyond.Presentation.WorldView
             return h;
         }
 
-        // Zeichnet sichtbare Chunks bis maxDistance (Meter) um die Kamera. Krone und Stamm sind getrennte Submeshes.
-        public void Draw(Camera camera, float maxDistance, Mesh[] meshes, Material trunk, Material[] crowns, Material rock, int layer)
+        // Zeichnet sichtbare Chunks bis maxDistance (Meter) um die Kamera. Krone und Stamm sind getrennte Submeshes;
+        // meshes, trunks und crowns sind je Kind indiziert (Rock nutzt nur rock).
+        public void Draw(Camera camera, float maxDistance, Mesh[] meshes, Material[] trunks, Material[] crowns, Material rock, int layer)
         {
             if (camera == null)
                 return;
@@ -158,8 +162,8 @@ namespace WorldBeyond.Presentation.WorldView
                     }
                     else
                     {
-                        DrawList(meshes[k], 0, trunk, list, layer);
-                        DrawList(meshes[k], 1, crowns[k % crowns.Length], list, layer);
+                        DrawList(meshes[k], 0, trunks[k], list, layer);
+                        DrawList(meshes[k], 1, crowns[k], list, layer);
                     }
                 }
             }
