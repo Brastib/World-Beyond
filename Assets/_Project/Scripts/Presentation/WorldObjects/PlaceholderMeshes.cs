@@ -188,6 +188,29 @@ namespace WorldBeyond.Presentation.WorldObjects
             return b.Build("Building_" + shape + "_Placeholder", BuildingSubMeshes);
         }
 
+        // Baustelle (Unity-Feedback 03.11.2026: Häuser sollen nicht aus dem Boden wachsen): festgestampfte Fläche,
+        // Eckpfosten mit Rahmen aus frischem Holz, Bretterstapel und Steinhaufen. Grundfläche 1 Kachel, der Renderer skaliert x/z.
+        // Submesh 0 = frisches Holz, 1 = Civ-Wimpel, 2 = Erde/dunkles Holz/Stein.
+        public static Mesh ConstructionSite()
+        {
+            var b = new Builder();
+            b.Box(Dark, V(-1.9f, -0.5f, -1.9f), V(1.9f, 0.03f, 1.9f));                 // Erdfläche
+            float p = 1.45f, t = 0.09f;
+            foreach (var c in new[] { V(-p, 0f, -p), V(p, 0f, -p), V(-p, 0f, p), V(p, 0f, p) })
+                b.Box(Dark, c + V(-t, 0f, -t), c + V(t, 3.2f, t));                         // Eckpfosten
+            b.Box(Body, V(-p - t, 2.9f, -p - t), V(p + t, 3.05f, -p + t));                // Rahmen oben
+            b.Box(Body, V(-p - t, 2.9f, p - t), V(p + t, 3.05f, p + t));
+            b.Box(Body, V(-p - t, 2.9f, -p), V(-p + t, 3.05f, p));
+            b.Box(Body, V(p - t, 2.9f, -p), V(p + t, 3.05f, p));
+            b.Box(Body, V(-p - t, 1.2f, -p - t), V(p + t, 1.3f, -p + t));                // Querriegel vorn
+            for (int i = 0; i < 4; i++)                                                    // Bretterstapel
+                b.Box(Body, V(0.2f, 0.03f + i * 0.09f, -1.0f), V(1.2f, 0.11f + i * 0.09f, 0.1f + i * 0.03f));
+            b.Box(Dark, V(-1.2f, 0.03f, 0.4f), V(-0.4f, 0.35f, 1.1f));                    // Steinhaufen
+            b.Box(Dark, V(-1.0f, 0.35f, 0.55f), V(-0.6f, 0.55f, 0.9f));
+            b.Box(Civ, V(p - 0.02f, 2.7f, p + t), V(p + 0.5f, 3.0f, p + t + 0.02f));     // Wimpel am Pfosten
+            return b.Build("ConstructionSite_Placeholder", BuildingSubMeshes);
+        }
+
         public enum UnitShape { Person = 0, Soldier = 1, Vehicle = 2, Gun = 3, Wagon = 4 }
         public const int UnitShapeCount = 5;
 
