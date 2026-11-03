@@ -124,7 +124,7 @@ namespace WorldBeyond.Simulation.World.Generation
 
             // Kleine Karten flacher: dieselbe Höhenspanne auf wenigen Kacheln ergäbe nur Steilhänge (Felsring statt Küste).
             float sizeFactor = Math.Min(1f, Math.Max(0.35f, Math.Min(w, h) / 200f));
-            float landRange = (s.MaxHeight - s.SeaLevel) * sizeFactor;
+            float landRange = (s.MaxHeight - s.SeaLevel) * sizeFactor * s.Relief;
             for (int y = 0; y < h; y++)
             {
                 for (int x = 0; x < w; x++)

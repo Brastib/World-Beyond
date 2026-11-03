@@ -22,6 +22,7 @@ namespace WorldBeyond.Application
         public int WorldWidth = 256;
         public int WorldHeight = 256;
         public int CivilizationCount = 2;
+        public float TerrainRelief = 1f;   // 1 = Gebirge, klein = flache Welt (WorldGenSettings.Relief)
     }
 
     /// <summary>
@@ -91,6 +92,7 @@ namespace WorldBeyond.Application
                 Seed = settings.Seed,
                 Width = settings.WorldWidth,
                 Height = settings.WorldHeight,
+                Relief = settings.TerrainRelief,
             });
             world.AttachEvents(ctx.Events);
             var pathfinder = new GridPathfinder(world);

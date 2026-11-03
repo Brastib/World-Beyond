@@ -26,7 +26,7 @@ namespace WorldBeyond.Simulation.World
 
         static bool SameSettings(WorldGenSettings a, WorldGenSettings b) =>
             a != null && b != null && a.Seed == b.Seed && a.Width == b.Width && a.Height == b.Height
-            && a.SeaLevel == b.SeaLevel && a.MaxHeight == b.MaxHeight && a.LandRatio == b.LandRatio
+            && a.SeaLevel == b.SeaLevel && a.MaxHeight == b.MaxHeight && a.LandRatio == b.LandRatio && a.Relief == b.Relief
             && a.RiverCount == b.RiverCount && a.ForestDensity == b.ForestDensity && a.ResourceRichness == b.ResourceRichness;
 
         public object CaptureState()
@@ -40,6 +40,7 @@ namespace WorldBeyond.Simulation.World
                 SeaLevel = s.SeaLevel,
                 MaxHeight = s.MaxHeight,
                 LandRatio = s.LandRatio,
+                Relief = s.Relief,
                 RiverCount = s.RiverCount,
                 ForestDensity = s.ForestDensity,
                 ResourceRichness = s.ResourceRichness,
@@ -83,6 +84,7 @@ namespace WorldBeyond.Simulation.World
                 SeaLevel = st.SeaLevel,
                 MaxHeight = st.MaxHeight,
                 LandRatio = st.LandRatio,
+                Relief = st.Relief,
                 RiverCount = st.RiverCount,
                 ForestDensity = st.ForestDensity,
                 ResourceRichness = st.ResourceRichness,
@@ -411,6 +413,7 @@ namespace WorldBeyond.Simulation.World
         public float SeaLevel;
         public float MaxHeight;
         public float LandRatio;
+        public float Relief = 1f;   // fehlt in alten Spielständen: 1 = bisheriges Gelände
         public int RiverCount;
         public float ForestDensity;
         public float ResourceRichness;

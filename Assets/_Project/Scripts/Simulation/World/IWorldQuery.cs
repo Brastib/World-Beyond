@@ -66,6 +66,9 @@ namespace WorldBeyond.Simulation.World
         public float SeaLevel = 20f;
         public float MaxHeight = 120f;
         public float LandRatio = 0.55f;
+        // Relief 0,02..1: skaliert nur die Landhöhen (1 = Gebirge, klein = flache Welt). Klima rechnet weiter mit MaxHeight,
+        // flaches Land bekommt also Tieflandbiome statt Schnee.
+        public float Relief = 1f;
         public int RiverCount = 12;
         public float ForestDensity = 1f;
         public float ResourceRichness = 1f;
@@ -83,6 +86,11 @@ namespace WorldBeyond.Simulation.World
             if (!(MaxHeight > SeaLevel) || SeaLevel <= 0f)
             {
                 error = "MaxHeight muss größer als SeaLevel sein, SeaLevel größer als 0.";
+                return false;
+            }
+            if (!(Relief >= 0.02f && Relief <= 1f))
+            {
+                error = "Relief muss zwischen 0,02 und 1 liegen.";
                 return false;
             }
             if (LandRatio < 0.1f || LandRatio > 0.9f)
