@@ -1,15 +1,15 @@
 # World Beyond: Frühzeit-Gebäude für Unity aus Blender (headless).
-# Aufruf: blender -b -noaudio --python prim_buildings.py -- <hut|house|tent|granary> <texdir> <outdir> [preview.png] [samples]
+# Aufruf: blender -b -noaudio --python prim_buildings.py -- <center|hut|house|tent|granary> <texdir> <outdir> [preview.png] [samples]
 # Ergebnis: <outdir>/WB_Prim_*.fbx (Ursprung = Bodenmitte, 1 Einheit = 1 m, Y oben in Unity), optional Vorschaubild.
 import bpy, bmesh, sys, math, random, os
-from mathutils import Vector, noise
+from mathutils import Vector, Matrix, noise
 
 argv = sys.argv[sys.argv.index("--") + 1:]
 MODEL, TEX, OUTDIR = argv[0], argv[1], argv[2]
 PREVIEW = argv[3] if len(argv) > 3 else None
 SAMPLES = int(argv[4]) if len(argv) > 4 else 64
-NAMES = {"hut": "WB_Prim_Hut_Wattle", "house": "WB_Prim_House_Wattle", "tent": "WB_Prim_Tent_Hide", "granary": "WB_Prim_Granary"}
-rng = random.Random({"house": 1, "tent": 2, "granary": 3, "hut": 4}[MODEL])
+NAMES = {"center": "WB_Prim_Center", "hut": "WB_Prim_Hut_Wattle", "house": "WB_Prim_House_Wattle", "tent": "WB_Prim_Tent_Hide", "granary": "WB_Prim_Granary"}
+rng = random.Random({"house": 1, "tent": 2, "granary": 3, "hut": 4, "center": 5}[MODEL])
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
 
@@ -17,6 +17,7 @@ scene = bpy.context.scene
 TEXSETS = {  # Materialname: (Datei-Präfix, Kachelgröße in m)
     "M_Thatch": ("T_Thatch", 2.5), "M_Daub": ("T_Daub", 1.6), "M_Bark": ("T_Bark", 1.0),
     "M_Wood": ("T_Wood", 0.5), "M_Hide": ("T_Hide", 0.9), "M_Earth": ("T_Earth", 1.3),
+    "M_Stone": ("T_Stone", 0.9),
 }
 MATS = {}
 def material(name):
@@ -264,16 +265,7 @@ def build_house(L=8.0, W=5.6, H=1.85, nL=6, nW=4, door_bay=2, door_w=0.95, pitch
     # Dach
     zr, zt = thatch_roof(L, W, H, pitch, ov_side, ov_end, thick)
     for xe, o in ((-L / 2, -1), (L / 2, 1)): gable_fill(xe, W, H + 0.12, zr - 0.15, 0.14, o)
-    # Firststangen: gekreuzte Stangen halten den Firstwulst (wie R3); g skaliert sie bei kleinen Dächern
-    g = max(0.6, min(1.0, W / 5.6 + 0.2))
-    for k in range(n_ridge):
-        x = -L / 2 + 0.3 + (L - 0.6) * k / (n_ridge - 1)
-        for sg in (-1, 1):
-            tube([(x, sg * 0.75 * g, zt - 0.55 * g), (x + rng.uniform(-0.03, 0.03), -sg * 0.28 * g, zt + 0.42 * g)], [0.045, 0.035], 6, "M_Bark")
-    # Windbretter-Kreuz an den Giebeln
-    for xe in (-L / 2 - ov_end - 0.05, L / 2 + ov_end + 0.05):
-        for sg in (-1, 1):
-            tube([(xe, sg * 1.2 * g, zt - 1.05 * g), (xe, -sg * 0.35 * g, zt + 0.55 * g)], [0.06, 0.05], 7, "M_Bark")
+    # Firstabschluss: nur der Firstwulst aus Reet (Nutzerwunsch 2026-11-03: keine Stöcke auf dem Dach)
     return L + 1.5, W + 1.6
 
 def build_tent():
@@ -384,7 +376,49 @@ def build_granary():
         tube([p + Vector((-0.13, 0.06, 0.05)), p + Vector((0.13, 0.06, 0.05))], [0.035, 0.035], 6, "M_Wood")
     return L + 1.4, W + 2.0
 
-span = {"hut": lambda: build_house(3.2, 2.6, 1.8, 2, 2, 1, 0.85, 50, 0.4, 0.27, 0.28, 3, 2),
+
+def stone(c, r, squash=0.6, sub=2):
+    """Feldstein: verbeulte Kugel, unten abgeflacht, UV als Würfelprojektion."""
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=r)
+    sd = rng.random() * 100
+    for v in bm.verts:
+        n = v.co.normalized(); v.co = n * r * (1 + 0.28 * noise.noise(n * 1.7 + Vector((sd, 0, 0))))
+        v.co.z *= squash
+        if v.co.z < -r * 0.15: v.co.z = -r * 0.15
+    bmesh.ops.rotate(bm, verts=bm.verts, cent=Vector(), matrix=Matrix.Rotation(rng.uniform(0, 6.28), 3, "Z"))
+    bmesh.ops.translate(bm, vec=Vector(c), verts=bm.verts)
+    bm.normal_update(); box_uv_bm(bm, TEXSETS["M_Stone"][1], (rng.random(), rng.random())); return finish(bm, "M_Stone")
+
+def build_center():
+    """Ortskern der Frühzeit (2 x 2 Kacheln = 8 x 8 m): Häuptlingshalle mit Vorplatz, Feuerstelle, Bänken und Holzstapel."""
+    n0 = len(PARTS)
+    build_house(6.4, 4.2, 2.0, 5, 3, 2, 1.1, 48, 0.5, 0.42, 0.34, 0, 3)
+    for o in PARTS[n0:]: o.location.y += 0.75
+    # Vorplatz aus gestampfter Erde
+    slab((0, -2.75, 0.01), (6.6, 2.4, 0.02), "M_Earth")
+    # Feuerstelle: Steinring mit Glut-Asche-Boden
+    fc = Vector((-1.7, -2.9, 0))
+    for k in range(11):
+        a = 2 * math.pi * k / 11 + rng.uniform(-0.1, 0.1)
+        stone(fc + Vector((math.cos(a) * 0.55, math.sin(a) * 0.55, 0.06)), rng.uniform(0.11, 0.15))
+    slab((fc.x, fc.y, 0.02), (0.75, 0.75, 0.03), "M_Earth")
+    for k in range(4):  # angekohlte Scheite
+        a = k * 1.6 + 0.3
+        tube([(fc.x + math.cos(a) * 0.32, fc.y + math.sin(a) * 0.32, 0.07), (fc.x - math.cos(a) * 0.05, fc.y - math.sin(a) * 0.05, 0.16)], [0.045, 0.04], 6, "M_Bark")
+    # Bänke aus halbierten Stämmen auf Klötzen
+    for bx, by, rz in ((-1.7, -3.65, 0.0), (-2.8, -2.6, 1.45)):
+        d = Vector((math.cos(rz), math.sin(rz), 0)) * 0.75
+        tube([Vector((bx, by, 0.36)) - d, Vector((bx, by, 0.36)) + d], [0.13, 0.13], 10, "M_Bark")
+        for sg in (-1, 1):
+            tube([Vector((bx, by, -0.02)) + d * 0.7 * sg, Vector((bx, by, 0.26)) + d * 0.7 * sg], [0.12, 0.12], 8, "M_Wood")
+    # Holzstapel rechts vor der Halle
+    for row in range(3):
+        for k in range(6 - row):
+            y = -3.55 + 0.17 * k + 0.085 * row + rng.uniform(-0.01, 0.01)
+            tube([(1.85, y, 0.09 + row * 0.15), (2.85 + rng.uniform(-0.05, 0.05), y, 0.09 + row * 0.15)], [0.08, 0.075], 7, "M_Bark")
+    return 8.0, 8.0
+
+span = {"center": build_center, "hut": lambda: build_house(3.2, 2.6, 1.8, 2, 2, 1, 0.85, 50, 0.4, 0.27, 0.28, 3, 2),
         "house": build_house, "tent": build_tent, "granary": build_granary}[MODEL]()
 
 # ---------- Zusammenführen: ein Objekt, ein Material-Slot je Material (feste Reihenfolge) ----------
