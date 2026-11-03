@@ -21,7 +21,7 @@ namespace WorldBeyond.Tests.Civilizations
 #endif
         }
 
-        static void Transfer(CivRun from, CivRun into)
+        internal static void Transfer(CivRun from, CivRun into)
         {
             var captured = new Dictionary<string, object>();
             foreach (var s in from.Ctx.Saveables.InLoadOrder()) captured[s.SaveKey] = RoundTrip(s.CaptureState(), s.StateType);

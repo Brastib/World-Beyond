@@ -26,6 +26,8 @@ namespace WorldBeyond.Simulation.Civilizations
         internal readonly Dictionary<int, Settlement> Settlements = new Dictionary<int, Settlement>();
         internal readonly List<int> SettlementOrder = new List<int>();          // aufsteigende IDs = feste Reihenfolge
         internal readonly Dictionary<int, List<int>> SettlementsByCiv = new Dictionary<int, List<int>>();
+        /// <summary>Verkehr je Kachel (Index y·Breite+x) für die Wegbildung (RoadFormationSystem).</summary>
+        internal readonly Dictionary<int, double> Traffic = new Dictionary<int, double>();
 
         public CivState(SimContext ctx, IWorldGrid world, CivContent content)
         {
@@ -77,7 +79,7 @@ namespace WorldBeyond.Simulation.Civilizations
 
         internal void ClearAll()
         {
-            Civs.Clear(); CivOrder.Clear(); Settlements.Clear(); SettlementOrder.Clear(); SettlementsByCiv.Clear();
+            Civs.Clear(); CivOrder.Clear(); Settlements.Clear(); SettlementOrder.Clear(); SettlementsByCiv.Clear(); Traffic.Clear();
         }
 
         private static void InsertSorted(List<int> list, int value)
