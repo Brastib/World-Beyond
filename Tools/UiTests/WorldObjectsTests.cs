@@ -22,6 +22,22 @@ namespace WorldBeyond.UiTests
         }
 
         [Test]
+        public void UnitGait_AccumulatesWalkedDistance_IgnoresTeleport_StopsWhenPaused()
+        {
+            var g = new UnitGait();
+            var id = new EntityId(5, 1);
+            g.BeginFrame(); g.Step(id, 0f, 0f, 0.1f, out float d0, out _);
+            g.BeginFrame(); g.Step(id, 3f, 4f, 0.1f, out float d1, out float a1);
+            Assert.AreEqual(5f, d1 - d0, 1e-4f);
+            Assert.Greater(a1, 0f);
+            g.BeginFrame(); g.Step(id, 103f, 4f, 0.1f, out float d2, out _);   // Sprung: zählt nicht
+            Assert.AreEqual(d1, d2, 1e-4f);
+            float a = 1f;
+            for (int k = 0; k < 20; k++) { g.BeginFrame(); g.Step(id, 103f, 4f, 0.1f, out _, out a); }
+            Assert.AreEqual(0f, a, 1e-4f);
+        }
+
+        [Test]
         public void FieldStage_FollowsSeason_AndSitesArePlowed()
         {
             long y = CivTime.TicksPerYear;
