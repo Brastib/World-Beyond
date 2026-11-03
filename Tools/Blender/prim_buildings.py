@@ -1,5 +1,5 @@
 # World Beyond: Frühzeit-Gebäude für Unity aus Blender (headless).
-# Aufruf: blender -b -noaudio --python prim_buildings.py -- <house|tent|granary> <texdir> <outdir> [preview.png] [samples]
+# Aufruf: blender -b -noaudio --python prim_buildings.py -- <hut|house|tent|granary> <texdir> <outdir> [preview.png] [samples]
 # Ergebnis: <outdir>/WB_Prim_*.fbx (Ursprung = Bodenmitte, 1 Einheit = 1 m, Y oben in Unity), optional Vorschaubild.
 import bpy, bmesh, sys, math, random, os
 from mathutils import Vector, noise
@@ -8,8 +8,8 @@ argv = sys.argv[sys.argv.index("--") + 1:]
 MODEL, TEX, OUTDIR = argv[0], argv[1], argv[2]
 PREVIEW = argv[3] if len(argv) > 3 else None
 SAMPLES = int(argv[4]) if len(argv) > 4 else 64
-NAMES = {"house": "WB_Prim_House_Wattle", "tent": "WB_Prim_Tent_Hide", "granary": "WB_Prim_Granary"}
-rng = random.Random({"house": 1, "tent": 2, "granary": 3}[MODEL])
+NAMES = {"hut": "WB_Prim_Hut_Wattle", "house": "WB_Prim_House_Wattle", "tent": "WB_Prim_Tent_Hide", "granary": "WB_Prim_Granary"}
+rng = random.Random({"house": 1, "tent": 2, "granary": 3, "hut": 4}[MODEL])
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
 
@@ -217,13 +217,12 @@ def hide_curtain(cx, y, w, h, z0, axis="x"):
     bpy.context.view_layer.objects.active = o; bpy.ops.object.modifier_apply(modifier=m.name)
 
 # =============================== Modelle ===============================
-def build_house():
-    L, W, H = 8.0, 5.6, 1.85
+def build_house(L=8.0, W=5.6, H=1.85, nL=6, nW=4, door_bay=2, door_w=0.95, pitch=48, ov_side=0.5, ov_end=0.45, thick=0.32, n_ridge=5, bare=5):
+    """Rechteckhaus mit Flechtwerk und Reetdach. Standard = großes Wohnhaus (8 x 5,6 m); die Hütte nutzt kleinere Werte."""
     slab((0, 0, 0.03), (L - 0.1, W - 0.1, 0.1), "M_Earth")                        # Lehmestrich innen
     # Pfosten im Raster ~1,35 m
-    nL = 6; nW = 4
     xs = [-L / 2 + L * k / nL for k in range(nL + 1)]; ys = [-W / 2 + W * k / nW for k in range(nW + 1)]
-    door_x = (xs[2] + xs[3]) / 2; door_w = 0.95
+    door_x = (xs[door_bay] + xs[door_bay + 1]) / 2
     posts = set()
     for x in xs:
         for y in (-W / 2, W / 2): posts.add((round(x, 3), y))
@@ -237,9 +236,10 @@ def build_house():
     for x in (-L / 2, L / 2):
         tube([(x, -W / 2 - 0.2, H + 0.3), (x, W / 2 + 0.2, H + 0.3)], [0.1, 0.1], 8, "M_Bark", jitter=0.06)
     # Wandfelder: Lehm auf Flechtwerk, einige Felder oben unverputzt (Flechtwerk sichtbar)
-    bare_budget = 5
+    bare_budget = bare
     def panel(a0, a1, wall_y, axis):
         nonlocal bare_budget
+        if abs(a1 - a0) < 0.2: return  # zu schmal neben der Tür
         z_daub = H
         if bare_budget > 0 and rng.random() < 0.38:
             z_daub = rng.uniform(0.7, 1.25); bare_budget -= 1
@@ -262,21 +262,22 @@ def build_house():
     for i in range(nW):
         for x in (-L / 2, L / 2): panel(ys[i], ys[i + 1], x, "y")
     # Dach
-    zr, zt = thatch_roof(L, W, H, 48, 0.5, 0.45, 0.32)
+    zr, zt = thatch_roof(L, W, H, pitch, ov_side, ov_end, thick)
     for xe, o in ((-L / 2, -1), (L / 2, 1)): gable_fill(xe, W, H + 0.12, zr - 0.15, 0.14, o)
-    # Firststangen: gekreuzte Stangen halten den Firstwulst (wie R3)
-    for k in range(5):
-        x = -L / 2 + 0.3 + (L - 0.6) * k / 4
+    # Firststangen: gekreuzte Stangen halten den Firstwulst (wie R3); g skaliert sie bei kleinen Dächern
+    g = max(0.6, min(1.0, W / 5.6 + 0.2))
+    for k in range(n_ridge):
+        x = -L / 2 + 0.3 + (L - 0.6) * k / (n_ridge - 1)
         for sg in (-1, 1):
-            tube([(x, sg * 0.75, zt - 0.55), (x + rng.uniform(-0.03, 0.03), -sg * 0.28, zt + 0.42)], [0.045, 0.035], 6, "M_Bark")
+            tube([(x, sg * 0.75 * g, zt - 0.55 * g), (x + rng.uniform(-0.03, 0.03), -sg * 0.28 * g, zt + 0.42 * g)], [0.045, 0.035], 6, "M_Bark")
     # Windbretter-Kreuz an den Giebeln
-    for xe in (-L / 2 - 0.5, L / 2 + 0.5):
+    for xe in (-L / 2 - ov_end - 0.05, L / 2 + ov_end + 0.05):
         for sg in (-1, 1):
-            tube([(xe, sg * 1.2, zt - 1.05), (xe, -sg * 0.35, zt + 0.55)], [0.06, 0.05], 7, "M_Bark")
+            tube([(xe, sg * 1.2 * g, zt - 1.05 * g), (xe, -sg * 0.35 * g, zt + 0.55 * g)], [0.06, 0.05], 7, "M_Bark")
     return L + 1.5, W + 1.6
 
 def build_tent():
-    R, Hc = 2.6, 4.3; n = 13
+    R, Hc = 1.85, 3.4; n = 11  # passt auf eine 4-m-Kachel
     apex = Vector((0, 0, Hc))
     for k in range(n):
         a = 2 * math.pi * (k + 0.5) / n + rng.uniform(-0.04, 0.04)
@@ -316,7 +317,7 @@ def build_tent():
     m = o.modifiers.new("dick", "SOLIDIFY"); m.thickness = 0.015; m.offset = -1
     bpy.context.view_layer.objects.active = o; bpy.ops.object.modifier_apply(modifier=m.name)
     # Verschnürung über der Tür (Holzstifte) und Heringe am Boden
-    for k in range(7):
+    for k in range(4):
         z = door_h + 0.15 + k * 0.32; r = R * (Hc - z) / Hc + 0.03
         tube([(r * math.cos(door_a) - 0.12, r * math.sin(door_a) - 0.02, z), (r * math.cos(door_a) + 0.12, r * math.sin(door_a) - 0.02, z + 0.02)], [0.012, 0.01], 5, "M_Wood")
     for k in range(n):
@@ -337,7 +338,7 @@ def build_tent():
     return 2 * R + 1.5, 2 * R + 1.5
 
 def build_granary():
-    L, W, Hp, Hw = 3.4, 2.6, 0.85, 1.55
+    L, W, Hp, Hw = 3.0, 2.4, 0.85, 1.5  # passt auf eine 4-m-Kachel
     for x in (-L / 2 + 0.2, 0, L / 2 - 0.2):
         for y in (-W / 2 + 0.2, W / 2 - 0.2):
             post(x, y, Hp, 0.11)
@@ -373,17 +374,18 @@ def build_granary():
             slab((x, (ys[i] + ys[i + 1]) / 2, z0 + Hw / 2), (0.12, ys[i + 1] - ys[i] - 0.1, Hw), "M_Daub", bump=0.02, sub=(2, 4, 3))
     for y in (-W / 2, W / 2):
         tube([(-L / 2 - 0.2, y, H + 0.08), (L / 2 + 0.2, y, H + 0.08)], [0.08, 0.08], 8, "M_Bark")
-    zr, zt = thatch_roof(L, W, H, 48, 0.55, 0.35, 0.26)
+    zr, zt = thatch_roof(L, W, H, 48, 0.45, 0.3, 0.24)
     for xe, o in ((-L / 2, -1), (L / 2, 1)): gable_fill(xe, W, H + 0.12, zr - 0.05, 0.12, o)
     # Kerbbalken-Leiter zur Tür
-    top = Vector((door_x + 0.05, -W / 2 - 0.12, z0 - 0.02)); bot = Vector((door_x + 0.25, -W / 2 - 1.05, -0.05))
+    top = Vector((door_x + 0.05, -W / 2 - 0.12, z0 - 0.02)); bot = Vector((door_x + 0.25, -W / 2 - 0.8, -0.05))
     tube([bot, bot.lerp(top, 0.5), top], [0.12, 0.11, 0.1], 8, "M_Bark")
     for k in range(4):
         p = bot.lerp(top, (k + 0.6) / 4.6)
         tube([p + Vector((-0.13, 0.06, 0.05)), p + Vector((0.13, 0.06, 0.05))], [0.035, 0.035], 6, "M_Wood")
     return L + 1.4, W + 2.0
 
-span = {"house": build_house, "tent": build_tent, "granary": build_granary}[MODEL]()
+span = {"hut": lambda: build_house(3.2, 2.6, 1.8, 2, 2, 1, 0.85, 50, 0.4, 0.27, 0.28, 3, 2),
+        "house": build_house, "tent": build_tent, "granary": build_granary}[MODEL]()
 
 # ---------- Zusammenführen: ein Objekt, ein Material-Slot je Material (feste Reihenfolge) ----------
 order = [m for m in TEXSETS if m in MATS]

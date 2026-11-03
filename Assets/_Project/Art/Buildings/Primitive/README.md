@@ -1,12 +1,13 @@
 # Frühzeit-Gebäude v1 (Blender)
 
-Eigene Modelle, gebaut per Skript `Tools/Blender/prim_buildings.py` (Blender 4.0, headless). Stand 2026-11-03.
+Eigene Modelle, gebaut per Skript `Tools/Blender/prim_buildings.py` (Blender 4.0, headless). Stand 2026-11-03 (v1.1: Hütte neu, Zelt und Speicher auf eine 4-m-Kachel verkleinert).
 
 | Datei / Prefab-Name | Inhalt | Maße (B × T × H) | Dreiecke | Sim-Bezug (Katalog) |
 |---|---|---|---|---|
-| `WB_Prim_House_Wattle` | Wohnhaus: Pfosten, Flechtwerk mit Lehm, Reetdach 48°, Fellvorhang an der Tür, innen hohl mit Lehmboden | 9,1 × 7,0 × 6,3 m (Wände 8 × 5,6 m) | 23 444 | `building.hut` / `bld.hut` |
-| `WB_Prim_Tent_Hide` | Stangenzelt mit Fellbahn, Türöffnung, Rauchklappen, Heringe | 5,5 × 5,5 × 5,3 m | 4 440 | `bld.kit.wall.textile` (kein Sim-Gebäude) |
-| `WB_Prim_Granary` | Vorratsspeicher auf Pfählen mit Mäusetellern, Lehmwände, Brettertür, Reetdach, Kerbbalken-Leiter | 4,1 × 4,5 × 4,9 m | 7 740 | `building.storehouse` / `bld.storehouse` |
+| `WB_Prim_Hut_Wattle` | Hütte: Pfosten, Flechtwerk mit Lehm, Reetdach 50°, Fellvorhang, Tür seitlich | 3,96 × 3,78 × 4,43 m (Wände 3,2 × 2,6 m) | 13 224 | `building.hut` / `bld.hut` (1 × 1 Kachel) |
+| `WB_Prim_House_Wattle` | Großes Wohnhaus: Pfosten, Flechtwerk mit Lehm, Reetdach 48°, Fellvorhang an der Tür, innen hohl mit Lehmboden | 9,1 × 7,0 × 6,3 m (Wände 8 × 5,6 m) | 23 444 | späteres 2 × 2-Gebäude (Entscheidung Lead 2026-11-03) |
+| `WB_Prim_Tent_Hide` | Stangenzelt mit Fellbahn, Türöffnung, Rauchklappen, Heringe | 3,97 × 3,95 × 4,43 m | 4 256 | `bld.kit.wall.textile` (kein Sim-Gebäude) |
+| `WB_Prim_Granary` | Vorratsspeicher auf Pfählen mit Mäusetellern, Lehmwände, Brettertür, Reetdach, Kerbbalken-Leiter | 3,60 × 3,91 × 4,68 m | 7 692 | `building.storehouse` / `bld.storehouse` (1 × 1 Kachel) |
 
 ## Technik
 - Ablage (seit 2026-11-03): `Resources/WorldBeyondBuildings/` (Modelle) und `Resources/WorldBeyondBuildings/Textures/`, damit `WorldObjectsRenderer` sie ohne Inspector-Verweis lädt (`BuildingModels.cs`). Die Materialien baut der Code zur Laufzeit aus den Texturen (Zuordnung über den Slot-Namen `M_<Name>` → `T_<Name>_D/_N/_MS`). Die `_N`-Texturen haben eine `.meta` mit Texture Type „Normal map“.
@@ -20,7 +21,8 @@ Eigene Modelle, gebaut per Skript `Tools/Blender/prim_buildings.py` (Blender 4.0
 
 ## Noch nicht erledigt
 - In Unity nicht getestet (kein Unity in der Cloud). Wie die Materialien beim Import zugeordnet werden, muss beim Einbinden geprüft werden.
-- Keine LOD-Stufen und keine Kollider. Für Gruppen von Häusern ist das Wohnhaus mit 23k Dreiecken zu schwer; LOD1/LOD2 folgen.
+- Keine LOD-Stufen und keine Kollider. Für Gruppen von Häusern sind Hütte (13k) und Wohnhaus (23k) zu schwer; LOD1/LOD2 folgen.
+- Das Skript erzeugt das große Wohnhaus heute mit anderer Zufallsfolge (ca. 18k Dreiecke); die FBX im Repo ist noch die Fassung vom 2026-11-03 Mittag.
 - Keine Schadens-, Schnee- oder Nässe-Zustände (Katalog §0.4, §5.1).
 - Stil = ein möglicher Stammes-Stil (Temperate, ohne Technik). Andere Stämme wählen laut Katalog §4 andere Bauteile.
 
