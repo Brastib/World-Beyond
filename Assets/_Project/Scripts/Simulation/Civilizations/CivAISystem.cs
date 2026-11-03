@@ -275,7 +275,20 @@ namespace WorldBeyond.Simulation.Civilizations
             float v = PlacementValue(_siteDef, x, y);
             if (v <= 0f) return 0f;
             int dx = x - _siteSt.X, dy = y - _siteSt.Y;
-            return v / (1f + (float)Math.Sqrt(dx * dx + dy * dy) * 0.05f);
+            float dist = (float)Math.Sqrt(dx * dx + dy * dy);
+            // Echte Stadt: Felder nicht mitten im Ort, Häuser dicht am Kern und an einem Weg.
+            if (_siteDef.UsesFertility && dist < 4f) v *= 0.2f;
+            if (_siteDef.Category == BuildingCategory.Housing && NextToStreet(x, y, _siteDef.SizeX, _siteDef.SizeY)) v *= 1.5f;
+            return v / (1f + dist * (_siteDef.Category == BuildingCategory.Housing ? 0.15f : 0.05f));
+        }
+
+        private static bool NextToStreet(int x, int y, int sx, int sy)
+        {
+            for (int xx = x; xx < x + sx; xx++)
+                if (SettlementRegistry.IsStreet(xx, y - 1) || SettlementRegistry.IsStreet(xx, y + sy)) return true;
+            for (int yy = y; yy < y + sy; yy++)
+                if (SettlementRegistry.IsStreet(x - 1, yy) || SettlementRegistry.IsStreet(x + sx, yy)) return true;
+            return false;
         }
 
         /// <summary>Standortwert eines Gebäudes: Rohstoffe im Einzugsbereich, Fruchtbarkeit, Wasser; sonst Nähe zum Kern.</summary>

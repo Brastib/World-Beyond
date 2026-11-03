@@ -76,12 +76,18 @@ namespace WorldBeyond.Tests.Integration
         public void SaveLoad_MidWar_ContinuesExactlyLikeUninterruptedRun()
         {
             // Speicherpunkt aus dem Lauf selbst bestimmen (300 Ticks nach der ersten Kriegserklärung), damit Balancing-Änderungen den Test nicht verschieben.
-            const ulong seed = 7;
-            var probe = GameComposition.Create(Settings(seed));
+            // Erste Testwelt mit Krieg nehmen: Krieg bleibt KI-Entscheidung, kleine Balancing-Änderungen verschieben ihn (Chaos-Effekt).
+            ulong seed = 0;
             long warTick = -1;
-            probe.Context.Events.Subscribe<WarDeclaredEvent>(_ => { if (warTick < 0) warTick = probe.Context.Clock.Tick; });
-            for (int i = 0; i < MaxTicks && warTick < 0; i++) probe.Runner.StepOnce();
-            Assert.GreaterOrEqual(warTick, 0, "Seed 7 ohne Krieg in 9 Spielstunden – Testwelt wechseln");
+            foreach (ulong candidate in new ulong[] { 7, 1, 5 })
+            {
+                var probe = GameComposition.Create(Settings(candidate));
+                long found = -1;
+                probe.Context.Events.Subscribe<WarDeclaredEvent>(_ => { if (found < 0) found = probe.Context.Clock.Tick; });
+                for (int i = 0; i < MaxTicks && found < 0; i++) probe.Runner.StepOnce();
+                if (found >= 0) { seed = candidate; warTick = found; break; }
+            }
+            Assert.GreaterOrEqual(warTick, 0, "Seeds 7, 1, 5 ohne Krieg in 9 Spielstunden – Testwelten wechseln");
             SaveLoadRoundtrip(seed, (int)warTick + 300, 2000, expectWar: true);
         }
 

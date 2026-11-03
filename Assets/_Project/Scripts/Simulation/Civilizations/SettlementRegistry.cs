@@ -168,6 +168,24 @@ namespace WorldBeyond.Simulation.Civilizations
             return true;
         }
 
+        /// <summary>
+        /// Wege entstehen mit der Bebauung (Nutzer 2026-11-03): Straßenkacheln direkt neben einem neuen Gebäude werden zum
+        /// sichtbaren Weg (TileFlags.Road, schneller begehbar). So wächst das Wegenetz mit der Stadt, deterministisch und
+        /// über die geänderten Kacheln im Spielstand. Wasser bleibt ausgenommen (Brücken später).
+        /// </summary>
+        private void PaveStreetsAround(int x, int y, int sizeX, int sizeY)
+        {
+            for (int yy = y - 1; yy <= y + sizeY; yy++)
+                for (int xx = x - 1; xx <= x + sizeX; xx++)
+                {
+                    bool inside = xx >= x && xx < x + sizeX && yy >= y && yy < y + sizeY;
+                    if (inside || !_s.World.InBounds(xx, yy) || !IsStreet(xx, yy)) continue;
+                    ref readonly var t = ref _s.World.Get(xx, yy);
+                    if ((t.Flags & TileFlags.Road) != 0 || t.Building.IsValid || _s.World.IsWater(xx, yy)) continue;
+                    _s.World.SetFlags(xx, yy, TileFlags.Road, TileFlags.None);
+                }
+        }
+
         private readonly List<EntityId> _unitsInRect = new List<EntityId>();
 
         // Gebäudekacheln sind gesperrt: Eine Einheit, die beim Bau darauf stünde, fände nie wieder einen Weg (Prüf-Befund).
@@ -259,6 +277,7 @@ namespace WorldBeyond.Simulation.Civilizations
                     }
                 }
             }
+            PaveStreetsAround(x, y, d.SizeX, d.SizeY);
             reason = null;
             return true;
         }
