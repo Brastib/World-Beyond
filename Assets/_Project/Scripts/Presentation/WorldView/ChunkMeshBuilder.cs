@@ -71,11 +71,14 @@ namespace WorldBeyond.Presentation.WorldView
             return true;
         }
 
-        // Wasser als Höhenfeld über den Kachelmitten (wie das Gelände, gleiche Diagonale). Wasserkacheln liegen auf ihrem
-        // Wasserspiegel, Landkacheln 0,5 m unter dem Boden; die sichtbare Uferlinie ist der Schnitt mit dem Gelände und
-        // verläuft dadurch schräg und weich statt in 4-m-Treppen (Unity-Feedback 03.11.2026: eckige Flüsse).
-        // Randkacheln der Welt werden bis an den Weltrand gezogen, dort schließt die Ozeanebene an.
-        const float LandWaterDepth = 0.5f;
+        // Wasser: je Kachelmitte eine Tiefe D (Wasser: Spiegel − Boden, Land: −LandWaterDepth). Zellen zwischen vier Kachelmitten
+        // mit Wasser werden WaterSubdiv-fach unterteilt; D wird dazwischen per Catmull-Rom interpoliert und auf das Gelände gelegt
+        // (y = Boden + D). Die sichtbare Uferlinie ist die Nulllinie von D und verläuft dadurch rund statt in Stufen
+        // (Unity-Feedback 03.11.2026, Lauf 7). Randkacheln der Welt reichen bis an den Weltrand (Ozeanebene schließt an).
+        const float LandWaterDepth = 0.6f;
+        const int WaterSubdiv = 4;
+        float[] _depth = new float[0], _level = new float[0];
+        int _depthStride, _depthI0, _depthJ0;
 
         public bool BuildWater(IWorldQuery world, int cx, int cy, Mesh mesh)
         {
@@ -89,32 +92,73 @@ namespace WorldBeyond.Presentation.WorldView
                 mesh.Clear();
                 return false;
             }
-            float ts = WorldConstants.TileSize;
-            float invW = 1f / (world.Width * ts), invH = 1f / (world.Height * ts);
-            int stride = i1 - i0 + 1;
-            _water.Clear();
-            for (int j = j0; j <= j1; j++)
+            // Tiefenfeld mit 1 Kachel Rand (Catmull-Rom braucht die Nachbarn).
+            _depthI0 = i0 - 1; _depthJ0 = j0 - 1;
+            _depthStride = i1 - i0 + 4;
+            int rows = j1 - j0 + 4;
+            if (_depth.Length < _depthStride * rows) { _depth = new float[_depthStride * rows]; _level = new float[_depthStride * rows]; }
+            for (int r = 0; r < rows; r++)
             {
-                for (int i = i0; i <= i1; i++)
+                for (int q = 0; q < _depthStride; q++)
                 {
+                    int i = Mathf.Clamp(_depthI0 + q, 0, world.Width - 1), j = Mathf.Clamp(_depthJ0 + r, 0, world.Height - 1);
+                    float ground = world.SampleHeight(WorldCoords.TileCenterX(i), WorldCoords.TileCenterZ(j));
                     bool wet = IsWaterTile(world, i, j);
-                    TileData t = world.Get(i, j);
-                    float wx = i == 0 ? 0f : i == world.Width - 1 ? world.Width * ts : WorldCoords.TileCenterX(i);
-                    float wz = j == 0 ? 0f : j == world.Height - 1 ? world.Height * ts : WorldCoords.TileCenterZ(j);
-                    float y = wet ? t.WaterLevel : world.SampleHeight(WorldCoords.TileCenterX(i), WorldCoords.TileCenterZ(j)) - LandWaterDepth;
-                    AddWaterVertex(wx, y, wz, invW, invH);
-                    _water.Add(wet);
+                    _depth[r * _depthStride + q] = wet ? Mathf.Max(0.05f, world.Get(i, j).WaterLevel - ground) : -LandWaterDepth;
+                    _level[r * _depthStride + q] = wet ? world.Get(i, j).WaterLevel : float.MinValue;
                 }
             }
-            for (int j = 0; j < j1 - j0; j++)
+
+            float ts = WorldConstants.TileSize;
+            float invW = 1f / (world.Width * ts), invH = 1f / (world.Height * ts);
+            int n = WaterSubdiv;
+            for (int j = j0; j < j1; j++)
             {
-                for (int i = 0; i < i1 - i0; i++)
+                for (int i = i0; i < i1; i++)
                 {
-                    int v00 = j * stride + i, v10 = v00 + 1, v01 = v00 + stride, v11 = v01 + 1;
-                    if (!_water[v00] && !_water[v10] && !_water[v01] && !_water[v11])
+                    if (Depth(i, j) <= 0f && Depth(i + 1, j) <= 0f && Depth(i, j + 1) <= 0f && Depth(i + 1, j + 1) <= 0f)
                         continue;
-                    _indices.Add(v00); _indices.Add(v11); _indices.Add(v10);
-                    _indices.Add(v00); _indices.Add(v01); _indices.Add(v11);
+                    float xa = i == 0 ? 0f : WorldCoords.TileCenterX(i);
+                    float xb = i + 1 == world.Width - 1 ? world.Width * ts : WorldCoords.TileCenterX(i + 1);
+                    float za = j == 0 ? 0f : WorldCoords.TileCenterZ(j);
+                    float zb = j + 1 == world.Height - 1 ? world.Height * ts : WorldCoords.TileCenterZ(j + 1);
+                    // Ganz im Wasser: Spiegel bilinear (glatt, keine Wellen vom Seegrund). Am Ufer: Boden + D, nie über dem
+                    // höchsten Wasserspiegel der Ecken.
+                    float l00 = Level(i, j), l10 = Level(i + 1, j), l01 = Level(i, j + 1), l11 = Level(i + 1, j + 1);
+                    bool allWet = l00 > float.MinValue && l10 > float.MinValue && l01 > float.MinValue && l11 > float.MinValue;
+                    float maxLevel = Mathf.Max(Mathf.Max(l00, l10), Mathf.Max(l01, l11));
+                    int b = _vertices.Count;
+                    if (allWet)
+                    {
+                        // Offenes Wasser braucht keine Unterteilung (Ozean-Chunks bleiben bei 4 Ecken je Zelle).
+                        AddWaterVertex(xa, l00, za, invW, invH);
+                        AddWaterVertex(xb, l10, za, invW, invH);
+                        AddWaterVertex(xa, l01, zb, invW, invH);
+                        AddWaterVertex(xb, l11, zb, invW, invH);
+                        _indices.Add(b); _indices.Add(b + 3); _indices.Add(b + 1);
+                        _indices.Add(b); _indices.Add(b + 2); _indices.Add(b + 3);
+                        continue;
+                    }
+                    for (int sv = 0; sv <= n; sv++)
+                    {
+                        float v = (float)sv / n;
+                        for (int su = 0; su <= n; su++)
+                        {
+                            float u = (float)su / n;
+                            float x = Mathf.Lerp(xa, xb, u), z = Mathf.Lerp(za, zb, v);
+                            float y = Mathf.Min(world.SampleHeight(x, z) + DepthAt(i, j, u, v), maxLevel);
+                            AddWaterVertex(x, y, z, invW, invH);
+                        }
+                    }
+                    for (int sv = 0; sv < n; sv++)
+                    {
+                        for (int su = 0; su < n; su++)
+                        {
+                            int v00 = b + sv * (n + 1) + su, v10 = v00 + 1, v01 = v00 + n + 1, v11 = v01 + 1;
+                            _indices.Add(v00); _indices.Add(v11); _indices.Add(v10);
+                            _indices.Add(v00); _indices.Add(v01); _indices.Add(v11);
+                        }
+                    }
                 }
             }
             if (_indices.Count == 0)
@@ -126,7 +170,25 @@ namespace WorldBeyond.Presentation.WorldView
             return true;
         }
 
-        readonly List<bool> _water = new List<bool>();
+        float Level(int i, int j) => _level[(j - _depthJ0) * _depthStride + (i - _depthI0)];
+
+        float Depth(int i, int j) => _depth[(j - _depthJ0) * _depthStride + (i - _depthI0)];
+
+        // Catmull-Rom über die 4 × 4 Kachelmitten um Zelle (i, j); u, v in [0, 1].
+        float DepthAt(int i, int j, float u, float v)
+        {
+            float r0 = CatmullRom(Depth(i - 1, j - 1), Depth(i, j - 1), Depth(i + 1, j - 1), Depth(i + 2, j - 1), u);
+            float r1 = CatmullRom(Depth(i - 1, j), Depth(i, j), Depth(i + 1, j), Depth(i + 2, j), u);
+            float r2 = CatmullRom(Depth(i - 1, j + 1), Depth(i, j + 1), Depth(i + 1, j + 1), Depth(i + 2, j + 1), u);
+            float r3 = CatmullRom(Depth(i - 1, j + 2), Depth(i, j + 2), Depth(i + 1, j + 2), Depth(i + 2, j + 2), u);
+            return CatmullRom(r0, r1, r2, r3, v);
+        }
+
+        static float CatmullRom(float p0, float p1, float p2, float p3, float t)
+        {
+            float t2 = t * t, t3 = t2 * t;
+            return 0.5f * (2f * p1 + (p2 - p0) * t + (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 + (3f * p1 - p0 - 3f * p2 + p3) * t3);
+        }
 
         public static bool IsWaterTile(IWorldQuery world, int x, int y)
         {
