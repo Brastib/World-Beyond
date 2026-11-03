@@ -39,8 +39,8 @@ namespace WorldBeyond.Tests
     {
         public static void Setup(SimContext ctx)
         {
-            ctx.UnitTypes.Register(new UnitTypeData { Key = "unit.settler", DisplayName = "Siedler", Role = UnitRole.Settler, MaxHp = 50f });
-            ctx.UnitTypes.Register(new UnitTypeData { Key = "unit.rifleman", DisplayName = "Schütze", Role = UnitRole.Infantry, MaxHp = 100f });
+            ctx.UnitTypes.Register(new UnitTypeData { Key = "test.settler", DisplayName = "Siedler", Role = UnitRole.Settler, MaxHp = 50f });
+            ctx.UnitTypes.Register(new UnitTypeData { Key = "test.rifleman", DisplayName = "Schütze", Role = UnitRole.Infantry, MaxHp = 100f });
         }
     }
 
@@ -125,7 +125,7 @@ namespace WorldBeyond.Tests
             var ctx = comp.Context;
             var spawned = new List<EntityId>();
             ctx.Events.Subscribe<UnitSpawnedEvent>(e => spawned.Add(e.Unit));
-            var cmd = new SpawnCommand { TypeKey = "unit.settler", Civ = 1, X = 2, Z = 3 };
+            var cmd = new SpawnCommand { TypeKey = "test.settler", Civ = 1, X = 2, Z = 3 };
             ctx.Commands.Enqueue(cmd);
             Assert.AreEqual(0, ctx.Units.Count, "Commands wirken erst an der Tick-Grenze");
             comp.Runner.StepOnce();
@@ -168,7 +168,7 @@ namespace WorldBeyond.Tests
         private sealed class ChainCommand : IWorldCommand
         {
             public bool Validate(SimContext ctx, out string reason) { reason = null; return true; }
-            public void Execute(SimContext ctx) => ctx.Commands.Enqueue(new SpawnCommand { TypeKey = "unit.settler" });
+            public void Execute(SimContext ctx) => ctx.Commands.Enqueue(new SpawnCommand { TypeKey = "test.settler" });
         }
     }
 
@@ -212,7 +212,7 @@ namespace WorldBeyond.Tests
         public void Despawn_PublishesSingleDiedEvent_WithCivAndKiller()
         {
             var ctx = Ctx();
-            ctx.UnitTypes.TryGetByKey("unit.rifleman", out var rifle);
+            ctx.UnitTypes.TryGetByKey("test.rifleman", out var rifle);
             var victim = ctx.Units.Spawn(rifle, 1, 5, 6);
             var killer = ctx.Units.Spawn(rifle, 2, 0, 0);
             var died = new List<UnitDiedEvent>();
@@ -233,7 +233,7 @@ namespace WorldBeyond.Tests
         public void StaleId_IsIgnoredEverywhere()
         {
             var ctx = Ctx();
-            ctx.UnitTypes.TryGetByKey("unit.settler", out var t);
+            ctx.UnitTypes.TryGetByKey("test.settler", out var t);
             var a = ctx.Units.Spawn(t, 1, 0, 0);
             ctx.Units.Despawn(a);
             var b = ctx.Units.Spawn(t, 1, 0, 0);
@@ -251,7 +251,7 @@ namespace WorldBeyond.Tests
         public void HpIsClamped_StateDeadOnlyViaDespawn()
         {
             var ctx = Ctx();
-            ctx.UnitTypes.TryGetByKey("unit.settler", out var t);
+            ctx.UnitTypes.TryGetByKey("test.settler", out var t);
             var a = ctx.Units.Spawn(t, 1, 0, 0);
             ctx.Units.SetHp(a, 999);
             Assert.AreEqual(50f, ctx.Units.Get(a).Hp);
@@ -264,7 +264,7 @@ namespace WorldBeyond.Tests
         public void MoveTarget_SetsAndClearsMovingState()
         {
             var ctx = Ctx();
-            ctx.UnitTypes.TryGetByKey("unit.settler", out var t);
+            ctx.UnitTypes.TryGetByKey("test.settler", out var t);
             var a = ctx.Units.Spawn(t, 1, 0, 0);
             ctx.Units.SetMoveTarget(a, 10, 20);
             var v = ctx.Units.Get(a);
@@ -278,7 +278,7 @@ namespace WorldBeyond.Tests
         public void CopyAliveIds_ListsOnlyLiving()
         {
             var ctx = Ctx();
-            ctx.UnitTypes.TryGetByKey("unit.settler", out var t);
+            ctx.UnitTypes.TryGetByKey("test.settler", out var t);
             var a = ctx.Units.Spawn(t, 1, 0, 0);
             var b = ctx.Units.Spawn(t, 1, 0, 0);
             var c = ctx.Units.Spawn(t, 1, 0, 0);
@@ -295,7 +295,7 @@ namespace WorldBeyond.Tests
         public void Grows_PastInitialCapacity()
         {
             var ctx = Ctx();
-            ctx.UnitTypes.TryGetByKey("unit.settler", out var t);
+            ctx.UnitTypes.TryGetByKey("test.settler", out var t);
             for (int i = 0; i < 3000; i++) Assert.IsTrue(ctx.Units.Spawn(t, 1, i, 0).IsValid);
             Assert.AreEqual(3000, ctx.Units.Count);
         }
@@ -310,8 +310,8 @@ namespace WorldBeyond.Tests
             var ctx = a.Context;
             // Ticks vor dem Aufstellen: Fachsysteme (z. B. Bewegung) sollen die geprüften Felder nicht verändern.
             for (int i = 0; i < 7; i++) a.Runner.StepOnce();
-            ctx.UnitTypes.TryGetByKey("unit.rifleman", out var rifle);
-            ctx.UnitTypes.TryGetByKey("unit.settler", out var settler);
+            ctx.UnitTypes.TryGetByKey("test.rifleman", out var rifle);
+            ctx.UnitTypes.TryGetByKey("test.settler", out var settler);
             var u1 = ctx.Units.Spawn(rifle, 1, 1, 2);
             var u2 = ctx.Units.Spawn(settler, 2, 3, 4);
             var u3 = ctx.Units.Spawn(rifle, 2, 5, 6);
@@ -327,8 +327,8 @@ namespace WorldBeyond.Tests
             // Inhalte in anderer Reihenfolge registriert: Laufzeit-ints unterscheiden sich, Keys nicht.
             var b = GameComposition.Create(new GameStartSettings { Seed = 1 }, c2 =>
             {
-                c2.UnitTypes.Register(new UnitTypeData { Key = "unit.rifleman", MaxHp = 100f });
-                c2.UnitTypes.Register(new UnitTypeData { Key = "unit.settler", MaxHp = 50f });
+                c2.UnitTypes.Register(new UnitTypeData { Key = "test.rifleman", MaxHp = 100f });
+                c2.UnitTypes.Register(new UnitTypeData { Key = "test.settler", MaxHp = 50f });
             });
             var loadOrder = new List<string>();
             foreach (var s in b.Context.Saveables.InLoadOrder())
@@ -346,7 +346,7 @@ namespace WorldBeyond.Tests
             Assert.AreEqual(2, rc.Units.Count);
             Assert.IsFalse(rc.Units.Exists(u2));
             Assert.IsTrue(rc.Units.TryGet(u1, out var v1));
-            Assert.AreEqual("unit.rifleman", rc.UnitTypes.KeyOf(v1.Type));
+            Assert.AreEqual("test.rifleman", rc.UnitTypes.KeyOf(v1.Type));
             Assert.IsTrue(v1.HasMoveTarget);
             Assert.AreEqual(9f, v1.MoveTargetX);
             var v3 = rc.Units.Get(u3);
@@ -362,13 +362,13 @@ namespace WorldBeyond.Tests
         public void UnitRestore_WithUnknownTypeKey_FailsAndKeepsState()
         {
             var a = GameComposition.Create(null, TestContent.Setup);
-            a.Context.UnitTypes.TryGetByKey("unit.settler", out var t);
+            a.Context.UnitTypes.TryGetByKey("test.settler", out var t);
             a.Context.Units.Spawn(t, 1, 0, 0);
             var state = (UnitStoreState)((ISaveable)a.Context.Units).CaptureState();
             state.Units[0].TypeKey = "unit.removed";
 
             var b = GameComposition.Create(null, TestContent.Setup);
-            b.Context.UnitTypes.TryGetByKey("unit.settler", out var tb);
+            b.Context.UnitTypes.TryGetByKey("test.settler", out var tb);
             var keep = b.Context.Units.Spawn(tb, 3, 0, 0);
             Assert.IsFalse(((ISaveable)b.Context.Units).TryRestoreState(state, out var err));
             StringAssert.Contains("unit.removed", err);
@@ -379,7 +379,7 @@ namespace WorldBeyond.Tests
         public void UnitRestore_RejectsAliveIndexWithoutRecord()
         {
             var a = GameComposition.Create(null, TestContent.Setup);
-            a.Context.UnitTypes.TryGetByKey("unit.settler", out var t);
+            a.Context.UnitTypes.TryGetByKey("test.settler", out var t);
             a.Context.Units.Spawn(t, 1, 0, 0);
             var state = (UnitStoreState)((ISaveable)a.Context.Units).CaptureState();
             state.Units = new UnitRecord[0];
@@ -433,14 +433,14 @@ namespace WorldBeyond.Tests
         {
             var comp = WorldBeyond.Application.GameComposition.Create(null, TestContent.Setup);
             var ctx = comp.Context;
-            ctx.UnitTypes.TryGetByKey("unit.settler", out var s);
-            ctx.UnitTypes.TryGetByKey("unit.rifleman", out var r);
+            ctx.UnitTypes.TryGetByKey("test.settler", out var s);
+            ctx.UnitTypes.TryGetByKey("test.rifleman", out var r);
             ctx.Units.Spawn(s, 1, 0, 0);
             ctx.Units.Spawn(r, 1, 0, 0);
             var store = (WorldBeyond.Simulation.ISaveable)ctx.Units;
             var keys = new List<(WorldBeyond.Core.ContentKind, string)>();
             ((WorldBeyond.Simulation.ISaveContentCheck)ctx.Units).CollectContentKeys(store.CaptureState(), keys);
-            CollectionAssert.AreEquivalent(new[] { (WorldBeyond.Core.ContentKind.Unit, "unit.settler"), (WorldBeyond.Core.ContentKind.Unit, "unit.rifleman") }, keys);
+            CollectionAssert.AreEquivalent(new[] { (WorldBeyond.Core.ContentKind.Unit, "test.settler"), (WorldBeyond.Core.ContentKind.Unit, "test.rifleman") }, keys);
         }
     }
 }

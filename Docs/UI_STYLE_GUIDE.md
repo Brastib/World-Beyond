@@ -9,6 +9,8 @@ Gilt für alle Threads, die Assets auswählen oder importieren (Welt, Zivilisati
 
 ### A1. Realismusgrad und Referenzen [E, aus Referenzbildern des Nutzers vom 2026-10-25 abgeleitet]
 
+> **Stand 2026-10-26:** Stil = **„Naturrealismus mit warmer Farbgebung“**: realistische Formen und Materialien (VISION V5, nicht Low-Poly), dazu die kräftige, warme Farbigkeit der Forge-of-Empires-Referenz und die Fernlesbarkeit von WorldBox. Regeln: ASSETS_STYLE_ENVIRONMENT §3. Aussagen unten zu „Low-/Mid-Poly gemalt“ sind dadurch ersetzt. Bestätigung durch den Nutzer am Style-Lock-Bild. **Qualitätsmaßstab des Nutzers:** fotorealistischer Laubbaum, Referenz R1 (ASSETS_STYLE_ENVIRONMENT §3.1; Bild nur im Projektordner, Urheber unbekannt, nicht ins Spiel übernehmen). Beim Style Lock Nahvergleich mit R1; reicht URP sichtbar nicht, wird HDRP dem Nutzer zur Entscheidung vorgelegt. **R1-Qualität gilt einheitlich für alle Assets** (ASSETS_STYLE_ENVIRONMENT §3.2). Alle Materialien nutzen eine gemeinsame Zustands-Shaderschicht für Nässe, Schnee (auch auf Blättern), Frost, Brand, Verkohlung und Schmutz (§5.1): bis M5 gesteuert über Jahreszeit/Testregler, ab M5 über die Umweltsimulation (VISION V9).
+
 Der Nutzer hat als Stil-Referenz vier Bilder geschickt: zwei WorldBox-Screenshots und zwei Forge-of-Empires-Screenshots (Stadt, Gefechtskarte mit Panzern). Daraus folgt:
 
 **„Farbenfroher, gemalter stilisierter Realismus“**
@@ -39,7 +41,7 @@ Alternative: „Realistisch“ (PBR, Poly-Haven-Texturen, realistische Fahrzeuge
 | Soldat | ≤ 1 500 | ≤ 1K (oft Farbpalette) |
 | Fahrzeug | ≤ 5 000 | ≤ 1K |
 | Gebäude | ≤ 4 000 | 1K–2K |
-| Bäume/Felsen | ≤ 1 500 | ≤ 1K |
+| Bäume/Felsen | LOD-Kette: LOD0 ca. 15 000–30 000 (nur wenige Bäume direkt an der Kamera, Maßstab R1), LOD1 ≈ 1 500, LOD2 ≈ 300, danach Impostor; Endwerte nach Messung in Unity | 2K für LOD0, sonst ≤ 1K |
 | Terrain-Oberflächen | – | 1K–2K, kachelbar |
 
 Mindestens 2 LOD-Stufen plus Symbol in der Fernansicht. Bevorzugte Formate: FBX oder glTF, Texturen PNG. Keine 4K-Texturen. Texturwerte folgen PROJECT_MASTER §8.2.
@@ -68,6 +70,21 @@ Unity Particle System, gepoolt (ARCHITECTURE §7). Rauch grau-braun und halbtran
 3. Material auf Palette und gemeinsames Material umgestellt.
 4. Im Spiel gerendert und neben Soldat, Humvee und Haus verglichen (Screenshot bei Nah- und Fernzoom), nicht nur anhand des Vorschaubilds.
 5. Platzhalter werden in einer Liste geführt, bis sie ersetzt sind.
+
+### A8. Langfristiges Ziel der Nahansicht [E, aus Zielbildern R5–R7 des Nutzers vom 2026-10-27]
+
+Nutzer: „So soll es ingame irgendwann aussehen … auch die Gebäude.“ Zielbilder (nicht ins Repo, fremde Spiele-Screenshots, nur Referenz): Schrägsicht auf eine dichte Altstadt mit Kirche/Platz im Gefecht, eine zerbombte Stadt mit Panzern und Ruinen, ein Palisadendorf mit Türmen, Feldern, Mühlen, Vieh und vielen Menschen. Das betrifft drei Ebenen, nicht nur die Grafik:
+
+1. **Siedlungsaufbau (Besitzer Civ):** dichte, gewachsene Orte statt Einzelgebäude auf Kacheln: Wege und Plätze, Häuser an Wegen ausgerichtet, Zentrum mit Großbau (Kirche/Halle), Mauer/Palisade mit Türmen und Toren, Felder, Weiden und Mühlen am Rand, Kleinkram (Zäune, Karren, Fässer, Bäume im Ort).
+2. **Gebäude und Zerstörung (Asset-Katalog, Art):** modulare Gebäude je Epoche (Bauteil-Sätze, ASSET_CATALOG §4), Zustände intakt/beschädigt (Dachloch, ausgebrannt)/Ruine mit Schutt; Krater, Rauch, Feuer (A6).
+3. **Leben:** viele sichtbare Menschen und Tiere im Ort (Sammelinstanzen, nicht je Person ein Simulationsobjekt), Fahrzeuge in echter Größe.
+
+Abgeleitetes Kamera- und Lichtziel für die Nahansicht (Werte zur Prüfung im Style Lock):
+- Kamera: Neigung 40–55°, Abstand 40–150 m, Sichtfeld 35–40° (weniger Verzerrung als 60°). Heute: minPitch 32°, maxPitch 72°, minDistance 15 m (StrategyCameraController, Besitzer World), Sichtfeld Standard.
+- Licht: Sonne tiefer und wärmer (30–40° Höhe statt 50°), lange weiche Schatten, Schattendistanz in der Nahansicht ≥ 150 m mit 4 Kaskaden, SSAO an, leichte Luftperspektive (Dunst ab ca. 300 m in der Nahansicht), Farbkorrektur: warme Lichter, leicht entsättigte Schatten, Bloom nur für Feuer/Explosionen. Heute: WorldAtmosphere (Sonnenhöhe 50°, Nebel 600–2600 m); URP-Asset und Post-Processing liegen bei der Integration/DevOps.
+- Materialien: Abnutzung, Kantenschmutz, Dachziegel/Stroh/Putz mit Textur (A3/A4); keine flachen Einfarbflächen in der Nahansicht.
+
+Stand 27.10.2026: Die M1-Darstellung (Presentation/WorldObjects) nutzt PLATZHALTER mit flachen Farben; sie erfüllt dieses Ziel bewusst nicht. Reihenfolge: zuerst Siedlungsaufbau und Gebäudezustände in der Simulation, dann Bauteil-Sätze aus dem Katalog, dann Licht/Post-Processing im Style Lock.
 
 ## B. Benutzeroberfläche
 
