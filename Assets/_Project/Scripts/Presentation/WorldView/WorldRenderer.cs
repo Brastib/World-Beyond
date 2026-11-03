@@ -148,6 +148,13 @@ namespace WorldBeyond.Presentation.WorldView
                 return;
             _colorMap.UpdateTile(e.X, e.Y);
             _splat?.UpdateTile(e.X, e.Y);
+            // Wege (Flags) und Gebäude ändern weder Höhe noch Wasser: kein Neubau von Gelände-/Wasser-Mesh nötig
+            // (Farbe kommt aus Farbkarte/Steuerkarten). Spart bei wachsenden Städten viele Chunk-Neubauten pro Sekunde.
+            if (e.Kind == TileChangeKind.Flags || e.Kind == TileChangeKind.Building)
+            {
+                _dirtyVegetation.Add(e.Y / WorldConstants.ChunkSize * _countX + e.X / WorldConstants.ChunkSize);
+                return;
+            }
             // Ein Gitterpunkt gehört bis zu zwei Terrain-Chunks je Achse; Normalen hängen an den Nachbarn.
             for (int dy = -1; dy <= 1; dy++)
             {
