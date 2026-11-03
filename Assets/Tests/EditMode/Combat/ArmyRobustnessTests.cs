@@ -154,6 +154,10 @@ namespace WorldBeyond.Tests.EditMode.Combat
             Assert.That(ai.RecruitNeed(1), Is.EqualTo(10), "eingereihte Aufträge zählen mit");
             env.RecruitWillingness = civ => 0.5f;
             Assert.That(ai.RecruitNeed(1), Is.EqualTo(5), "Civ wägt Kosten ab: halbe Bereitschaft");
+            env.RecruitWillingness = civ => 0.3f;
+            Assert.That(ai.RecruitNeed(1), Is.EqualTo(0), "unter RecruitThreshold nur Grundarmee, die mit den 4 Aufträgen schon steht");
+            env.PendingRecruits = null;
+            Assert.That(ai.RecruitNeed(1), Is.EqualTo(1), "Grundarmee auch unter der Schwelle: (4 - 1) x 0,3 = 0,9 -> 1");
             env.RecruitWillingness = civ => 0f;
             Assert.That(ai.RecruitNeed(1), Is.EqualTo(0));
         }
@@ -173,6 +177,27 @@ namespace WorldBeyond.Tests.EditMode.Combat
             w.Ticks(60);
             var view = w.Ctx.Get<IArmyQuery>().GetArmies(1)[0];
             Assert.That(view.Order.Kind, Is.EqualTo(ArmyOrderKind.AttackSettlement), "fremde Garnison daheim bedroht nicht");
+        }
+
+        [Test]
+        public void RecruitNeedCountsOnlyTroopsInTheTheaterNotWorldwideStrength()
+        {
+            // Heimat 1 bei (0,0), Heimat 2 bei (0,1000). Civ 1 greift an, Ziel ist Heimat 2.
+            var w = Make(out var war, out _);
+            var env = w.Ctx.Get<ArmyEnvironment>();
+            env.HomeOf = civ => civ == 1 ? (true, 0f, 0f) : (true, 0f, 1000f);
+            env.IsAttackerAgainst = (civ, enemy) => civ == 1;
+            w.Ctx.Units.Spawn(w.Rifleman, 1, 0f, 0f);
+            for (int i = 0; i < 4; i++) w.Ctx.Units.Spawn(w.Rifleman, 2, i * 3f, 1000f);         // Garnison am Ziel
+            for (int i = 0; i < 6; i++) w.Ctx.Units.Spawn(w.Rifleman, 2, 3000f + i * 3f, 3000f);  // weit weg, weder Ziel noch Vormarsch
+            war[0] = true;
+            w.Ticks(1);
+            var ai = w.Ctx.Get<ArmyAISystem>();
+            Assert.That(ai.RecruitNeed(1), Is.EqualTo(5), "Angreifer: 1,5 x 4 Verteidiger am Ziel - 1 eigener");
+            Assert.That(ai.RecruitNeed(2), Is.EqualTo(0), "Verteidiger: Angreifer steht daheim, kein Vormarsch");
+            for (int i = 0; i < 12; i++) w.Ctx.Units.Spawn(w.Rifleman, 1, i * 3f, 700f);          // 12 rücken über die Mitte vor
+            w.Ticks(10);   // Armee-KI erfasst Einheiten nur in ihrem Takt (alle 10 Ticks)
+            Assert.That(ai.RecruitNeed(2), Is.EqualTo(2), "Verteidiger: Gleichstand mit 12 Vorrückenden - 10 eigene");
         }
 
         [Test]
