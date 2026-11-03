@@ -13,10 +13,12 @@ namespace WorldBeyond.UiTests
         {
             var c = GameComposition.Create(new GameStartSettings { Seed = 7, WorldWidth = 128, WorldHeight = 128, CivilizationCount = 2 });
             var world = c.Context.Get<IWorldQuery>();
-            // Wege (ef3f0a0) müssen ein TileChangedEvent auslösen, sonst zieht die Steuerkarte im WorldRenderer nicht nach.
+            // Wege (Verkehr, civ/city-logic) müssen ein TileChangedEvent auslösen, sonst zieht die Steuerkarte im WorldRenderer nicht nach.
             var roadEvents = new System.Collections.Generic.HashSet<(int, int)>();
             c.Context.Events.Subscribe<TileChangedEvent>(e => { if ((world.Get(e.X, e.Y).Flags & TileFlags.Road) != 0) roadEvents.Add((e.X, e.Y)); });
-            for (int i = 0; i < 2 * WorldBeyond.Simulation.Civilizations.CivTime.TicksPerYear; i++) c.Runner.StepOnce();
+            // Wege entstehen erst aus Verkehr (12 Personenjahre je Kachel): bis zu 20 Jahre laufen, ab dem ersten Weg noch 1 Jahr.
+            int ty = WorldBeyond.Simulation.Civilizations.CivTime.TicksPerYear, extra = -1;
+            for (int i = 0; i < 20 * ty && extra != 0; i++) { c.Runner.StepOnce(); if (extra > 0) extra--; else if (extra < 0 && roadEvents.Count > 0) extra = ty; }
             int w = world.Width;
             var ctrl = new[] { new byte[w * world.Height * 4], new byte[w * world.Height * 4], new byte[w * world.Height * 4] };
             var seen = new bool[TerrainLayers.Count];
@@ -36,7 +38,7 @@ namespace WorldBeyond.UiTests
                 Assert.AreEqual(255, ctrl[(int)layer / 4][p + (int)layer % 4]);
             }
             Assert.Greater(buildings, 0);
-            Assert.Greater(roadEvents.Count, 0, "nach 2 Spieljahren keine Wege");
+            Assert.Greater(roadEvents.Count, 0, "nach 20 Spieljahren keine Wege");
             for (int y = 0; y < world.Height; y++)
             for (int x = 0; x < w; x++)
                 if ((world.Get(x, y).Flags & TileFlags.Road) != 0)
