@@ -40,6 +40,7 @@ namespace WorldBeyond.Simulation.Civilizations
                 Caravans = _transport.Capture(),
                 BlockedRoutes = _transport.CaptureBlocked(),
                 Territory = _territory.CaptureDirty(),
+                Traffic = CaptureTraffic(),
             };
             var civs = new List<CivDto>();
             foreach (int id in _s.CivOrder) civs.Add(ToDto(_s.Civs[id]));
@@ -58,6 +59,10 @@ namespace WorldBeyond.Simulation.Civilizations
                 return false;
             }
             if (s.LastCivId < 0 || s.LastSettlementId < 0) { error = "civs: negativer ID-Zähler."; return false; }
+            int tiles = _s.World.Width * _s.World.Height;
+            if (s.Traffic != null)
+                foreach (var t in s.Traffic)
+                    if (t == null || t.Tile < 0 || t.Tile >= tiles || !(t.Amount >= 0)) { error = $"civs: ungültiger Verkehrseintrag ({t?.Tile})."; return false; }
 
             // 1. Alles in neue Objekte übersetzen und prüfen.
             var civs = new List<Civilization>();
@@ -103,8 +108,18 @@ namespace WorldBeyond.Simulation.Civilizations
             foreach (var st in sets) { _s.AddSettlement(st); _settlements.RecomputeCapacities(st); }
             _civs.RebuildAliveList();
             _territory.RestoreDirty(s.Territory, _s.World.Width, _s.World.Height);
+            if (s.Traffic != null) foreach (var t in s.Traffic) _s.Traffic[t.Tile] = t.Amount;
             error = null;
             return true;
+        }
+
+        private TrafficDto[] CaptureTraffic()
+        {
+            var keys = new List<int>(_s.Traffic.Keys);
+            keys.Sort();
+            var list = new TrafficDto[keys.Count];
+            for (int i = 0; i < keys.Count; i++) list[i] = new TrafficDto { Tile = keys[i], Amount = _s.Traffic[keys[i]] };
+            return list;
         }
 
         /// <summary>Nach dem Laden aller Sektionen: verwaiste Gebäude und Karawanen bereinigen (Rückfall, Warnung).</summary>
@@ -260,7 +275,10 @@ namespace WorldBeyond.Simulation.Civilizations
         public CaravanDto[] Caravans;
         public RouteBlockDto[] BlockedRoutes;   // fehlt in älteren Spielständen: dann keine Sperren
         public TerritoryDirtyDto Territory;
+        public TrafficDto[] Traffic;            // fehlt in älteren Spielständen: kein Verkehr
     }
+
+    [Serializable] public sealed class TrafficDto { public int Tile; public double Amount; }
 
     [Serializable]
     public sealed class CivDto

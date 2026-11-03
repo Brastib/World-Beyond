@@ -16,11 +16,17 @@ namespace WorldBeyond.Simulation.Civilizations
         public readonly bool Completed;
         public readonly bool Idle;                // fertig, aber ohne Rohstoff/Wasser im Einzugsbereich
         public readonly int Workers;
+        public readonly int EntranceX, EntranceY;  // Kachel vor der Tür (am Weg); -1 = keine
+        public bool HasEntrance => EntranceX >= 0;
 
         public BuildingView(EntityId id, BuildingTypeId type, string key, int settlement, int x, int y, int sx, int sy, float c, bool done, bool idle, int workers)
+            : this(id, type, key, settlement, x, y, sx, sy, c, done, idle, workers, -1, -1) { }
+
+        public BuildingView(EntityId id, BuildingTypeId type, string key, int settlement, int x, int y, int sx, int sy, float c, bool done, bool idle, int workers,
+            int entranceX, int entranceY)
         {
             Id = id; Type = type; TypeKey = key; SettlementId = settlement; X = x; Y = y; SizeX = sx; SizeY = sy;
-            Construction01 = c; Completed = done; Idle = idle; Workers = workers;
+            Construction01 = c; Completed = done; Idle = idle; Workers = workers; EntranceX = entranceX; EntranceY = entranceY;
         }
     }
 
@@ -48,6 +54,7 @@ namespace WorldBeyond.Simulation.Civilizations
             public int Workers;
             public double OutputCarry;          // angesammelter, noch nicht abgebauter Bruchteil
             public int LastWorkX = -1, LastWorkY = -1;   // zuletzt abgebaute Kachel (Darstellung der Arbeiter)
+            public int EntranceX = -1, EntranceY = -1;   // Kachel vor der Tür; Wege führen hierhin
         }
 
         private readonly EntityStore _ids = new EntityStore(256);
@@ -83,7 +90,7 @@ namespace WorldBeyond.Simulation.Civilizations
             if (r == null) { view = default; return false; }
             var d = _types.Get(r.Type);
             float c = r.Completed ? 1f : (float)Math.Min(1.0, r.Progress / d.BuildWorkYears);
-            view = new BuildingView(id, r.Type, d.Key, r.SettlementId, r.X, r.Y, r.SizeX, r.SizeY, c, r.Completed, r.Idle, r.Workers);
+            view = new BuildingView(id, r.Type, d.Key, r.SettlementId, r.X, r.Y, r.SizeX, r.SizeY, c, r.Completed, r.Idle, r.Workers, r.EntranceX, r.EntranceY);
             return true;
         }
 
@@ -111,6 +118,7 @@ namespace WorldBeyond.Simulation.Civilizations
                     Index = i, TypeKey = _types.KeyOf(r.Type), SettlementId = r.SettlementId, X = r.X, Y = r.Y,
                     Progress = r.Progress, Completed = r.Completed, Idle = r.Idle, Workers = r.Workers, OutputCarry = r.OutputCarry,
                     LastWorkX = r.LastWorkX, LastWorkY = r.LastWorkY,
+                    HasEntrance = r.EntranceX >= 0, EntranceX = r.EntranceX, EntranceY = r.EntranceY,
                 });
             }
             return new BuildingStoreState { Entities = _ids.CaptureState(), Buildings = list.ToArray() };
@@ -134,6 +142,7 @@ namespace WorldBeyond.Simulation.Civilizations
                     Type = t, SettlementId = b.SettlementId, X = b.X, Y = b.Y, SizeX = d.SizeX, SizeY = d.SizeY,
                     Progress = b.Progress, Completed = b.Completed, Idle = b.Idle, Workers = b.Workers, OutputCarry = b.OutputCarry,
                     LastWorkX = b.LastWorkX, LastWorkY = b.LastWorkY,
+                    EntranceX = b.HasEntrance ? b.EntranceX : -1, EntranceY = b.HasEntrance ? b.EntranceY : -1,
                 };
             }
             for (int i = 1; i < len; i++)
@@ -165,5 +174,7 @@ namespace WorldBeyond.Simulation.Civilizations
         public int Workers;
         public double OutputCarry;
         public int LastWorkX, LastWorkY;
+        public bool HasEntrance;                 // fehlt in älteren Spielständen: Tür wird neu bestimmt
+        public int EntranceX, EntranceY;
     }
 }

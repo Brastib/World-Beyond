@@ -162,28 +162,13 @@ namespace WorldBeyond.Simulation.Civilizations
                 {
                     if (_s.World.Get(xx, yy).OwnerCivId != st.CivId) { reason = "Nur im eigenen Gebiet."; return false; }
                     if (IsStreet(xx, yy)) { reason = "Straße bleibt frei."; return false; }
+                    if ((_s.World.Get(xx, yy).Flags & TileFlags.Road) != 0) { reason = "Auf Wegen wird nicht gebaut."; return false; }
                 }
+            if (CoversEntrance(st, x, y, d.SizeX, d.SizeY)) { reason = "Der Eingang eines Nachbarhauses bleibt frei."; return false; }
+            if (!HasDoorTile(x, y, d.SizeX, d.SizeY)) { reason = "Kein Platz für einen Eingang."; return false; }
             if (UnitsInside(x, y, d.SizeX, d.SizeY)) { reason = "Einheiten stehen im Weg."; return false; }
             reason = null;
             return true;
-        }
-
-        /// <summary>
-        /// Wege entstehen mit der Bebauung (Nutzer 2026-11-03): Straßenkacheln direkt neben einem neuen Gebäude werden zum
-        /// sichtbaren Weg (TileFlags.Road, schneller begehbar). So wächst das Wegenetz mit der Stadt, deterministisch und
-        /// über die geänderten Kacheln im Spielstand. Wasser bleibt ausgenommen (Brücken später).
-        /// </summary>
-        private void PaveStreetsAround(int x, int y, int sizeX, int sizeY)
-        {
-            for (int yy = y - 1; yy <= y + sizeY; yy++)
-                for (int xx = x - 1; xx <= x + sizeX; xx++)
-                {
-                    bool inside = xx >= x && xx < x + sizeX && yy >= y && yy < y + sizeY;
-                    if (inside || !_s.World.InBounds(xx, yy) || !IsStreet(xx, yy)) continue;
-                    ref readonly var t = ref _s.World.Get(xx, yy);
-                    if ((t.Flags & TileFlags.Road) != 0 || t.Building.IsValid || _s.World.IsWater(xx, yy)) continue;
-                    _s.World.SetFlags(xx, yy, TileFlags.Road, TileFlags.None);
-                }
         }
 
         private readonly List<EntityId> _unitsInRect = new List<EntityId>();
@@ -248,6 +233,7 @@ namespace WorldBeyond.Simulation.Civilizations
                 return false;
             }
             st.Buildings.Add(id);
+            AssignEntrance(st, _s.Buildings.GetRecord(id));
             _s.Ctx.Events.Publish(new BuildingPlacedEvent { Building = id, SettlementId = st.Id, X = x, Y = y });
             return true;
         }
@@ -277,9 +263,82 @@ namespace WorldBeyond.Simulation.Civilizations
                     }
                 }
             }
-            PaveStreetsAround(x, y, d.SizeX, d.SizeY);
             reason = null;
             return true;
+        }
+
+        // ---------------- Eingänge ----------------
+
+        private bool CoversEntrance(Settlement st, int x, int y, int sx, int sy)
+        {
+            foreach (var b in st.Buildings)
+            {
+                var r = _s.Buildings.GetRecord(b);
+                if (r != null && r.EntranceX >= x && r.EntranceX < x + sx && r.EntranceY >= y && r.EntranceY < y + sy) return true;
+            }
+            return false;
+        }
+
+        // Mindestens eine begehbare Nachbarkachel am Rand der Grundfläche (sonst gäbe es keinen Eingang).
+        private bool HasDoorTile(int x, int y, int sx, int sy)
+        {
+            for (int i = 0; i < 2 * (sx + sy); i++)
+            {
+                var (px, py) = Perimeter(x, y, sx, sy, i);
+                if (DoorCandidate(px, py)) return true;
+            }
+            return false;
+        }
+
+        private bool DoorCandidate(int x, int y)
+        {
+            if (!_s.World.InBounds(x, y)) return false;
+            ref readonly var t = ref _s.World.Get(x, y);
+            return !t.Building.IsValid && _s.World.IsWalkable(x, y, MovementClass.Foot);
+        }
+
+        /// <summary>Kachel i (0 … 2·(sx+sy)−1) entlang der Außenseite: oben, rechts, unten, links (ohne Ecken).</summary>
+        private static (int x, int y) Perimeter(int x, int y, int sx, int sy, int i)
+        {
+            if (i < sx) return (x + i, y - 1);
+            i -= sx;
+            if (i < sy) return (x + sx, y + i);
+            i -= sy;
+            if (i < sx) return (x + sx - 1 - i, y + sy);
+            i -= sx;
+            return (x - 1, y + sy - 1 - i);
+        }
+
+        /// <summary>
+        /// Legt die Tür eines Gebäudes fest: bevorzugt eine Wegkachel, dann eine Straße des Rasters, dann die freie Kachel
+        /// zum Ortskern hin. Wege bilden sich anschließend von dieser Tür aus (RoadFormationSystem).
+        /// </summary>
+        internal void AssignEntrance(Settlement st, BuildingStore.Record r)
+        {
+            if (r == null) return;
+            r.EntranceX = r.EntranceY = -1;
+            int best = int.MaxValue;
+            float cx = st.X + CoreSize * 0.5f, cy = st.Y + CoreSize * 0.5f;
+            for (int i = 0; i < 2 * (r.SizeX + r.SizeY); i++)
+            {
+                var (px, py) = Perimeter(r.X, r.Y, r.SizeX, r.SizeY, i);
+                if (!DoorCandidate(px, py)) continue;
+                int rank = (_s.World.Get(px, py).Flags & TileFlags.Road) != 0 ? 0 : IsStreet(px, py) ? 1 : 2;
+                float dx = px + 0.5f - cx, dy = py + 0.5f - cy;
+                int score = rank * 1_000_000 + (int)((dx * dx + dy * dy) * 16f);
+                if (score < best) { best = score; r.EntranceX = px; r.EntranceY = py; }
+            }
+        }
+
+        /// <summary>true, wenn eine Kachel der Außenseite ein Weg ist (Gebäude an der Straße).</summary>
+        internal bool FacesRoad(int x, int y, int sx, int sy)
+        {
+            for (int i = 0; i < 2 * (sx + sy); i++)
+            {
+                var (px, py) = Perimeter(x, y, sx, sy, i);
+                if (_s.World.InBounds(px, py) && (_s.World.Get(px, py).Flags & TileFlags.Road) != 0) return true;
+            }
+            return false;
         }
 
         internal bool DestroyBuilding(EntityId id)

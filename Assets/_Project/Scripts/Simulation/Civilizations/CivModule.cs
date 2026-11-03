@@ -89,6 +89,7 @@ namespace WorldBeyond.Simulation.Civilizations
             register(m.Transport);
             register(m.TerritorySystem);
             register(new ArmyUpkeepSystem(s));
+            register(new RoadFormationSystem(s, m.Settlements));
 
             // Welt prüft beim Laden ihre Verweise auf Gebäude und Zivilisationen (SYSTEM_INTERFACES §4.5).
             if (world is WorldGrid grid)

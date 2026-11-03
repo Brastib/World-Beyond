@@ -250,7 +250,8 @@ namespace WorldBeyond.Simulation.Civilizations
             if (st.Tier < d.MinTier || _settlements.CountOfType(st, type) >= d.MaxPerSettlement) return false;
             foreach (var r in Resources.Stockable) if (st.Stock[(int)r] < d.Cost[r]) return false;
 
-            int radius = TerritoryService.RadiusOf(st.Tier) - 1;
+            // Felder dürfen bis an den Gebietsrand (außen), alles andere bleibt näher am Ort.
+            int radius = TerritoryService.RadiusOf(st.Tier) - (d.UsesFertility ? 0 : 1);
             _siteCiv = civ.Id; _siteSt = st; _siteType = type; _siteDef = d;
             _s.World.FindBestTiles(st.X + 1, st.Y + 1, radius, _siteScorer ??= ScoreBuildSite, 1, _tiles);
             _siteSt = null; _siteDef = null;
@@ -274,21 +275,29 @@ namespace WorldBeyond.Simulation.Civilizations
             if (!_settlements.CanBuild(_siteSt, _siteType, x, y, out _)) return 0f;
             float v = PlacementValue(_siteDef, x, y);
             if (v <= 0f) return 0f;
+            var d = _siteDef;
+            // Stadtlogik (Nutzervorgabe 2026-11-03): Häuser drängen sich um den Ortskern, Felder liegen außen,
+            // Gebäude stehen bevorzugt an einem Weg.
+            if (d.UsesFertility && RingDistance(_siteSt, x, y, d.SizeX, d.SizeY) < FieldRingOf(_siteSt.Tier)) return 0f;
+            else if (!d.UsesFertility && _settlements.FacesRoad(x, y, d.SizeX, d.SizeY)) v *= 1.5f;
             int dx = x - _siteSt.X, dy = y - _siteSt.Y;
-            float dist = (float)Math.Sqrt(dx * dx + dy * dy);
-            // Echte Stadt: Felder nicht mitten im Ort, Häuser dicht am Kern und an einem Weg.
-            if (_siteDef.UsesFertility && dist < 4f) v *= 0.2f;
-            if (_siteDef.Category == BuildingCategory.Housing && NextToStreet(x, y, _siteDef.SizeX, _siteDef.SizeY)) v *= 1.5f;
-            return v / (1f + dist * (_siteDef.Category == BuildingCategory.Housing ? 0.15f : 0.05f));
+            float falloff = d.Category == BuildingCategory.Housing ? HousingFalloff : 0.05f;
+            return v / (1f + (float)Math.Sqrt(dx * dx + dy * dy) * falloff);
         }
 
-        private static bool NextToStreet(int x, int y, int sx, int sy)
+        /// <summary>Felder halten diesen Abstand (Kacheln) zum Ortskern frei, dort wird gewohnt.</summary>
+        public const int FieldRing = 2;
+        /// <summary>Im Lager (kleines Gebiet) reicht ein Ring für Hütten, ab dem Dorf zwei.</summary>
+        public static int FieldRingOf(SettlementTier tier) => tier == SettlementTier.Camp ? 1 : FieldRing;
+        public const float HousingFalloff = 0.05f;
+
+        /// <summary>Abstand in Kacheln zwischen Grundfläche und Ortskern (0 = berührt ihn).</summary>
+        internal static int RingDistance(Settlement st, int x, int y, int sx, int sy)
         {
-            for (int xx = x; xx < x + sx; xx++)
-                if (SettlementRegistry.IsStreet(xx, y - 1) || SettlementRegistry.IsStreet(xx, y + sy)) return true;
-            for (int yy = y; yy < y + sy; yy++)
-                if (SettlementRegistry.IsStreet(x - 1, yy) || SettlementRegistry.IsStreet(x + sx, yy)) return true;
-            return false;
+            int c = SettlementRegistry.CoreSize;
+            int gx = Math.Max(0, Math.Max(st.X - (x + sx), x - (st.X + c)));
+            int gy = Math.Max(0, Math.Max(st.Y - (y + sy), y - (st.Y + c)));
+            return Math.Max(gx, gy);
         }
 
         /// <summary>Standortwert eines Gebäudes: Rohstoffe im Einzugsbereich, Fruchtbarkeit, Wasser; sonst Nähe zum Kern.</summary>
