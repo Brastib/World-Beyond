@@ -7,7 +7,7 @@ namespace WorldBeyond.Presentation.WorldObjects
     // damit Siedlungen, Gebäude und Einheiten in M1 überhaupt sichtbar sind. Werden durch geprüfte Modelle ersetzt
     // (ASSET_CREDITS.md), sobald der Stil-Lock steht.
     //
-    // Gebäude: Grundfläche 1 Kachel = 4 × 4 m, zentriert um den Ursprung, Fuß auf y = 0; der Renderer skaliert
+    // Gebäude: echte Höhen (Hütte ~3,5 m, Haus ~6 m, Ortszentrum 2×2 ~8–12 m), Grundfläche 1 Kachel = 4 × 4 m, zentriert um den Ursprung, Fuß auf y = 0; der Renderer skaliert
     // x/z mit SizeX/SizeY und y mit dem Baufortschritt. Sockel reicht 1 m unter 0, damit Hänge keine Lücken zeigen.
     // Submesh 0 = heller Baukörper (Putz/Holz hell), 1 = Civ-Farbe (nur Sockelband, Fahne, Wimpel), 2 = dunkle Teile (Holz, Stein, Erde),
     // 3 = Ziegeldach, 4 = Stroh. Natürliche Materialfarben nach den Stilreferenzen des Nutzers (realistisch, 27.10.2026);
@@ -120,15 +120,15 @@ namespace WorldBeyond.Presentation.WorldObjects
                     break;
                 case BuildingShape.Hut:
                     b.Box(Dark, V(-1.2f, -1f, -1.2f), V(1.2f, 0.15f, 1.2f));
-                    b.Cone(Thatch, V(0f, 0.15f, 0f), 1.4f, 2.4f, 6);                 // Rundhütte mit Strohdach
-                    b.Box(Civ, V(-0.05f, 2.3f, -0.05f), V(0.05f, 3.0f, 0.05f));
-                    b.Box(Civ, V(0.05f, 2.75f, -0.02f), V(0.55f, 3.0f, 0.02f));       // Wimpel
+                    b.Cone(Thatch, V(0f, 0.15f, 0f), 1.6f, 3.4f, 6);                 // Rundhütte mit Strohdach
+                    b.Box(Civ, V(-0.05f, 3.3f, -0.05f), V(0.05f, 4.0f, 0.05f));
+                    b.Box(Civ, V(0.05f, 3.75f, -0.02f), V(0.55f, 4.0f, 0.02f));       // Wimpel
                     break;
                 case BuildingShape.House:
                     Plinth(b, 1.5f, 0.3f);
-                    b.Box(Body, V(-1.3f, 0.3f, -1.0f), V(1.3f, 2.2f, 1.0f));
-                    b.Gable(Roof, -1.3f, 1.3f, -1.0f, 1.0f, 2.2f, 3.3f, 0.2f);
-                    b.Box(Dark, V(-0.25f, 0.3f, -1.05f), V(0.25f, 1.4f, -1.0f));
+                    b.Box(Body, V(-1.4f, 0.3f, -1.2f), V(1.4f, 3.8f, 1.2f));
+                    b.Gable(Roof, -1.4f, 1.4f, -1.2f, 1.2f, 3.8f, 6.0f, 0.25f);
+                    b.Box(Dark, V(-0.4f, 0.3f, -1.25f), V(0.4f, 2.3f, -1.2f));
                     break;
                 case BuildingShape.Block:
                     Plinth(b, 1.8f, 0.3f);
@@ -150,26 +150,26 @@ namespace WorldBeyond.Presentation.WorldObjects
                     break;
                 case BuildingShape.Workshop:
                     Plinth(b, 1.6f, 0.3f);
-                    b.Box(Body, V(-1.4f, 0.3f, -1.2f), V(1.4f, 2.0f, 1.2f));
-                    b.Gable(Roof, -1.4f, 1.4f, -1.2f, 1.2f, 2.0f, 2.8f, 0.15f);
-                    b.Box(Dark, V(0.7f, 1.6f, 0.3f), V(1.1f, 3.6f, 0.7f));            // Schornstein
+                    b.Box(Body, V(-1.5f, 0.3f, -1.3f), V(1.5f, 3.4f, 1.3f));
+                    b.Gable(Roof, -1.5f, 1.5f, -1.3f, 1.3f, 3.4f, 5.0f, 0.15f);
+                    b.Box(Dark, V(0.7f, 2.8f, 0.3f), V(1.2f, 6.2f, 0.8f));            // Schornstein
                     b.Box(Dark, V(-1.8f, 0f, -0.8f), V(-1.45f, 0.9f, 0.8f));          // Holz-/Erzstapel
                     break;
                 case BuildingShape.Storage:
                     Plinth(b, 1.7f, 0.3f);
-                    b.Box(Dark, V(-1.6f, 0.3f, -1.3f), V(1.6f, 1.9f, 1.3f));
-                    b.Gable(Roof, -1.6f, 1.6f, -1.3f, 1.3f, 1.9f, 2.6f, 0.25f);
-                    b.Box(Body, V(-0.6f, 0.3f, -1.35f), V(0.6f, 1.5f, -1.3f));        // Tor
+                    b.Box(Dark, V(-1.6f, 0.3f, -1.4f), V(1.6f, 3.2f, 1.4f));
+                    b.Gable(Roof, -1.6f, 1.6f, -1.4f, 1.4f, 3.2f, 4.8f, 0.25f);
+                    b.Box(Body, V(-0.8f, 0.3f, -1.45f), V(0.8f, 2.6f, -1.4f));        // Tor
                     break;
                 case BuildingShape.Library:
                     Plinth(b, 1.7f, 0.5f);
-                    b.Box(Body, V(-1.3f, 0.5f, -1.0f), V(1.3f, 2.6f, 1.2f));
+                    b.Box(Body, V(-1.3f, 0.5f, -1.0f), V(1.3f, 4.6f, 1.2f));
                     for (int i = 0; i < 4; i++)                                         // Säulen
                     {
                         float x = -1.2f + i * 0.8f;
-                        b.Box(Body, V(x - 0.12f, 0.5f, -1.5f), V(x + 0.12f, 2.6f, -1.26f));
+                        b.Box(Body, V(x - 0.14f, 0.5f, -1.5f), V(x + 0.14f, 4.6f, -1.26f));
                     }
-                    b.Gable(Roof, -1.5f, 1.5f, -1.6f, 1.3f, 2.6f, 3.4f, 0.05f);
+                    b.Gable(Roof, -1.5f, 1.5f, -1.6f, 1.3f, 4.6f, 6.4f, 0.05f);
                     break;
                 case BuildingShape.Wall:
                     b.Box(Dark, V(-2f, -1f, -0.5f), V(2f, 2.4f, 0.5f));

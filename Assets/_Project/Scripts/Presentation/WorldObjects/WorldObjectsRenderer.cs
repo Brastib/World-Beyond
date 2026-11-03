@@ -27,9 +27,9 @@ namespace WorldBeyond.Presentation.WorldObjects
         [Header("Lesbarkeit aus der Ferne")]
         [Tooltip("Ab dieser Kameraentfernung werden Einheiten vergrößert, damit sie aus der Strategieansicht sichtbar bleiben.")]
         [SerializeField] float unitTrueScaleDistance = 60f;
-        [SerializeField] float unitMaxScale = 4f;
+        [SerializeField] float unitMaxScale = 1f;   // 1 = immer echte Größe (Vorgabe Integration 03.11.2026: realistische Maße)
         [Tooltip("Obergrenze für Fahrzeuge, Geschütze und Wagen, die schon in echter Größe 3–5 m lang sind.")]
-        [SerializeField] float largeUnitMaxScale = 1.5f;
+        [SerializeField] float largeUnitMaxScale = 1f;
 
         [Header("Aktualisierung (Sekunden Echtzeit)")]
         [SerializeField] float buildingRefreshSeconds = 0.25f;
@@ -288,11 +288,13 @@ namespace WorldBeyond.Presentation.WorldObjects
                 if (!_world.InBounds(b.X, b.Y))
                     continue;
                 float cx = (b.X + b.SizeX * 0.5f) * ts, cz = (b.Y + b.SizeY * 0.5f) * ts;
-                // Tiefster Punkt der Grundfläche, damit am Hang nichts schwebt (Sockel reicht 1 m nach unten).
                 float x0 = b.X * ts + 0.5f, x1 = (b.X + b.SizeX) * ts - 0.5f, z0 = b.Y * ts + 0.5f, z1 = (b.Y + b.SizeY) * ts - 0.5f;
                 float h00 = _world.SampleHeight(x0, z0), h10 = _world.SampleHeight(x1, z0);
                 float h01 = _world.SampleHeight(x0, z1), h11 = _world.SampleHeight(x1, z1);
-                float y = Mathf.Min(Mathf.Min(Mathf.Min(h00, h10), Mathf.Min(h01, h11)), _world.SampleHeight(cx, cz));
+                // Höchste Ecke, damit nichts im Hang steckt; der Sockel reicht 1 m (× Höhenskala) nach unten. Bei steilerem Hang
+                // höchstens 0,8 m über der tiefsten Ecke, damit unten keine Lücke unter dem Sockel entsteht.
+                float lo = Mathf.Min(Mathf.Min(h00, h10), Mathf.Min(h01, h11)), hi = Mathf.Max(Mathf.Max(h00, h10), Mathf.Max(h01, h11));
+                float y = Mathf.Min(Mathf.Max(hi, _world.SampleHeight(cx, cz)), lo + 0.8f);
                 Quaternion tilt = Quaternion.identity;
                 if (b.Shape == BuildingShape.Field)
                 {
