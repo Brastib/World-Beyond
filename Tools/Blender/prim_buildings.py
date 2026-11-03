@@ -1,5 +1,5 @@
 # World Beyond: Frühzeit-Gebäude für Unity aus Blender (headless).
-# Aufruf: blender -b -noaudio --python prim_buildings.py -- <field0|field1|field2|center|hut|house|tent|granary> <texdir> <outdir> [preview.png] [samples]
+# Aufruf: blender -b -noaudio --python prim_buildings.py -- <site1|site2|field0|field1|field2|center|hut|house|tent|granary> <texdir> <outdir> [preview.png] [samples]
 # Ergebnis: <outdir>/WB_Prim_*.fbx (Ursprung = Bodenmitte, 1 Einheit = 1 m, Y oben in Unity), optional Vorschaubild.
 import bpy, bmesh, sys, math, random, os
 from mathutils import Vector, Matrix, noise
@@ -8,8 +8,8 @@ argv = sys.argv[sys.argv.index("--") + 1:]
 MODEL, TEX, OUTDIR = argv[0], argv[1], argv[2]
 PREVIEW = argv[3] if len(argv) > 3 else None
 SAMPLES = int(argv[4]) if len(argv) > 4 else 64
-NAMES = {"field0": "WB_Prim_Field_0Plowed", "field1": "WB_Prim_Field_1Green", "field2": "WB_Prim_Field_2Ripe", "center": "WB_Prim_Center", "hut": "WB_Prim_Hut_Wattle", "house": "WB_Prim_House_Wattle", "tent": "WB_Prim_Tent_Hide", "granary": "WB_Prim_Granary"}
-rng = random.Random({"house": 1, "tent": 2, "granary": 3, "hut": 4, "center": 5, "field0": 6, "field1": 6, "field2": 6}[MODEL])
+NAMES = {"site1": "WB_Prim_Construction_1x1", "site2": "WB_Prim_Construction_2x2", "field0": "WB_Prim_Field_0Plowed", "field1": "WB_Prim_Field_1Green", "field2": "WB_Prim_Field_2Ripe", "center": "WB_Prim_Center", "hut": "WB_Prim_Hut_Wattle", "house": "WB_Prim_House_Wattle", "tent": "WB_Prim_Tent_Hide", "granary": "WB_Prim_Granary"}
+rng = random.Random({"house": 1, "tent": 2, "granary": 3, "hut": 4, "center": 5, "field0": 6, "field1": 6, "field2": 6, "site1": 7, "site2": 8}[MODEL])
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
 
@@ -394,6 +394,51 @@ def stone(c, r, squash=0.6, sub=2):
     bmesh.ops.translate(bm, vec=Vector(c), verts=bm.verts)
     bm.normal_update(); box_uv_bm(bm, TEXSETS["M_Stone"][1], (rng.random(), rng.random())); return finish(bm, "M_Stone")
 
+def build_construction(tiles):
+    """Baustelle (1 x 1 = 4 m oder 2 x 2 = 8 m): eingeebneter Platz, Pfostenrahmen im Aufbau, Flechtwerk-Anfang, Holz- und Steinvorrat."""
+    S = 4.0 * tiles - 0.4
+    slab((0, 0, 0.012), (S, S, 0.024), "M_Earth")
+    L, W = (2.6, 2.2) if tiles == 1 else (5.2, 3.8)
+    cx, cy = (-0.3, 0.35) if tiles == 1 else (-0.6, 0.7)
+    nL = 2 if tiles == 1 else 4; nW = 1 if tiles == 1 else 2
+    xs = [cx - L / 2 + L * k / nL for k in range(nL + 1)]; ys = [cy - W / 2 + W * k / nW for k in range(nW + 1)]
+    H = 1.8 if tiles == 1 else 1.95
+    pts = set()
+    for x in xs:
+        for y in (ys[0], ys[-1]): pts.add((round(x, 3), round(y, 3)))
+    for y in ys:
+        for x in (xs[0], xs[-1]): pts.add((round(x, 3), round(y, 3)))
+    for i, (x, y) in enumerate(sorted(pts)):
+        h = H if rng.random() < 0.75 else H * rng.uniform(0.45, 0.7)   # einige Pfosten noch nicht fertig
+        post(x, y, h + 0.08, rng.uniform(0.085, 0.1))
+    # Rähm nur auf der hinteren Langseite schon aufgelegt
+    tube([(xs[0] - 0.2, ys[-1], H + 0.1), (xs[-1] + 0.2, ys[-1], H + 0.12)], [0.1, 0.1], 8, "M_Bark", jitter=0.05)
+    # Flechtwerk-Anfang in der hinteren Wand und Lehm unten an einem Feld
+    wattle_panel(xs[0] + 0.1, xs[1] - 0.1, ys[-1], 0.05, H * 0.6, "x")
+    slab(((xs[0] + xs[1]) / 2, ys[-1], 0.25), (xs[1] - xs[0] - 0.14, 0.15, 0.5), "M_Daub", bump=0.025, sub=(4, 2, 2))
+    # Holzstapel (Rundholz) vorn rechts
+    n_logs = 5 if tiles == 1 else 8; lx = S / 2 - 0.55; ln = 1.6 if tiles == 1 else 2.6
+    for row in range(3):
+        for k in range(n_logs - row * 2):
+            x = lx - 0.17 * k - 0.085 * row
+            tube([(x, -S / 2 + 0.25, 0.09 + 0.15 * row), (x + rng.uniform(-0.04, 0.04), -S / 2 + 0.25 + ln, 0.09 + 0.15 * row)], [0.08, 0.075], 7, "M_Bark")
+    # Bretterstapel auf Unterlegern vorn links
+    bx, by = -S / 2 + 1.0, -S / 2 + 0.55
+    for sg in (-1, 1): tube([(bx + sg * 0.6, by - 0.2, 0.06), (bx + sg * 0.6, by + 0.2, 0.06)], [0.06, 0.06], 6, "M_Bark")
+    for k in range(6 if tiles == 1 else 10):
+        slab((bx + rng.uniform(-0.03, 0.03), by + rng.uniform(-0.03, 0.03), 0.135 + 0.033 * k), (1.7, 0.26, 0.03), "M_Wood", rot_z=rng.uniform(-0.04, 0.04))
+    # Steinhaufen
+    sx, sy = (S / 2 - 0.6, S / 2 - 0.6)
+    for k in range(9 if tiles == 1 else 16):
+        a = rng.uniform(0, 6.28); r = rng.uniform(0, 0.35 if tiles == 1 else 0.5)
+        stone((sx + math.cos(a) * r, sy + math.sin(a) * r, 0.07 + (0.12 if r < 0.2 else 0)), rng.uniform(0.09, 0.15), 0.7, sub=1)
+    if tiles == 2:  # Lehmgrube mit Wasser-Trog-Ersatz: Erdhügel und Bündel Flechtruten
+        slab((S / 2 - 1.4, 0.2, 0.08), (1.1, 1.1, 0.16), "M_Daub", bump=0.06, sub=(4, 4, 2))
+        for k in range(14):
+            y = -0.6 + rng.uniform(-0.12, 0.12); z = 0.05 + rng.uniform(0, 0.1)
+            tube([(-S / 2 + 0.4, y, z), (-S / 2 + 2.6, y + rng.uniform(-0.1, 0.1), z)], [0.015, 0.012], 4, "M_Bark")
+    return S, S
+
 def build_field(stage):
     """Acker (2 x 2 Kacheln = 8 x 8 m): Furchen aus Erde, Feldsteinrand, Getreide als Karten. stage 0 = gepflügt, 1 = grün, 2 = reif."""
     half = 3.7; pitch_y = 0.55; amp = 0.07 if stage == 0 else 0.05
@@ -473,7 +518,7 @@ def build_center():
             tube([(1.85, y, 0.09 + row * 0.15), (2.85 + rng.uniform(-0.05, 0.05), y, 0.09 + row * 0.15)], [0.08, 0.075], 7, "M_Bark")
     return 8.0, 8.0
 
-span = {"field0": lambda: build_field(0), "field1": lambda: build_field(1), "field2": lambda: build_field(2), "center": build_center, "hut": lambda: build_house(3.2, 2.6, 1.8, 2, 2, 1, 0.85, 50, 0.4, 0.27, 0.28, 3, 2),
+span = {"site1": lambda: build_construction(1), "site2": lambda: build_construction(2), "field0": lambda: build_field(0), "field1": lambda: build_field(1), "field2": lambda: build_field(2), "center": build_center, "hut": lambda: build_house(3.2, 2.6, 1.8, 2, 2, 1, 0.85, 50, 0.4, 0.27, 0.28, 3, 2),
         "house": build_house, "tent": build_tent, "granary": build_granary}[MODEL]()
 
 # ---------- Zusammenführen: ein Objekt, ein Material-Slot je Material (feste Reihenfolge) ----------
