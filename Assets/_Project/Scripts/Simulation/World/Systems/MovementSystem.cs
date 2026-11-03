@@ -277,13 +277,40 @@ namespace WorldBeyond.Simulation.World
 
         bool RemainingPathWalkable(Agent agent, MovementClass mc)
         {
+            // Geglättete Pfade überspringen Kacheln zwischen den Wegpunkten; auch diese prüfen. Sonst bleibt eine Einheit
+            // ewig vor einem Gebäude stehen, das nach der Pfadsuche auf ihre Strecke gebaut wurde (Civ-Befund Seed 42).
             for (int i = Math.Max(1, agent.Next); i < agent.Waypoints.Count; i++)
             {
+                var a = agent.Waypoints[i - 1];
                 var wp = agent.Waypoints[i];
-                if (!_world.IsWalkable(wp.x, wp.y, mc))
+                if (!_world.IsWalkable(wp.x, wp.y, mc) || !SegmentWalkable(a.x, a.y, wp.x, wp.y, mc))
                     return false;
             }
             agent.NavVersion = _world.NavigationVersion;
+            return true;
+        }
+
+        // Kacheln entlang der Strecke wie GridPathfinder.LineWalkable (an Ecken beide berührten Kacheln); die Startkachel
+        // darf gesperrt sein (Einheiten verlassen nachträglich bebaute Kacheln).
+        bool SegmentWalkable(int x0, int y0, int x1, int y1, MovementClass mc)
+        {
+            int dx = Math.Abs(x1 - x0), dy = Math.Abs(y1 - y0);
+            int sx = x1 > x0 ? 1 : -1, sy = y1 > y0 ? 1 : -1;
+            int x = x0, y = y0, err = dx - dy, n = dx + dy;
+            for (int k = 0; k < n; k++)
+            {
+                int e2 = 2 * err;
+                if (e2 > -dy && e2 < dx)
+                {
+                    if (!_world.IsWalkable(x + sx, y, mc) || !_world.IsWalkable(x, y + sy, mc))
+                        return false;
+                    err += dx - dy; x += sx; y += sy; k++;
+                }
+                else if (e2 > -dy) { err -= dy; x += sx; }
+                else { err += dx; y += sy; }
+                if (!_world.IsWalkable(x, y, mc))
+                    return false;
+            }
             return true;
         }
 
