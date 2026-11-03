@@ -37,8 +37,8 @@ namespace WorldBeyond.Presentation.WorldView
             {
                 case BiomeType.Ocean:
                 case BiomeType.Coast: return GroundLayer.Sand;
-                case BiomeType.Tundra:
-                case BiomeType.Savanna: return GroundLayer.Dry;
+                // Savanne/Tundra mit Grasbewuchs bleiben Gras (Lauf 8: rissiger Trockenboden wirkte auf bewachsenem
+                // Land falsch); „Dry“ nur noch für Wüstenkacheln in diesen Biomen.
                 case BiomeType.Desert: return GroundLayer.Sand;
                 case BiomeType.Wetland: return GroundLayer.Wet;
                 case BiomeType.Alpine: return GroundLayer.Rock;
